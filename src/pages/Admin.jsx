@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SuperAdminPanel from '@/components/admin/SuperAdminPanel';
+import PermissionsPanel from '@/components/admin/PermissionsPanel';
 
 const ROLE_CONFIG = {
   owner:      { label: 'Owner',      color: 'text-warning bg-warning/10',   icon: Crown },
@@ -348,8 +350,22 @@ export default function Admin() {
         </p>
       </section>
 
-      {/* Danger Zone — owners y admins */}
+      {/* Permisos granulares — solo admin del tenant */}
+      <PermissionsPanel />
+
+      {/* Danger Zone — solo admin del tenant */}
       {isAdminOrOwner(user?.role) && <DangerZone tenant={tenant} user={user} onDeleted={() => window.location.reload()} onDelegated={() => { reloadTenant(); load(); }} />}
+
+      {/* Super Admin Panel — solo owner de la app */}
+      {isOwner(user?.role) && (
+        <div className="pt-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Crown className="w-4 h-4 text-warning" />
+            <p className="text-xs font-semibold text-warning uppercase tracking-wider">Zona exclusiva — Owner de la plataforma</p>
+          </div>
+          <SuperAdminPanel />
+        </div>
+      )}
     </div>
   );
 }
