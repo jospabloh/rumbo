@@ -1,0 +1,49 @@
+{
+  "name": "Maintenance",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "preventive",
+        "corrective"
+      ],
+      "title": "Tipo",
+      "default": "preventive"
+    },
+    "description": {
+      "type": "string",
+      "title": "Descripci\u00f3n"
+    },
+    "odometer": {
+      "type": "number",
+      "title": "Od\u00f3metro (km)"
+    },
+    "cost": {
+      "type": "number",
+      "title": "Costo"
+    },
+    "performed_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de realizaci\u00f3n"
+    },
+    "next_due_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Pr\u00f3xima revisi\u00f3n"
+    },
+    "photo_url": {
+      "type": "string",
+      "title": "Foto"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "kind"
+  ]
+}

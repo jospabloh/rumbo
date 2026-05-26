@@ -1,0 +1,40 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "channel_id": {
+      "type": "string",
+      "title": "Canal"
+    },
+    "sender_id": {
+      "type": "string",
+      "title": "Remitente (user id)"
+    },
+    "sender_name": {
+      "type": "string",
+      "title": "Nombre del remitente"
+    },
+    "body": {
+      "type": "string",
+      "title": "Mensaje"
+    },
+    "audio_url": {
+      "type": "string",
+      "title": "URL de audio"
+    },
+    "delivered": {
+      "type": "boolean",
+      "title": "Entregado",
+      "default": false
+    },
+    "read": {
+      "type": "boolean",
+      "title": "Le\u00eddo",
+      "default": false
+    }
+  },
+  "required": [
+    "channel_id",
+    "sender_id"
+  ]
+}

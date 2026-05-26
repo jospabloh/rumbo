@@ -1,0 +1,65 @@
+{
+  "name": "Driver",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "title": "Nombre completo"
+    },
+    "license_no": {
+      "type": "string",
+      "title": "No. de licencia"
+    },
+    "license_expiry": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento de licencia"
+    },
+    "medical_cert_expiry": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento cert. m\u00e9dico"
+    },
+    "background_check_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de antecedentes"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "title": "Calificaci\u00f3n"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "inactive"
+      ],
+      "title": "Estado",
+      "default": "active"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de contrataci\u00f3n"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Tel\u00e9fono"
+    },
+    "photo_url": {
+      "type": "string",
+      "title": "Foto"
+    },
+    "profile_id": {
+      "type": "string",
+      "title": "ID de perfil vinculado"
+    }
+  },
+  "required": [
+    "full_name"
+  ]
+}

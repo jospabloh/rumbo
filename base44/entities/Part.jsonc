@@ -1,0 +1,36 @@
+{
+  "name": "Part",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Nombre"
+    },
+    "sku": {
+      "type": "string",
+      "title": "SKU"
+    },
+    "stock": {
+      "type": "number",
+      "title": "Stock",
+      "minimum": 0,
+      "default": 0
+    },
+    "unit_cost": {
+      "type": "number",
+      "title": "Costo unitario"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo asociado"
+    },
+    "maintenance_id": {
+      "type": "string",
+      "title": "Mantenimiento asociado"
+    }
+  },
+  "required": [
+    "name",
+    "stock"
+  ]
+}

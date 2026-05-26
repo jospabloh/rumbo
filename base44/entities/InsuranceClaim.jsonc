@@ -1,0 +1,42 @@
+{
+  "name": "InsuranceClaim",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "description": {
+      "type": "string",
+      "title": "Descripci\u00f3n"
+    },
+    "claim_amount": {
+      "type": "number",
+      "title": "Monto del reclamo"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "approved",
+        "denied",
+        "closed"
+      ],
+      "title": "Estado",
+      "default": "open"
+    },
+    "incident_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha del incidente"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "driver_id"
+  ]
+}

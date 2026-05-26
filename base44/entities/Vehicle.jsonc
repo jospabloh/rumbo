@@ -1,0 +1,67 @@
+{
+  "name": "Vehicle",
+  "type": "object",
+  "properties": {
+    "plate": {
+      "type": "string",
+      "title": "Placa"
+    },
+    "make": {
+      "type": "string",
+      "title": "Marca"
+    },
+    "model": {
+      "type": "string",
+      "title": "Modelo"
+    },
+    "year": {
+      "type": "number",
+      "title": "A\u00f1o"
+    },
+    "vin": {
+      "type": "string",
+      "title": "VIN"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "maintenance",
+        "inactive"
+      ],
+      "title": "Estado",
+      "default": "active"
+    },
+    "assigned_driver_id": {
+      "type": "string",
+      "title": "Conductor asignado"
+    },
+    "insurance_policy_no": {
+      "type": "string",
+      "title": "No. de p\u00f3liza"
+    },
+    "insurance_expiry": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento seguro"
+    },
+    "inspection_expiry": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento inspecci\u00f3n"
+    },
+    "registration_expiry": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento registro"
+    },
+    "odometer": {
+      "type": "number",
+      "title": "Od\u00f3metro (km)",
+      "default": 0
+    }
+  },
+  "required": [
+    "plate"
+  ]
+}

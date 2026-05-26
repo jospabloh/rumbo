@@ -1,0 +1,46 @@
+{
+  "name": "Fine",
+  "type": "object",
+  "properties": {
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "fine_type": {
+      "type": "string",
+      "title": "Tipo de infracci\u00f3n"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Monto"
+    },
+    "points": {
+      "type": "number",
+      "title": "Puntos",
+      "default": 0
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+    },
+    "paid": {
+      "type": "boolean",
+      "title": "Pagada",
+      "default": false
+    },
+    "photo_url": {
+      "type": "string",
+      "title": "Foto"
+    }
+  },
+  "required": [
+    "driver_id",
+    "vehicle_id",
+    "amount"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "Alert",
+  "type": "object",
+  "properties": {
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "driver_doc",
+        "vehicle_doc",
+        "maintenance",
+        "insurance",
+        "fine"
+      ],
+      "title": "Tipo de entidad"
+    },
+    "entity_id": {
+      "type": "string",
+      "title": "ID de entidad"
+    },
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "message": {
+      "type": "string",
+      "title": "Mensaje"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ],
+      "title": "Severidad"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha l\u00edmite"
+    },
+    "resolved": {
+      "type": "boolean",
+      "title": "Resuelta",
+      "default": false
+    }
+  },
+  "required": [
+    "entity_type",
+    "entity_id",
+    "message",
+    "severity"
+  ]
+}

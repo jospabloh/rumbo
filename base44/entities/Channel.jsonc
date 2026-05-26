@@ -1,0 +1,26 @@
+{
+  "name": "Channel",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Nombre"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "broadcast",
+        "direct"
+      ],
+      "title": "Tipo",
+      "default": "direct"
+    },
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor (para canales directos)"
+    }
+  },
+  "required": [
+    "kind"
+  ]
+}

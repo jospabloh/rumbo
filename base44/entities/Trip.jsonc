@@ -1,0 +1,62 @@
+{
+  "name": "Trip",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "uber",
+        "didi",
+        "particular"
+      ],
+      "title": "Plataforma"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Inicio"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fin"
+    },
+    "distance_km": {
+      "type": "number",
+      "title": "Distancia (km)"
+    },
+    "earnings": {
+      "type": "number",
+      "title": "Ganancias"
+    },
+    "start_lat": {
+      "type": "number",
+      "title": "Latitud inicio"
+    },
+    "start_lng": {
+      "type": "number",
+      "title": "Longitud inicio"
+    },
+    "end_lat": {
+      "type": "number",
+      "title": "Latitud fin"
+    },
+    "end_lng": {
+      "type": "number",
+      "title": "Longitud fin"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "driver_id",
+    "platform"
+  ]
+}

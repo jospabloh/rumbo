@@ -1,0 +1,45 @@
+{
+  "name": "FuelLog",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "liters": {
+      "type": "number",
+      "title": "Litros"
+    },
+    "price_per_liter": {
+      "type": "number",
+      "title": "Precio por litro"
+    },
+    "total_cost": {
+      "type": "number",
+      "title": "Costo total"
+    },
+    "odometer": {
+      "type": "number",
+      "title": "Od\u00f3metro (km)"
+    },
+    "receipt_photo_url": {
+      "type": "string",
+      "title": "Foto de recibo"
+    },
+    "logged_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha y hora"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "driver_id",
+    "liters",
+    "total_cost"
+  ]
+}

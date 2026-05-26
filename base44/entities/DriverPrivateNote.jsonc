@@ -1,0 +1,22 @@
+{
+  "name": "DriverPrivateNote",
+  "type": "object",
+  "properties": {
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "author_id": {
+      "type": "string",
+      "title": "Autor"
+    },
+    "note": {
+      "type": "string",
+      "title": "Nota"
+    }
+  },
+  "required": [
+    "driver_id",
+    "note"
+  ]
+}

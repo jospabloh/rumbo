@@ -1,0 +1,39 @@
+{
+  "name": "DriverDocument",
+  "type": "object",
+  "properties": {
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "license",
+        "medical",
+        "background",
+        "other"
+      ],
+      "title": "Tipo de documento"
+    },
+    "file_url": {
+      "type": "string",
+      "title": "Archivo"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de emisi\u00f3n"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de vencimiento"
+    }
+  },
+  "required": [
+    "driver_id",
+    "doc_type",
+    "file_url"
+  ]
+}

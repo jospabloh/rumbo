@@ -1,0 +1,51 @@
+{
+  "name": "LocationRequest",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "requested_by": {
+      "type": "string",
+      "title": "Solicitado por"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "fulfilled",
+        "expired"
+      ],
+      "title": "Estado",
+      "default": "pending"
+    },
+    "lat": {
+      "type": "number",
+      "title": "Latitud"
+    },
+    "lng": {
+      "type": "number",
+      "title": "Longitud"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Solicitado en"
+    },
+    "responded_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Respondido en"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "driver_id",
+    "requested_by"
+  ]
+}

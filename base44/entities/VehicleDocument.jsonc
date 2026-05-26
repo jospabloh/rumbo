@@ -1,0 +1,35 @@
+{
+  "name": "VehicleDocument",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "insurance",
+        "registration",
+        "inspection",
+        "title",
+        "other"
+      ],
+      "title": "Tipo"
+    },
+    "file_url": {
+      "type": "string",
+      "title": "Archivo"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "doc_type",
+    "file_url"
+  ]
+}
