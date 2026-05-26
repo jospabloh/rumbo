@@ -9,43 +9,40 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized: Admin or Owner access required' }, { status: 403 });
     }
 
-    // Intentar obtener tenant del usuario en production
-    let tenantId = user.data?.tenant_id;
-    let base44Client = base44;
-    let isDev = false;
+    console.log(`User: ${user.email}, role: ${user.role}, data: ${JSON.stringify(user.data)}`);
 
-    // Si no hay tenant en production, buscar en dev (test database)
+    // Determinar environment y tenant
+    let isDev = false;
+    let tenantId = user.data?.tenant_id;
+
     if (!tenantId) {
       isDev = true;
-      base44Client = createClientFromRequest(req, { dataEnv: 'dev' });
-      
-      // Buscar tenant por owner_email y creado por este usuario
-      const tenants = await base44Client.entities.TenantLicense.filter({ 
-        $and: [{ owner_email: user.email }, { created_by_id: user.id }] 
+      // Buscar tenant en dev database
+      const base44Dev = createClientFromRequest(req, { dataEnv: 'dev' });
+      const tenants = await base44Dev.entities.TenantLicense.filter({ 
+        owner_email: user.email 
       });
+      console.log(`Tenants en dev: ${tenants?.length || 0}`);
       if (!tenants || tenants.length === 0) {
         return Response.json({ 
           error: 'No tienes un tenant asociado. Primero crea un tenant desde el onboarding.',
         }, { status: 400 });
       }
       tenantId = tenants[0].id;
-      console.log(`Tenant encontrado: ${tenantId}`);
+      console.log(`Tenant ID: ${tenantId}`);
     }
 
-    console.log(`Creando datos de prueba para tenant: ${tenantId} (env: ${isDev ? 'dev' : 'prod'})`);
+    console.log(`Creando datos para tenant ${tenantId} en ${isDev ? 'dev' : 'prod'}`);
 
-    // Usar service role para bypass del RLS
-    const base44Service = isDev
+    // Usar service role para bypass RLS
+    const base44Service = isDev 
       ? createClientFromRequest(req, { dataEnv: 'dev' }).asServiceRole
       : base44.asServiceRole;
 
-    const testData = {
-      vehicles: [],
-      drivers: [],
-      summary: {},
-    };
+    const testData = { vehicles: [], drivers: [] };
 
-    // Datos base para vehículos y conductores
+    // Crear 5 vehículos
+    console.log('Creando vehículos...');
     const vehicleData = [
       { plate: 'TEST-001', make: 'Toyota', model: 'Corolla', year: 2022 },
       { plate: 'TEST-002', make: 'Nissan', model: 'Versa', year: 2021 },
@@ -54,6 +51,24 @@ Deno.serve(async (req) => {
       { plate: 'TEST-005', make: 'Mazda', model: '3', year: 2022 },
     ];
 
+    for (const vData of vehicleData) {
+      try {
+        const vehicle = await base44Service.entities.Vehicle.create({
+          tenant_id: tenantId,
+          ...vData,
+          status: 'active',
+          odometer: Math.floor(Math.random() * 50000) + 5000,
+        });
+        testData.vehicles.push(vehicle);
+        console.log(`Vehículo creado: ${vehicle.plate}`);
+      } catch (err) {
+        console.error(`Error creando vehículo ${vData.plate}: ${err.message}`);
+        throw err;
+      }
+    }
+
+    // Crear 5 conductores
+    console.log('Creando conductores...');
     const driverData = [
       { full_name: 'Juan Pérez Test', license_no: 'LIC-001', phone: '55-1234-5678', rating: 4.8 },
       { full_name: 'María García Test', license_no: 'LIC-002', phone: '55-8765-4321', rating: 4.9 },
@@ -62,29 +77,23 @@ Deno.serve(async (req) => {
       { full_name: 'Roberto Sánchez Test', license_no: 'LIC-005', phone: '55-5555-6666', rating: 5.0 },
     ];
 
-    console.log('Creando vehículos...');
-    for (const vData of vehicleData) {
-      const vehicle = await base44Service.entities.Vehicle.create({
-        tenant_id: tenantId,
-        ...vData,
-        status: 'active',
-        odometer: Math.floor(Math.random() * 50000) + 5000,
-      });
-      testData.vehicles.push(vehicle);
-    }
-
-    console.log('Creando conductores...');
     for (const dData of driverData) {
-      const driver = await base44Service.entities.Driver.create({
-        tenant_id: tenantId,
-        ...dData,
-        status: 'active',
-        hire_date: '2024-01-15',
-      });
-      testData.drivers.push(driver);
+      try {
+        const driver = await base44Service.entities.Driver.create({
+          tenant_id: tenantId,
+          ...dData,
+          status: 'active',
+          hire_date: '2024-01-15',
+        });
+        testData.drivers.push(driver);
+        console.log(`Conductor creado: ${driver.full_name}`);
+      } catch (err) {
+        console.error(`Error creando conductor ${dData.full_name}: ${err.message}`);
+        throw err;
+      }
     }
 
-    console.log('Creando alertas, mantenimientos, multas, combustible y viajes...');
+    console.log('Creando datos relacionados...');
     
     // Crear alertas
     await base44Service.entities.Alert.create({
@@ -158,8 +167,8 @@ Deno.serve(async (req) => {
       success: true,
       message: 'Datos de prueba creados exitosamente',
       summary: {
-        vehicles: testData.vehicles.length,
-        drivers: testData.drivers.length,
+        vehicles: 5,
+        drivers: 5,
         alerts: 2,
         maintenance: 1,
         fines: 1,
@@ -167,6 +176,7 @@ Deno.serve(async (req) => {
         trips: 1,
       },
       tenant_id: tenantId,
+      environment: isDev ? 'dev' : 'prod',
     });
   } catch (error) {
     console.error('Error:', error);
