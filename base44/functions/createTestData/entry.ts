@@ -12,23 +12,24 @@ Deno.serve(async (req) => {
     // Intentar obtener tenant del usuario en production
     let tenantId = user.data?.tenant_id;
     let base44Client = base44;
+    let isDev = false;
 
     // Si no hay tenant en production, buscar en dev (test database)
     if (!tenantId) {
-      const base44Dev = createClientFromRequest(req, { dataEnv: 'dev' });
-      const userDev = await base44Dev.auth.me();
-      tenantId = userDev.data?.tenant_id;
+      isDev = true;
+      base44Client = createClientFromRequest(req, { dataEnv: 'dev' });
       
-      if (!tenantId) {
+      // Buscar tenant por owner_email
+      const tenants = await base44Client.entities.TenantLicense.filter({ owner_email: user.email });
+      if (!tenants || tenants.length === 0) {
         return Response.json({ 
           error: 'No tienes un tenant asociado. Primero crea un tenant desde el onboarding.',
         }, { status: 400 });
       }
-      
-      base44Client = base44Dev;
+      tenantId = tenants[0].id;
     }
 
-    console.log(`Creando datos de prueba para tenant: ${tenantId}`);
+    console.log(`Creando datos de prueba para tenant: ${tenantId} (env: ${isDev ? 'dev' : 'prod'})`);
 
     const testData = {
       vehicles: [],
