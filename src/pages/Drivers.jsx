@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import DriverForm from '@/components/drivers/DriverForm';
 import DriverDetail from '@/components/drivers/DriverDetail';
+import { useTenant } from '@/lib/TenantContext';
 
 const statusLabel = { active: 'Activo', suspended: 'Suspendido', inactive: 'Inactivo' };
 const statusColor = {
@@ -14,6 +15,7 @@ const statusColor = {
 };
 
 export default function Drivers() {
+  const { tenantId } = useTenant();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -22,7 +24,8 @@ export default function Drivers() {
   const [editDriver, setEditDriver] = useState(null);
 
   const load = () => {
-    base44.entities.Driver.list('-created_date').then(setDrivers).finally(() => setLoading(false));
+    const query = tenantId ? { tenant_id: tenantId } : {};
+    base44.entities.Driver.filter(query, '-created_date').then(setDrivers).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -36,7 +39,7 @@ export default function Drivers() {
     if (editDriver) {
       await base44.entities.Driver.update(editDriver.id, data);
     } else {
-      await base44.entities.Driver.create(data);
+      await base44.entities.Driver.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);
     setEditDriver(null);

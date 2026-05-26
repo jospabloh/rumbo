@@ -6,6 +6,7 @@ import FuelLogForm from '@/components/financial/FuelLogForm';
 import FineForm from '@/components/financial/FineForm';
 import InsuranceClaimForm from '@/components/financial/InsuranceClaimForm';
 import CostPerKm from '@/components/financial/CostPerKm';
+import { useTenant } from '@/lib/TenantContext';
 
 const tabs = [
   { id: 'fuel', label: 'Combustible', icon: Fuel },
@@ -15,6 +16,7 @@ const tabs = [
 ];
 
 export default function Financial() {
+  const { tenantId } = useTenant();
   const [tab, setTab] = useState('fuel');
   const [fuelLogs, setFuelLogs] = useState([]);
   const [fines, setFines] = useState([]);
@@ -25,12 +27,13 @@ export default function Financial() {
   const [loading, setLoading] = useState(true);
 
   const load = () => {
+    const q = tenantId ? { tenant_id: tenantId } : {};
     Promise.all([
-      base44.entities.FuelLog.list('-logged_at'),
-      base44.entities.Fine.list('-issued_at'),
-      base44.entities.InsuranceClaim.list('-created_date'),
-      base44.entities.Vehicle.list(),
-      base44.entities.Driver.list(),
+      base44.entities.FuelLog.filter(q, '-logged_at'),
+      base44.entities.Fine.filter(q, '-issued_at'),
+      base44.entities.InsuranceClaim.filter(q, '-created_date'),
+      base44.entities.Vehicle.filter(q),
+      base44.entities.Driver.filter(q),
     ]).then(([f, fi, c, v, d]) => {
       setFuelLogs(f); setFines(fi); setClaims(c); setVehicles(v); setDrivers(d);
     }).finally(() => setLoading(false));
@@ -151,9 +154,9 @@ export default function Financial() {
         <CostPerKm vehicles={vehicles} />
       )}
 
-      {showForm && tab === 'fuel' && <FuelLogForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.FuelLog.create(d); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
-      {showForm && tab === 'fines' && <FineForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.Fine.create(d); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
-      {showForm && tab === 'insurance' && <InsuranceClaimForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.InsuranceClaim.create(d); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+      {showForm && tab === 'fuel' && <FuelLogForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.FuelLog.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+      {showForm && tab === 'fines' && <FineForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.Fine.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+      {showForm && tab === 'insurance' && <InsuranceClaimForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.InsuranceClaim.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
     </div>
   );
 }

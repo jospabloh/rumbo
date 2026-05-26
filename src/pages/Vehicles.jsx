@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import VehicleForm from '@/components/vehicles/VehicleForm';
 import VehicleDetail from '@/components/vehicles/VehicleDetail';
+import { useTenant } from '@/lib/TenantContext';
 
 const statusLabel = { active: 'Activo', maintenance: 'Mantenimiento', inactive: 'Inactivo' };
 const statusColor = {
@@ -14,6 +15,7 @@ const statusColor = {
 };
 
 export default function Vehicles() {
+  const { tenantId } = useTenant();
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,9 +25,10 @@ export default function Vehicles() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const load = () => {
+    const q = tenantId ? { tenant_id: tenantId } : {};
     Promise.all([
-      base44.entities.Vehicle.list(),
-      base44.entities.Driver.list(),
+      base44.entities.Vehicle.filter(q),
+      base44.entities.Driver.filter(q),
     ]).then(([v, d]) => { setVehicles(v); setDrivers(d); }).finally(() => setLoading(false));
   };
 
@@ -41,7 +44,7 @@ export default function Vehicles() {
     if (editVehicle) {
       await base44.entities.Vehicle.update(editVehicle.id, data);
     } else {
-      await base44.entities.Vehicle.create(data);
+      await base44.entities.Vehicle.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);
     setEditVehicle(null);

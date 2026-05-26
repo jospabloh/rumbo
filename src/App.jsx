@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -5,6 +6,8 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { TenantProvider, useTenant } from '@/lib/TenantContext';
+import TenantOnboarding from './pages/TenantOnboarding';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Drivers from './pages/Drivers';
@@ -24,8 +27,38 @@ import Billing from './pages/Billing';
 import Admin from './pages/Admin';
 // Add page imports here
 
+const TenantGate = ({ children }) => {
+  const { tenant, tenantId, loading } = useTenant();
+  const { isLoadingAuth } = useAuth();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    import('@/api/base44Client').then(({ base44 }) => {
+      base44.auth.me().then(setUser).catch(() => {});
+    });
+  }, []);
+
+  if (loading || isLoadingAuth) return null;
+
+  // Solo admins/owners necesitan onboarding. Drivers y otros roles no.
+  const needsOnboarding = user && (user.role === 'admin' || user.role === 'owner') && !tenantId && !loading;
+
+  if (needsOnboarding) {
+    return <TenantOnboarding onComplete={() => window.location.reload()} />;
+  }
+
+  return children;
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    import('@/api/base44Client').then(({ base44 }) => {
+      base44.auth.me().then(setUser).catch(() => {});
+    });
+  }, []);
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -49,6 +82,7 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
+    <TenantGate>
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
@@ -70,6 +104,7 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </TenantGate>
   );
 };
 
@@ -80,7 +115,9 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <AuthenticatedApp />
+          <TenantProvider>
+            <AuthenticatedApp />
+          </TenantProvider>
         </Router>
         <Toaster />
       </QueryClientProvider>

@@ -2,6 +2,10 @@
   "name": "Maintenance",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
     "vehicle_id": {
       "type": "string",
       "title": "Veh\u00edculo"

@@ -2,6 +2,10 @@
   "name": "Alert",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
     "entity_type": {
       "type": "string",
       "enum": [

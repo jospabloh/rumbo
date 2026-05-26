@@ -2,6 +2,10 @@
   "name": "Fine",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
     "driver_id": {
       "type": "string",
       "title": "Conductor"

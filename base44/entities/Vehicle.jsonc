@@ -2,6 +2,10 @@
   "name": "Vehicle",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
     "plate": {
       "type": "string",
       "title": "Placa"

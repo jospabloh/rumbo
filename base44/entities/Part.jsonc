@@ -2,6 +2,10 @@
   "name": "Part",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
     "name": {
       "type": "string",
       "title": "Nombre"

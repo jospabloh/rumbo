@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTenant } from '@/lib/TenantContext';
 
 const severityConfig = {
   critical: { icon: AlertTriangle, cls: 'text-destructive bg-destructive/10 border-destructive/20', label: 'Crítica' },
@@ -10,13 +11,15 @@ const severityConfig = {
 };
 
 export default function Alerts() {
+  const { tenantId } = useTenant();
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [filter, setFilter] = useState('all');
 
   const load = () => {
-    base44.entities.Alert.filter({ resolved: false }).then(a => {
+    const q = tenantId ? { resolved: false, tenant_id: tenantId } : { resolved: false };
+    base44.entities.Alert.filter(q).then(a => {
       setAlerts(a.sort((x, y) => {
         const order = { critical: 0, warning: 1, info: 2 };
         return (order[x.severity] || 2) - (order[y.severity] || 2);

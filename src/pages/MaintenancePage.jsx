@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
 import PartsList from '@/components/maintenance/PartsList';
+import { useTenant } from '@/lib/TenantContext';
 
 export default function MaintenancePage() {
+  const { tenantId } = useTenant();
   const [records, setRecords] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,9 +18,10 @@ export default function MaintenancePage() {
   const [tab, setTab] = useState('maintenance');
 
   const load = () => {
+    const q = tenantId ? { tenant_id: tenantId } : {};
     Promise.all([
-      base44.entities.Maintenance.list('-performed_at'),
-      base44.entities.Vehicle.list(),
+      base44.entities.Maintenance.filter(q, '-performed_at'),
+      base44.entities.Vehicle.filter(q),
     ]).then(([m, v]) => { setRecords(m); setVehicles(v); }).finally(() => setLoading(false));
   };
 
@@ -36,7 +39,7 @@ export default function MaintenancePage() {
     if (editRecord) {
       await base44.entities.Maintenance.update(editRecord.id, data);
     } else {
-      await base44.entities.Maintenance.create(data);
+      await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);
     setEditRecord(null);

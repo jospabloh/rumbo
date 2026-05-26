@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { isOwner, isAdminOrOwner } from '@/lib/permissions';
-import { Shield, Users, Building2, Mail, UserPlus, Trash2, Crown, Navigation, Wrench, Car, User, CheckCircle2, AlertTriangle, RefreshCw, Edit2, Save, X } from 'lucide-react';
+import { useTenant } from '@/lib/TenantContext';
+import { Shield, Users, Building2, Mail, UserPlus, Crown, Navigation, Wrench, Car, User, CheckCircle2, RefreshCw, Edit2, Save, X, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -120,9 +121,14 @@ function TenantEditor({ license, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     tenant_name: license?.tenant_name || '',
+    slogan: license?.slogan || '',
     logo_url: license?.logo_url || '',
     owner_email: license?.owner_email || '',
     notes: license?.notes || '',
+    color_primary: license?.color_primary || '',
+    color_secondary: license?.color_secondary || '',
+    color_accent: license?.color_accent || '',
+    color_background: license?.color_background || '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -142,9 +148,17 @@ function TenantEditor({ license, onSaved }) {
     return (
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
+          {license?.logo_url && <img src={license.logo_url} alt="logo" className="h-10 object-contain mb-1" />}
           <p className="text-sm font-semibold text-foreground">{license?.tenant_name || <span className="text-muted-foreground italic">Sin nombre</span>}</p>
+          {license?.slogan && <p className="text-xs text-muted-foreground italic">{license.slogan}</p>}
           {license?.owner_email && <p className="text-xs text-muted-foreground">{license.owner_email}</p>}
-          {license?.notes && <p className="text-xs text-muted-foreground italic">{license.notes}</p>}
+          {(license?.color_primary || license?.color_secondary || license?.color_accent || license?.color_background) && (
+            <div className="flex gap-1.5 mt-1">
+              {[license.color_primary, license.color_secondary, license.color_accent, license.color_background].filter(Boolean).map((c, i) => (
+                <div key={i} className="w-5 h-5 rounded-full border border-border" style={{ background: c }} title={c} />
+              ))}
+            </div>
+          )}
         </div>
         <Button size="sm" variant="outline" className="gap-2 text-xs" onClick={() => setEditing(true)}>
           <Edit2 className="w-3.5 h-3.5" /> Editar
@@ -157,16 +171,44 @@ function TenantEditor({ license, onSaved }) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Nombre del tenant</label>
+          <label className="text-xs text-muted-foreground mb-1 block">Nombre de la organización</label>
           <Input value={form.tenant_name} onChange={e => setForm(f => ({ ...f, tenant_name: e.target.value }))} className="bg-secondary border-border text-sm h-8" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Slogan</label>
+          <Input value={form.slogan} onChange={e => setForm(f => ({ ...f, slogan: e.target.value }))} className="bg-secondary border-border text-sm h-8" placeholder="Movilidad que conecta" />
         </div>
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Email del owner</label>
           <Input value={form.owner_email} onChange={e => setForm(f => ({ ...f, owner_email: e.target.value }))} className="bg-secondary border-border text-sm h-8" />
         </div>
-        <div className="sm:col-span-2">
+        <div>
           <label className="text-xs text-muted-foreground mb-1 block">URL del logo</label>
           <Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} className="bg-secondary border-border text-sm h-8" placeholder="https://..." />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1"><Palette className="w-3 h-3" /> Colores de la marca (hex)</label>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { key: 'color_primary', label: 'Principal' },
+              { key: 'color_secondary', label: 'Secundario' },
+              { key: 'color_accent', label: 'Acento' },
+              { key: 'color_background', label: 'Fondo' },
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="w-4 h-4 rounded-full border border-border" style={{ background: form[key] || '#888' }} />
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                </div>
+                <Input
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  className="bg-secondary border-border text-xs h-7"
+                  placeholder="#000000"
+                />
+              </div>
+            ))}
+          </div>
         </div>
         <div className="sm:col-span-2">
           <label className="text-xs text-muted-foreground mb-1 block">Notas internas</label>
@@ -184,18 +226,14 @@ function TenantEditor({ license, onSaved }) {
 }
 
 export default function Admin() {
+  const { tenant, reload: reloadTenant } = useTenant();
   const [user, setUser] = useState(null);
   const [members, setMembers] = useState([]);
-  const [license, setLicense] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
   const load = () => {
-    Promise.all([
-      base44.entities.TenantLicense.list('-created_date', 1),
-      base44.entities.User.list(),
-    ]).then(([lic, users]) => {
-      setLicense(lic[0] || null);
+    base44.entities.User.list().then(users => {
       setMembers(users);
       setLoading(false);
     });
@@ -239,7 +277,7 @@ export default function Admin() {
           <h1 className="text-xl font-bold text-foreground">Panel de Administración</h1>
           <p className="text-sm text-muted-foreground">Gestión de tenant, usuarios y licencia</p>
         </div>
-        <Button size="sm" variant="ghost" className="gap-2 text-xs text-muted-foreground" onClick={() => { setLoading(true); load(); }}>
+        <Button size="sm" variant="ghost" className="gap-2 text-xs text-muted-foreground" onClick={() => { setLoading(true); reloadTenant(); load(); }}>
           <RefreshCw className="w-3.5 h-3.5" /> Actualizar
         </Button>
       </div>
@@ -250,14 +288,14 @@ export default function Admin() {
           <Building2 className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Información del Tenant</h2>
         </div>
-        <TenantEditor license={license} onSaved={load} />
-        {license && (
+        <TenantEditor license={tenant} onSaved={() => { reloadTenant(); load(); }} />
+        {tenant && (
           <div className="flex items-center gap-3 pt-2 border-t border-border flex-wrap">
-            <span className="text-xs text-muted-foreground">Plan: <span className="text-foreground font-medium capitalize">{license.plan}</span></span>
-            <span className="text-xs text-muted-foreground">Estado: <span className={`font-medium ${license.status === 'active' ? 'text-success' : 'text-destructive'}`}>{license.status}</span></span>
-            {license.trial_ends_at && (
+            <span className="text-xs text-muted-foreground">Plan: <span className="text-foreground font-medium capitalize">{tenant.plan}</span></span>
+            <span className="text-xs text-muted-foreground">Estado: <span className={`font-medium ${tenant.status === 'active' ? 'text-success' : 'text-destructive'}`}>{tenant.status}</span></span>
+            {tenant.trial_ends_at && (
               <span className="text-xs text-muted-foreground">
-                Trial hasta: <span className="text-foreground font-medium">{new Date(license.trial_ends_at).toLocaleDateString('es-MX')}</span>
+                Trial hasta: <span className="text-foreground font-medium">{new Date(tenant.trial_ends_at).toLocaleDateString('es-MX')}</span>
               </span>
             )}
           </div>

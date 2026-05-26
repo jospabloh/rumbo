@@ -2,6 +2,10 @@
   "name": "Driver",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
     "full_name": {
       "type": "string",
       "title": "Nombre completo"

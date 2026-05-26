@@ -5,8 +5,10 @@ import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Sta
 import { format, isToday } from 'date-fns';
 import StatCard from '@/components/dashboard/StatCard';
 import AlertBadge from '@/components/dashboard/AlertBadge';
+import { useTenant } from '@/lib/TenantContext';
 
 export default function Dashboard() {
+  const { tenantId } = useTenant();
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -16,13 +18,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const q = tenantId ? { tenant_id: tenantId } : {};
     Promise.all([
-      base44.entities.Vehicle.list(),
-      base44.entities.Driver.list(),
-      base44.entities.Alert.filter({ resolved: false }),
+      base44.entities.Vehicle.filter(q),
+      base44.entities.Driver.filter(q),
+      base44.entities.Alert.filter({ ...q, resolved: false }),
       base44.entities.Message.filter({ read: false }),
-      base44.entities.Trip.list('-started_at', 100),
-      base44.entities.FuelLog.list('-logged_at', 50),
+      base44.entities.Trip.filter(q, '-started_at', 100),
+      base44.entities.FuelLog.filter(q, '-logged_at', 50),
     ]).then(([v, d, a, m, t, f]) => {
       setVehicles(v);
       setDrivers(d);
@@ -31,7 +34,7 @@ export default function Dashboard() {
       setTrips(t);
       setFuelLogs(f);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [tenantId]);
 
   const activeVehicles = vehicles.filter(v => v.status === 'active').length;
   const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length;
