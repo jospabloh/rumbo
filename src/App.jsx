@@ -25,6 +25,7 @@ import GitHubPage from './pages/GitHubPage';
 import SupabasePage from './pages/SupabasePage';
 import Billing from './pages/Billing';
 import Admin from './pages/Admin';
+import TestData from './pages/TestData';
 // Add page imports here
 
 const TenantGate = ({ children }) => {
@@ -101,6 +102,7 @@ const AuthenticatedApp = () => {
         <Route path="/supabase" element={<SupabasePage />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/test-data" element={<TestData />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
