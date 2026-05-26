@@ -29,9 +29,12 @@ export function TenantProvider({ children }) {
       let found = null;
 
       if (user.role === 'owner' || user.role === 'admin') {
-        // El tenant del usuario es el que él creó (o al que fue asignado como owner_email)
-        found = all.find(t => t.created_by_id === user.id)
+        // Primero por tenant_id guardado en el perfil del usuario
+        // Luego por creador, por owner_email, por miembro en members[], o primer tenant
+        found = (user.data?.tenant_id && all.find(t => t.id === user.data.tenant_id))
+          || all.find(t => t.created_by_id === user.id)
           || all.find(t => t.owner_email === user.email)
+          || all.find(t => Array.isArray(t.members) && t.members.some(m => m.email === user.email))
           || all[0]; // fallback: primer tenant
       } else {
         // Para dispatcher, mechanic, driver: buscar el tenant al que pertenecen
