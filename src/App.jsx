@@ -5,6 +5,19 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import Drivers from './pages/Drivers';
+import Vehicles from './pages/Vehicles';
+import MaintenancePage from './pages/MaintenancePage';
+import Financial from './pages/Financial';
+import Alerts from './pages/Alerts';
+import Location from './pages/Location';
+import Messages from './pages/Messages';
+import Import from './pages/Import';
+import DriverHome from './pages/driver/DriverHome';
+import GitHubPage from './pages/GitHubPage';
+import SupabasePage from './pages/SupabasePage';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -33,7 +46,20 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/drivers" element={<Drivers />} />
+        <Route path="/vehicles" element={<Vehicles />} />
+        <Route path="/maintenance" element={<MaintenancePage />} />
+        <Route path="/financial" element={<Financial />} />
+        <Route path="/alerts" element={<Alerts />} />
+        <Route path="/location" element={<Location />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/import" element={<Import />} />
+        <Route path="/driver/home" element={<DriverHome />} />
+        <Route path="/github" element={<GitHubPage />} />
+        <Route path="/supabase" element={<SupabasePage />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, Truck, Wrench, DollarSign,
   MapPin, MessageSquare, Bell, LogOut, Menu, X,
-  AlertTriangle, Package, FileText, ChevronRight
+  AlertTriangle, Package, FileText, ChevronRight, Github, Database
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -19,6 +19,8 @@ const adminNav = [
   { path: '/messages', icon: MessageSquare, label: 'Mensajes' },
   { path: '/alerts', icon: Bell, label: 'Alertas' },
   { path: '/import', icon: FileText, label: 'Importar' },
+  { path: '/github', icon: Github, label: 'GitHub' },
+  { path: '/supabase', icon: Database, label: 'Supabase' },
 ];
 
 const driverNav = [
