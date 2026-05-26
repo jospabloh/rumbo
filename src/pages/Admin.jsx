@@ -348,8 +348,8 @@ export default function Admin() {
         </p>
       </section>
 
-      {/* Danger Zone — solo owners */}
-      {isOwner(user?.role) && <DangerZone tenant={tenant} user={user} onDeleted={() => window.location.reload()} onDelegated={() => { reloadTenant(); load(); }} />}
+      {/* Danger Zone — owners y admins */}
+      {isAdminOrOwner(user?.role) && <DangerZone tenant={tenant} user={user} onDeleted={() => window.location.reload()} onDelegated={() => { reloadTenant(); load(); }} />}
     </div>
   );
 }
