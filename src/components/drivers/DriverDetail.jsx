@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Edit, Trash2, Star, Phone, FileText, Lock, Plus, Upload, X } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Star, Phone, FileText, Lock, Upload, X, LinkIcon, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { compressImage } from '@/lib/imageUtils';
 import { format } from 'date-fns';
 
@@ -16,6 +17,10 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
   const [addingNote, setAddingNote] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [linkingAccount, setLinkingAccount] = useState(false);
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [appUsers, setAppUsers] = useState([]);
 
   useEffect(() => {
     base44.auth.me().then(setUser);
@@ -24,6 +29,7 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
     base44.auth.me().then(u => {
       if (u?.role !== 'driver') {
         base44.entities.DriverPrivateNote.filter({ driver_id: driver.id }).then(setNotes);
+        base44.entities.User.list().then(setAppUsers);
       }
     });
   }, [driver.id]);
@@ -56,6 +62,19 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
     });
     base44.entities.DriverDocument.filter({ driver_id: driver.id }).then(setDocs);
     setUploadingDoc(false);
+  };
+
+  const handleLinkAccount = async () => {
+    if (!linkEmail.trim()) return;
+    setLinkSaving(true);
+    const matched = appUsers.find(u => u.email?.toLowerCase() === linkEmail.trim().toLowerCase());
+    if (matched) {
+      await base44.entities.Driver.update(driver.id, { profile_id: matched.id });
+      onRefresh();
+    }
+    setLinkSaving(false);
+    setLinkingAccount(false);
+    setLinkEmail('');
   };
 
   const handleDeleteNote = async (id) => {
@@ -142,6 +161,56 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
           </div>
         )}
       </div>
+
+      {/* Account linking — admin only */}
+      {isAdmin && (
+        <div className="bg-card border border-border rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-primary" />
+              Cuenta de acceso a la app
+            </h3>
+            {!driver.profile_id && !linkingAccount && (
+              <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => setLinkingAccount(true)}>
+                Vincular cuenta
+              </Button>
+            )}
+          </div>
+          {driver.profile_id ? (
+            <div className="flex items-center gap-2 text-sm text-success">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Cuenta vinculada</span>
+              <button
+                className="ml-auto text-xs text-muted-foreground hover:text-destructive transition-colors"
+                onClick={async () => { await base44.entities.Driver.update(driver.id, { profile_id: '' }); onRefresh(); }}
+              >
+                Desvincular
+              </button>
+            </div>
+          ) : linkingAccount ? (
+            <div className="flex items-center gap-2 mt-2">
+              <Input
+                placeholder="Email del usuario registrado..."
+                value={linkEmail}
+                onChange={e => setLinkEmail(e.target.value)}
+                className="bg-secondary text-sm h-8 flex-1"
+                list="user-emails"
+              />
+              <datalist id="user-emails">
+                {appUsers.map(u => <option key={u.id} value={u.email} />)}
+              </datalist>
+              <Button size="sm" onClick={handleLinkAccount} disabled={linkSaving || !linkEmail.trim()} className="h-8">
+                {linkSaving ? '...' : 'Vincular'}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => setLinkingAccount(false)}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Sin cuenta vinculada. Invita al conductor desde <strong>Admin</strong> y luego vincúlalo aquí.</p>
+          )}
+        </div>
+      )}
 
       {/* Private notes — admin only */}
       {isAdmin && (

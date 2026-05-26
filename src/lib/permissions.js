@@ -31,7 +31,8 @@ const PAGE_PERMISSIONS = {
   import:      [ROLES.OWNER, ROLES.ADMIN],
   github:      [ROLES.OWNER, ROLES.ADMIN],
   supabase:    [ROLES.OWNER, ROLES.ADMIN],
-  billing:     [ROLES.OWNER, ROLES.ADMIN], // owner y admin
+  billing:     [ROLES.OWNER, ROLES.ADMIN],
+  admin:       [ROLES.OWNER, ROLES.ADMIN],
 };
 
 /**
