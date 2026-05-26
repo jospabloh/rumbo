@@ -19,17 +19,25 @@ Deno.serve(async (req) => {
       isDev = true;
       base44Client = createClientFromRequest(req, { dataEnv: 'dev' });
       
-      // Buscar tenant por owner_email
-      const tenants = await base44Client.entities.TenantLicense.filter({ owner_email: user.email });
+      // Buscar tenant por owner_email y creado por este usuario
+      const tenants = await base44Client.entities.TenantLicense.filter({ 
+        $and: [{ owner_email: user.email }, { created_by_id: user.id }] 
+      });
       if (!tenants || tenants.length === 0) {
         return Response.json({ 
           error: 'No tienes un tenant asociado. Primero crea un tenant desde el onboarding.',
         }, { status: 400 });
       }
       tenantId = tenants[0].id;
+      console.log(`Tenant encontrado: ${tenantId}`);
     }
 
     console.log(`Creando datos de prueba para tenant: ${tenantId} (env: ${isDev ? 'dev' : 'prod'})`);
+
+    // Usar service role para bypass del RLS
+    const base44Service = isDev 
+      ? createClientFromRequest(req, { dataEnv: 'dev', serviceRole: true })
+      : createClientFromRequest(req, { serviceRole: true });
 
     const testData = {
       vehicles: [],
