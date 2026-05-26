@@ -38,6 +38,14 @@ const ACTIONS = [
   { key: 'pause',  label: 'Pausar',   icon: PauseCircle },
 ];
 
+// Permisos por defecto para módulos NUEVOS que se agreguen
+const DEFAULT_MODULE_PERMS = {
+  admin:      { view: true,  create: true,  edit: true,  delete: true,  pause: true  },
+  dispatcher: { view: true,  create: true,  edit: true,  delete: false, pause: false },
+  mechanic:   { view: true,  create: false, edit: true,  delete: false, pause: false },
+  driver:     { view: true,  create: false, edit: false, delete: false, pause: false },
+};
+
 // Permisos por defecto según el diseño original del sistema
 const DEFAULT_PERMISSIONS = {
   admin: {
@@ -120,17 +128,40 @@ export default function PermissionsPanel() {
   const [perms, setPerms] = useState(DEFAULT_PERMISSIONS);
   const [saved, setSaved] = useState(false);
 
+  // Función para obtener permisos de un módulo (incluye defaults si no existe)
+  const getModulePerms = (role, moduleKey) => {
+    if (perms[role]?.[moduleKey]) return perms[role][moduleKey];
+    // Si el módulo no existe en los permisos guardados, usar defaults
+    return DEFAULT_MODULE_PERMS[role] || { view: false, create: false, edit: false, delete: false, pause: false };
+  };
+
   const toggle = (module, action) => {
     setPerms(p => ({
       ...p,
       [activeRole]: {
         ...p[activeRole],
         [module]: {
-          ...p[activeRole][module],
-          [action]: !p[activeRole][module][action],
+          ...getModulePerms(activeRole, module),
+          [action]: !getModulePerms(activeRole, module)[action],
         },
       },
     }));
+  };
+
+  // Agregar un nuevo módulo con permisos por defecto
+  const addModule = (moduleKey, moduleLabel) => {
+    setPerms(p => {
+      const newPerms = { ...p };
+      ROLES_FOR_PERMS.forEach(role => {
+        if (!newPerms[role][moduleKey]) {
+          newPerms[role] = {
+            ...newPerms[role],
+            [moduleKey]: { ...DEFAULT_MODULE_PERMS[role] },
+          };
+        }
+      });
+      return newPerms;
+    });
   };
 
   const savePerms = () => {
@@ -195,6 +226,9 @@ export default function PermissionsPanel() {
                   </div>
                 </th>
               ))}
+              <th className="text-center px-2 py-2.5 text-muted-foreground font-medium min-w-[40px]">
+                <span className="text-[10px] uppercase tracking-wider">Agregar</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -205,21 +239,27 @@ export default function PermissionsPanel() {
                   <td key={a.key} className="px-2 py-2.5 text-center">
                     <div className="flex justify-center">
                       <PermCell
-                        value={perms[activeRole][mod.key][a.key]}
+                        value={getModulePerms(activeRole, mod.key)[a.key]}
                         onChange={() => toggle(mod.key, a.key)}
                       />
                     </div>
                   </td>
                 ))}
+                <td className="px-2 py-2.5 text-center">
+                  <span className="text-[10px] text-muted-foreground/50">auto</span>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="px-4 py-3 border-t border-border bg-secondary/10">
+      <div className="px-4 py-3 border-t border-border bg-secondary/10 space-y-2">
         <p className="text-xs text-muted-foreground">
           Los permisos se aplican al rol seleccionado dentro de este tenant. El rol <span className="text-foreground font-medium">Admin</span> siempre tiene acceso completo por defecto.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          <span className="text-success font-medium">Nuevo:</span> Cada módulo nuevo que agregues al sistema heredará automáticamente los permisos por defecto según el rol (Admin: todo habilitado, Dispatcher/Mechanic/Driver: permisos conservadores).
         </p>
       </div>
     </section>
