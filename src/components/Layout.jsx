@@ -4,30 +4,33 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, Truck, Wrench, DollarSign,
   MapPin, MessageSquare, Bell, LogOut, Menu, X,
-  AlertTriangle, Package, FileText, ChevronRight, Github, Database
+  AlertTriangle, Package, FileText, Github, Database, CreditCard
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { can, isDriver as checkIsDriver } from '@/lib/permissions';
 
-const adminNav = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/drivers', icon: Users, label: 'Conductores' },
-  { path: '/vehicles', icon: Truck, label: 'Vehículos' },
-  { path: '/maintenance', icon: Wrench, label: 'Mantenimiento' },
-  { path: '/parts', icon: Package, label: 'Inventario' },
-  { path: '/financial', icon: DollarSign, label: 'Financiero' },
-  { path: '/location', icon: MapPin, label: 'Ubicación' },
-  { path: '/messages', icon: MessageSquare, label: 'Mensajes' },
-  { path: '/alerts', icon: Bell, label: 'Alertas' },
-  { path: '/import', icon: FileText, label: 'Importar' },
-  { path: '/github', icon: Github, label: 'GitHub' },
-  { path: '/supabase', icon: Database, label: 'Supabase' },
+// page key must match keys in permissions.js PAGE_PERMISSIONS
+const allAdminNav = [
+  { path: '/',            icon: LayoutDashboard, label: 'Dashboard',   page: 'dashboard' },
+  { path: '/drivers',     icon: Users,           label: 'Conductores', page: 'drivers' },
+  { path: '/vehicles',    icon: Truck,           label: 'Vehículos',   page: 'vehicles' },
+  { path: '/maintenance', icon: Wrench,          label: 'Mantenimiento', page: 'maintenance' },
+  { path: '/parts',       icon: Package,         label: 'Inventario',  page: 'parts' },
+  { path: '/financial',   icon: DollarSign,      label: 'Financiero',  page: 'financial' },
+  { path: '/location',    icon: MapPin,          label: 'Ubicación',   page: 'location' },
+  { path: '/messages',    icon: MessageSquare,   label: 'Mensajes',    page: 'messages' },
+  { path: '/alerts',      icon: Bell,            label: 'Alertas',     page: 'alerts' },
+  { path: '/import',      icon: FileText,        label: 'Importar',    page: 'import' },
+  { path: '/github',      icon: Github,          label: 'GitHub',      page: 'github' },
+  { path: '/supabase',    icon: Database,        label: 'Supabase',    page: 'supabase' },
+  { path: '/billing',     icon: CreditCard,      label: 'Licencia',    page: 'billing' },
 ];
 
 const driverNav = [
-  { path: '/driver/home', icon: LayoutDashboard, label: 'Inicio' },
-  { path: '/driver/messages', icon: MessageSquare, label: 'Mensajes' },
-  { path: '/driver/trips', icon: Truck, label: 'Viajes' },
-  { path: '/driver/profile', icon: Users, label: 'Perfil' },
+  { path: '/driver/home',     icon: LayoutDashboard, label: 'Inicio' },
+  { path: '/driver/messages', icon: MessageSquare,   label: 'Mensajes' },
+  { path: '/driver/trips',    icon: Truck,           label: 'Viajes' },
+  { path: '/driver/profile',  icon: Users,           label: 'Perfil' },
 ];
 
 export default function Layout() {
@@ -54,8 +57,10 @@ export default function Layout() {
     }
   }, [user]);
 
-  const isDriver = user?.role === 'driver';
-  const nav = isDriver ? driverNav : adminNav;
+  const isDriver = checkIsDriver(user?.role);
+  const nav = isDriver
+    ? driverNav
+    : allAdminNav.filter(item => can(user?.role, item.page));
 
   const handleLogout = () => base44.auth.logout();
 

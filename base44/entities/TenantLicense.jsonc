@@ -1,0 +1,67 @@
+{
+  "name": "TenantLicense",
+  "type": "object",
+  "properties": {
+    "plan": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "starter",
+        "pro",
+        "enterprise"
+      ],
+      "title": "Plan",
+      "default": "trial"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "expired",
+        "suspended",
+        "cancelled"
+      ],
+      "title": "Estado",
+      "default": "active"
+    },
+    "max_vehicles": {
+      "type": "number",
+      "title": "Veh\u00edculos m\u00e1ximos",
+      "default": 5
+    },
+    "max_drivers": {
+      "type": "number",
+      "title": "Conductores m\u00e1ximos",
+      "default": 5
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Funcionalidades habilitadas"
+    },
+    "trial_ends_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Fin del periodo de prueba"
+    },
+    "renews_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de renovaci\u00f3n"
+    },
+    "owner_email": {
+      "type": "string",
+      "title": "Email del owner"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notas"
+    }
+  },
+  "required": [
+    "plan",
+    "status"
+  ]
+}

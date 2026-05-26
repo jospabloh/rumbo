@@ -20,6 +20,7 @@ import DriverProfile from './pages/driver/DriverProfile';
 import DriverTrips from './pages/driver/DriverTrips';
 import GitHubPage from './pages/GitHubPage';
 import SupabasePage from './pages/SupabasePage';
+import Billing from './pages/Billing';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -63,6 +64,7 @@ const AuthenticatedApp = () => {
         <Route path="/driver/trips" element={<DriverTrips />} />
         <Route path="/github" element={<GitHubPage />} />
         <Route path="/supabase" element={<SupabasePage />} />
+        <Route path="/billing" element={<Billing />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
