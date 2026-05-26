@@ -10,9 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
 
 const LogoMark = ({ logoUrl, size = 'md' }) => {
+  const [imgError, setImgError] = useState(false);
   const sz = size === 'sm' ? 'w-6 h-6' : 'w-8 h-8';
-  if (logoUrl) {
-    return <img src={logoUrl} alt="logo" className={`${sz} rounded-lg object-cover`} />;
+  if (logoUrl && !imgError) {
+    return <img src={logoUrl} alt="logo" className={`${sz} rounded-lg object-cover`} onError={() => setImgError(true)} />;
   }
   return (
     <div className={`${sz} bg-primary rounded-lg flex items-center justify-center`}>
