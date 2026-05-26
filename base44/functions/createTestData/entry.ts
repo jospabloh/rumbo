@@ -9,12 +9,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized: Admin or Owner access required' }, { status: 403 });
     }
 
-    // Obtener tenant del usuario
-    const tenantId = user.data?.tenant_id;
+    // Intentar obtener tenant del usuario en production
+    let tenantId = user.data?.tenant_id;
+    let base44Client = base44;
+
+    // Si no hay tenant en production, buscar en dev (test database)
     if (!tenantId) {
-      return Response.json({ 
-        error: 'No tienes un tenant asociado. Primero crea un tenant desde el onboarding.',
-      }, { status: 400 });
+      const base44Dev = createClientFromRequest(req, { dataEnv: 'dev' });
+      const userDev = await base44Dev.auth.me();
+      tenantId = userDev.data?.tenant_id;
+      
+      if (!tenantId) {
+        return Response.json({ 
+          error: 'No tienes un tenant asociado. Primero crea un tenant desde el onboarding.',
+        }, { status: 400 });
+      }
+      
+      base44Client = base44Dev;
     }
 
     console.log(`Creando datos de prueba para tenant: ${tenantId}`);
@@ -44,7 +55,7 @@ Deno.serve(async (req) => {
 
     console.log('Creando vehículos...');
     for (const vData of vehicleData) {
-      const vehicle = await base44.entities.Vehicle.create({
+      const vehicle = await base44Client.entities.Vehicle.create({
         tenant_id: tenantId,
         ...vData,
         status: 'active',
@@ -55,7 +66,7 @@ Deno.serve(async (req) => {
 
     console.log('Creando conductores...');
     for (const dData of driverData) {
-      const driver = await base44.entities.Driver.create({
+      const driver = await base44Client.entities.Driver.create({
         tenant_id: tenantId,
         ...dData,
         status: 'active',
@@ -67,7 +78,7 @@ Deno.serve(async (req) => {
     console.log('Creando alertas, mantenimientos, multas, combustible y viajes...');
     
     // Crear alertas
-    await base44.entities.Alert.create({
+    await base44Client.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'driver_doc',
       entity_id: testData.drivers[4].id,
@@ -77,7 +88,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    await base44.entities.Alert.create({
+    await base44Client.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'vehicle_doc',
       entity_id: testData.vehicles[4].id,
@@ -88,7 +99,7 @@ Deno.serve(async (req) => {
     });
 
     // Crear mantenimiento
-    await base44.entities.Maintenance.create({
+    await base44Client.entities.Maintenance.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       kind: 'preventive',
@@ -99,7 +110,7 @@ Deno.serve(async (req) => {
     });
 
     // Crear multa
-    await base44.entities.Fine.create({
+    await base44Client.entities.Fine.create({
       tenant_id: tenantId,
       driver_id: testData.drivers[0].id,
       vehicle_id: testData.vehicles[0].id,
@@ -111,7 +122,7 @@ Deno.serve(async (req) => {
     });
 
     // Crear log de combustible
-    await base44.entities.FuelLog.create({
+    await base44Client.entities.FuelLog.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,
@@ -123,7 +134,7 @@ Deno.serve(async (req) => {
     });
 
     // Crear viaje
-    await base44.entities.Trip.create({
+    await base44Client.entities.Trip.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,
