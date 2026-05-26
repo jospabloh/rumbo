@@ -51,5 +51,78 @@
     "vehicle_id",
     "driver_id",
     "requested_by"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher"
+          ]
+        }
+      }
+    },
+    "read": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.driver_id": "{{user.data.driver_profile_id}}"
+        },
+        {
+          "data.requested_by": "{{user.id}}"
+        }
+      ]
+    },
+    "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.driver_id": "{{user.data.driver_profile_id}}"
+            },
+            {
+              "data.status": "pending"
+            }
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin"
+          ]
+        }
+      }
+    }
+  }
 }

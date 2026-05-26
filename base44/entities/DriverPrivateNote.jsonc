@@ -18,5 +18,54 @@
   "required": [
     "driver_id",
     "note"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher"
+          ]
+        }
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher"
+          ]
+        }
+      }
+    },
+    "update": {
+      "created_by_id": "{{user.id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher"
+          ]
+        }
+      }
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher"
+          ]
+        }
+      }
+    }
+  }
 }

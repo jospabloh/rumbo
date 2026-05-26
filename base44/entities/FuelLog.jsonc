@@ -45,5 +45,75 @@
     "driver_id",
     "liters",
     "total_cost"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.driver_id": "{{user.data.driver_profile_id}}"
+        }
+      ]
+    },
+    "read": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.driver_id": "{{user.data.driver_profile_id}}"
+        }
+      ]
+    },
+    "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.driver_id": "{{user.data.driver_profile_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin"
+          ]
+        }
+      }
+    }
+  }
 }

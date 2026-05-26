@@ -36,5 +36,75 @@
   "required": [
     "channel_id",
     "sender_id"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "sender_id": "{{user.id}}"
+        }
+      ]
+    },
+    "read": {
+      "created_by_id": "{{user.id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher",
+                "driver"
+              ]
+            }
+          }
+        },
+        {
+          "sender_id": "{{user.id}}"
+        }
+      ]
+    },
+    "update": {
+      "created_by_id": "{{user.id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "sender_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin"
+          ]
+        }
+      }
+    }
+  }
 }

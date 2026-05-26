@@ -49,5 +49,55 @@
   "required": [
     "vehicle_id",
     "kind"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "mechanic"
+          ]
+        }
+      }
+    },
+    "read": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher",
+            "mechanic"
+          ]
+        }
+      }
+    },
+    "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "mechanic"
+          ]
+        }
+      }
+    },
+    "delete": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin"
+          ]
+        }
+      }
+    }
+  }
 }
