@@ -1,0 +1,21 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "Rol del usuario en el sistema",
+      "enum": [
+        "owner",
+        "admin",
+        "dispatcher",
+        "mechanic",
+        "driver",
+        "user"
+      ]
+    }
+  },
+  "required": [
+    "role"
+  ]
+}

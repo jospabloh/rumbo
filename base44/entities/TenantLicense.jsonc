@@ -2,6 +2,14 @@
   "name": "TenantLicense",
   "type": "object",
   "properties": {
+    "tenant_name": {
+      "type": "string",
+      "title": "Nombre del tenant"
+    },
+    "logo_url": {
+      "type": "string",
+      "title": "URL del logo"
+    },
     "plan": {
       "type": "string",
       "enum": [
