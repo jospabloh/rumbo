@@ -66,6 +66,27 @@
     "notes": {
       "type": "string",
       "title": "Notas"
+    },
+    "members": {
+      "type": "array",
+      "title": "Miembros del tenant",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Rol"
+          }
+        }
+      }
     }
   },
   "required": [
