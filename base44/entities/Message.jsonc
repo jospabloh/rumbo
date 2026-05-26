@@ -39,7 +39,7 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}",
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
           "user_condition": {
@@ -53,12 +53,12 @@
           }
         },
         {
-          "sender_id": "{{user.id}}"
+          "data.sender_id": "{{user.id}}"
         }
       ]
     },
     "read": {
-      "created_by_id": "{{user.id}}",
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
           "user_condition": {
@@ -73,13 +73,16 @@
           }
         },
         {
-          "sender_id": "{{user.id}}"
+          "data.sender_id": "{{user.id}}"
         }
       ]
     },
     "update": {
-      "created_by_id": "{{user.id}}",
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
         {
           "user_condition": {
             "role": {
@@ -90,13 +93,11 @@
               ]
             }
           }
-        },
-        {
-          "sender_id": "{{user.id}}"
         }
       ]
     },
     "delete": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {
         "role": {
           "$in": [
