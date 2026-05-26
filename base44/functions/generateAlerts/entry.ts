@@ -2,145 +2,121 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr);
-  target.setHours(0, 0, 0, 0);
-  return Math.floor((target - today) / (1000 * 60 * 60 * 24));
+  return Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
 }
 
-function getSeverity(days) {
-  if (days === null) return null;
+function severity(days) {
   if (days <= 3) return 'critical';
   if (days <= 15) return 'warning';
-  return null;
+  return 'info';
 }
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user || (user.role !== 'admin' && user.role !== 'owner' && user.role !== 'dispatcher')) {
-      return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
 
-    const [drivers, driverDocs, vehicles, vehicleDocs, maintenanceRecords, existingAlerts] = await Promise.all([
+    const [drivers, vehicles, driverDocs, vehicleDocs, maintenance, existingAlerts] = await Promise.all([
       base44.asServiceRole.entities.Driver.list(),
-      base44.asServiceRole.entities.DriverDocument.list(),
       base44.asServiceRole.entities.Vehicle.list(),
+      base44.asServiceRole.entities.DriverDocument.list(),
       base44.asServiceRole.entities.VehicleDocument.list(),
-      base44.asServiceRole.entities.Maintenance.list(),
+      base44.asServiceRole.entities.Maintenance.filter({ next_due_at: { $exists: true } }),
       base44.asServiceRole.entities.Alert.filter({ resolved: false }),
     ]);
 
-    const created = [];
+    const existingKeys = new Set(existingAlerts.map(a => `${a.entity_type}:${a.entity_id}`));
+    const toCreate = [];
 
-    const alertExists = (entityType, entityId) =>
-      existingAlerts.some(a => a.entity_type === entityType && a.entity_id === entityId);
+    // Driver license + medical expiry
+    for (const d of drivers) {
+      for (const [field, label] of [['license_expiry', 'Licencia'], ['medical_cert_expiry', 'Cert. médico']]) {
+        const days = daysUntil(d[field]);
+        if (days !== null && days <= 30) {
+          const key = `driver_doc:${d.id}-${field}`;
+          if (!existingAlerts.some(a => a.entity_id === `${d.id}-${field}` && a.entity_type === 'driver_doc')) {
+            toCreate.push({
+              entity_type: 'driver_doc', entity_id: `${d.id}-${field}`,
+              driver_id: d.id,
+              message: `${label} de ${d.full_name} vence en ${days} día${days === 1 ? '' : 's'}`,
+              severity: severity(days), due_date: d[field], resolved: false,
+            });
+          }
+        }
+      }
+    }
 
-    // Driver document expiries
+    // Driver documents
     for (const doc of driverDocs) {
       const days = daysUntil(doc.expires_at);
-      const severity = getSeverity(days);
-      if (severity && !alertExists('driver_doc', doc.id)) {
-        const driver = drivers.find(d => d.id === doc.driver_id);
-        await base44.asServiceRole.entities.Alert.create({
-          entity_type: 'driver_doc',
-          entity_id: doc.id,
-          driver_id: doc.driver_id,
-          message: `Documento ${doc.doc_type} de ${driver?.full_name || 'conductor'} vence en ${days <= 0 ? 'venció' : `${days} día(s)`}`,
-          severity,
-          due_date: doc.expires_at,
-          resolved: false,
-        });
-        created.push(`driver_doc:${doc.id}`);
-      }
-    }
-
-    // Driver license and medical cert
-    for (const driver of drivers) {
-      for (const [field, label] of [['license_expiry', 'Licencia'], ['medical_cert_expiry', 'Cert. médico']]) {
-        const days = daysUntil(driver[field]);
-        const severity = getSeverity(days);
-        if (severity && !alertExists('driver_doc', `${driver.id}_${field}`)) {
-          await base44.asServiceRole.entities.Alert.create({
-            entity_type: 'driver_doc',
-            entity_id: `${driver.id}_${field}`,
-            driver_id: driver.id,
-            message: `${label} de ${driver.full_name} ${days <= 0 ? 'vencida' : `vence en ${days} día(s)`}`,
-            severity,
-            due_date: driver[field],
-            resolved: false,
+      if (days !== null && days <= 30) {
+        if (!existingAlerts.some(a => a.entity_id === doc.id && a.entity_type === 'driver_doc')) {
+          const driver = drivers.find(d => d.id === doc.driver_id);
+          toCreate.push({
+            entity_type: 'driver_doc', entity_id: doc.id,
+            driver_id: doc.driver_id,
+            message: `Documento (${doc.doc_type}) de ${driver?.full_name || 'conductor'} vence en ${days} día${days === 1 ? '' : 's'}`,
+            severity: severity(days), due_date: doc.expires_at, resolved: false,
           });
-          created.push(`driver_${field}:${driver.id}`);
         }
       }
     }
 
-    // Vehicle expiries
-    for (const vehicle of vehicles) {
+    // Vehicle insurance, inspection, registration
+    for (const v of vehicles) {
       for (const [field, label] of [
-        ['insurance_expiry', 'Seguro'],
-        ['inspection_expiry', 'Inspección'],
-        ['registration_expiry', 'Registro'],
+        ['insurance_expiry', 'Seguro'], ['inspection_expiry', 'Inspección'], ['registration_expiry', 'Registro'],
       ]) {
-        const days = daysUntil(vehicle[field]);
-        const severity = getSeverity(days);
-        if (severity && !alertExists('vehicle_doc', `${vehicle.id}_${field}`)) {
-          await base44.asServiceRole.entities.Alert.create({
-            entity_type: 'vehicle_doc',
-            entity_id: `${vehicle.id}_${field}`,
-            vehicle_id: vehicle.id,
-            message: `${label} del vehículo ${vehicle.plate} ${days <= 0 ? 'venció' : `vence en ${days} día(s)`}`,
-            severity,
-            due_date: vehicle[field],
-            resolved: false,
-          });
-          created.push(`vehicle_${field}:${vehicle.id}`);
+        const days = daysUntil(v[field]);
+        if (days !== null && days <= 30) {
+          if (!existingAlerts.some(a => a.entity_id === `${v.id}-${field}` && a.entity_type === 'vehicle_doc')) {
+            toCreate.push({
+              entity_type: 'vehicle_doc', entity_id: `${v.id}-${field}`,
+              vehicle_id: v.id,
+              message: `${label} de vehículo ${v.plate} vence en ${days} día${days === 1 ? '' : 's'}`,
+              severity: severity(days), due_date: v[field], resolved: false,
+            });
+          }
         }
       }
     }
 
-    // Vehicle document expiries
+    // Vehicle documents
     for (const doc of vehicleDocs) {
       const days = daysUntil(doc.expires_at);
-      const severity = getSeverity(days);
-      if (severity && !alertExists('vehicle_doc', doc.id)) {
-        const vehicle = vehicles.find(v => v.id === doc.vehicle_id);
-        await base44.asServiceRole.entities.Alert.create({
-          entity_type: 'vehicle_doc',
-          entity_id: doc.id,
-          vehicle_id: doc.vehicle_id,
-          message: `Documento ${doc.doc_type} del vehículo ${vehicle?.plate || ''} ${days <= 0 ? 'venció' : `vence en ${days} día(s)`}`,
-          severity,
-          due_date: doc.expires_at,
-          resolved: false,
-        });
-        created.push(`vehicle_doc:${doc.id}`);
+      if (days !== null && days <= 30) {
+        if (!existingAlerts.some(a => a.entity_id === doc.id && a.entity_type === 'vehicle_doc')) {
+          const vehicle = vehicles.find(v => v.id === doc.vehicle_id);
+          toCreate.push({
+            entity_type: 'vehicle_doc', entity_id: doc.id,
+            vehicle_id: doc.vehicle_id,
+            message: `Documento (${doc.doc_type}) de ${vehicle?.plate || 'vehículo'} vence en ${days} día${days === 1 ? '' : 's'}`,
+            severity: severity(days), due_date: doc.expires_at, resolved: false,
+          });
+        }
       }
     }
 
-    // Maintenance next_due_at
-    for (const m of maintenanceRecords) {
-      if (!m.next_due_at) continue;
+    // Maintenance due
+    for (const m of maintenance) {
       const days = daysUntil(m.next_due_at);
-      const severity = getSeverity(days);
-      if (severity && !alertExists('maintenance', m.id)) {
-        const vehicle = vehicles.find(v => v.id === m.vehicle_id);
-        await base44.asServiceRole.entities.Alert.create({
-          entity_type: 'maintenance',
-          entity_id: m.id,
-          vehicle_id: m.vehicle_id,
-          message: `Mantenimiento de ${vehicle?.plate || 'vehículo'} ${days <= 0 ? 'venció' : `programado en ${days} día(s)`}`,
-          severity,
-          due_date: m.next_due_at,
-          resolved: false,
-        });
-        created.push(`maintenance:${m.id}`);
+      if (days !== null && days <= 14) {
+        if (!existingAlerts.some(a => a.entity_id === m.id && a.entity_type === 'maintenance')) {
+          const vehicle = vehicles.find(v => v.id === m.vehicle_id);
+          toCreate.push({
+            entity_type: 'maintenance', entity_id: m.id,
+            vehicle_id: m.vehicle_id,
+            message: `Mantenimiento de ${vehicle?.plate || 'vehículo'} vence en ${days} día${days === 1 ? '' : 's'}`,
+            severity: severity(days), due_date: m.next_due_at, resolved: false,
+          });
+        }
       }
     }
 
-    return Response.json({ created: created.length, items: created });
+    for (const alert of toCreate) {
+      await base44.asServiceRole.entities.Alert.create(alert);
+    }
+
+    return Response.json({ created: toCreate.length, message: `${toCreate.length} alertas generadas` });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

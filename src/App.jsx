@@ -16,6 +16,8 @@ import Location from './pages/Location';
 import Messages from './pages/Messages';
 import Import from './pages/Import';
 import DriverHome from './pages/driver/DriverHome';
+import DriverProfile from './pages/driver/DriverProfile';
+import DriverTrips from './pages/driver/DriverTrips';
 import GitHubPage from './pages/GitHubPage';
 import SupabasePage from './pages/SupabasePage';
 // Add page imports here
@@ -57,6 +59,8 @@ const AuthenticatedApp = () => {
         <Route path="/messages" element={<Messages />} />
         <Route path="/import" element={<Import />} />
         <Route path="/driver/home" element={<DriverHome />} />
+        <Route path="/driver/profile" element={<DriverProfile />} />
+        <Route path="/driver/trips" element={<DriverTrips />} />
         <Route path="/github" element={<GitHubPage />} />
         <Route path="/supabase" element={<SupabasePage />} />
       </Route>
