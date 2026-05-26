@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { isOwner } from '@/lib/permissions';
+import { isAdminOrOwner } from '@/lib/permissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users } from 'lucide-react';
+import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users, Crown, Shield, Navigation, Wrench, Car, User } from 'lucide-react';
+
+const ROLE_CONFIG = {
+  owner:      { label: 'Owner',       icon: Crown,      color: 'text-warning bg-warning/10' },
+  admin:      { label: 'Admin',       icon: Shield,     color: 'text-primary bg-primary/10' },
+  dispatcher: { label: 'Dispatcher',  icon: Navigation, color: 'text-success bg-success/10' },
+  mechanic:   { label: 'Mecánico',    icon: Wrench,     color: 'text-muted-foreground bg-secondary' },
+  driver:     { label: 'Conductor',   icon: Car,        color: 'text-muted-foreground bg-secondary' },
+  user:       { label: 'Usuario',     icon: User,       color: 'text-muted-foreground bg-secondary' },
+};
 
 const PLAN_LABELS = {
   trial: { label: 'Prueba gratuita', color: 'bg-muted text-muted-foreground' },
@@ -31,13 +40,14 @@ export default function Billing() {
   const [license, setLicense] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(u => {
       setUser(u);
-      if (!isOwner(u?.role)) {
+      if (!isAdminOrOwner(u?.role)) {
         setAccessDenied(true);
         setLoading(false);
         return;
@@ -46,10 +56,12 @@ export default function Billing() {
         base44.entities.TenantLicense.list('-created_date', 1),
         base44.entities.Vehicle.list(),
         base44.entities.Driver.list(),
-      ]).then(([lic, v, d]) => {
+        base44.entities.User.list(),
+      ]).then(([lic, v, d, users]) => {
         setLicense(lic[0] || null);
         setVehicles(v);
         setDrivers(d);
+        setMembers(users);
         setLoading(false);
       });
     }).catch(() => setLoading(false));
@@ -197,6 +209,40 @@ export default function Billing() {
           {license.notes}
         </div>
       )}
+
+      {/* Members */}
+      <div>
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+          Miembros del tenant ({members.length})
+        </p>
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          {members.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">No hay miembros registrados.</div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {members.map(m => {
+                const roleConf = ROLE_CONFIG[m.role] || ROLE_CONFIG['user'];
+                const RoleIcon = roleConf.icon;
+                return (
+                  <li key={m.id} className="flex items-center gap-4 px-5 py-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
+                      {m.full_name?.charAt(0) || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{m.full_name || '—'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                    </div>
+                    <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${roleConf.color}`}>
+                      <RoleIcon className="w-3 h-3" />
+                      {roleConf.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

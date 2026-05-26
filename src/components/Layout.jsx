@@ -9,6 +9,18 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
 
+const LogoMark = ({ logoUrl, size = 'md' }) => {
+  const sz = size === 'sm' ? 'w-6 h-6' : 'w-8 h-8';
+  if (logoUrl) {
+    return <img src={logoUrl} alt="logo" className={`${sz} rounded-lg object-cover`} />;
+  }
+  return (
+    <div className={`${sz} bg-primary rounded-lg flex items-center justify-center`}>
+      <span className={`text-white font-bold ${size === 'sm' ? 'text-xs' : 'text-sm'}`}>R</span>
+    </div>
+  );
+};
+
 // page key must match keys in permissions.js PAGE_PERMISSIONS
 const allAdminNav = [
   { path: '/',            icon: LayoutDashboard, label: 'Dashboard',   page: 'dashboard' },
@@ -36,12 +48,14 @@ const driverNav = [
 export default function Layout() {
   const location = useLocation();
   const [user, setUser] = useState(null);
+  const [tenant, setTenant] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
+    base44.entities.TenantLicense.list('-created_date', 1).then(list => setTenant(list[0] || null)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -68,11 +82,14 @@ export default function Layout() {
     <div className="flex h-screen bg-background font-inter overflow-hidden">
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex flex-col w-60 bg-sidebar border-r border-sidebar-border shrink-0">
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">R</span>
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border">
+          <LogoMark logoUrl={tenant?.logo_url} />
+          <div className="min-w-0">
+            <p className="text-sidebar-foreground font-bold text-base tracking-tight leading-tight">Rumbo</p>
+            {tenant?.tenant_name && (
+              <p className="text-xs text-muted-foreground truncate leading-tight">{tenant.tenant_name}</p>
+            )}
           </div>
-          <span className="text-sidebar-foreground font-bold text-lg tracking-tight">Rumbo</span>
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
@@ -126,12 +143,15 @@ export default function Layout() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
           <aside className="relative z-50 flex flex-col w-64 h-full bg-sidebar border-r border-sidebar-border">
-            <div className="flex items-center justify-between px-5 py-5 border-b border-sidebar-border">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">R</span>
+                <LogoMark logoUrl={tenant?.logo_url} />
+                <div className="min-w-0">
+                  <p className="text-sidebar-foreground font-bold text-base leading-tight">Rumbo</p>
+                  {tenant?.tenant_name && (
+                    <p className="text-xs text-muted-foreground truncate leading-tight">{tenant.tenant_name}</p>
+                  )}
                 </div>
-                <span className="text-sidebar-foreground font-bold text-lg">Rumbo</span>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-muted-foreground">
                 <X className="w-5 h-5" />
@@ -175,10 +195,11 @@ export default function Layout() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-              <span className="text-white font-bold text-xs">R</span>
+            <LogoMark logoUrl={tenant?.logo_url} size="sm" />
+            <div>
+              <span className="font-bold text-sm">Rumbo</span>
+              {tenant?.tenant_name && <span className="text-xs text-muted-foreground ml-1.5">{tenant.tenant_name}</span>}
             </div>
-            <span className="font-bold text-sm">Rumbo</span>
           </div>
           <div className="relative">
             <Link to={isDriver ? '/driver/messages' : '/alerts'}>
