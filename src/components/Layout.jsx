@@ -129,17 +129,15 @@ export default function Layout() {
     items: group.items.filter(item => can(user?.role, item.page)),
   })).filter(group => group.items.length > 0);
 
-  const appName = tenant?.tenant_name || 'Rumbo';
-
   const SidebarContent = ({ onLinkClick }) => (
     <>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border shrink-0">
         <LogoMark logoUrl={tenant?.logo_url} />
         <div className="min-w-0">
-          <p className="text-sidebar-foreground font-bold text-base tracking-tight leading-tight">{appName}</p>
-          {tenant?.slogan && (
-            <p className="text-xs text-muted-foreground truncate leading-tight">{tenant.slogan}</p>
+          <p className="text-sidebar-foreground font-bold text-base tracking-tight leading-tight">Rumbo</p>
+          {tenant?.tenant_name && (
+            <p className="text-xs text-muted-foreground truncate leading-tight">{tenant.tenant_name}</p>
           )}
         </div>
       </div>
@@ -214,7 +212,7 @@ export default function Layout() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
               <div className="flex items-center gap-3">
                 <LogoMark logoUrl={tenant?.logo_url} />
-                <p className="text-sidebar-foreground font-bold text-base leading-tight">{appName}</p>
+                <p className="text-sidebar-foreground font-bold text-base leading-tight">Rumbo</p>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-muted-foreground">
                 <X className="w-5 h-5" />
@@ -236,7 +234,7 @@ export default function Layout() {
           </button>
           <div className="flex items-center gap-2">
             <LogoMark logoUrl={tenant?.logo_url} size="sm" />
-            <span className="font-bold text-sm">{appName}</span>
+            <span className="font-bold text-sm">Rumbo</span>
           </div>
           <div className="relative">
             <Link to={isDriverRole ? '/driver/messages' : '/alerts'}>
