@@ -41,7 +41,8 @@ Deno.serve(async (req) => {
       console.log(`Usuario actualizado con tenant_id: ${tenantId}`);
     }
 
-    // Ahora crear datos con el cliente normal (el usuario ya tiene tenant_id)
+    // Usar asServiceRole para crear datos (bypass RLS)
+    const serviceClient = base44Client.asServiceRole;
     const testData = { vehicles: [], drivers: [] };
 
     const vehicleData = [
@@ -53,7 +54,7 @@ Deno.serve(async (req) => {
     ];
 
     for (const vData of vehicleData) {
-      const vehicle = await base44Client.entities.Vehicle.create({
+      const vehicle = await serviceClient.entities.Vehicle.create({
         tenant_id: tenantId,
         ...vData,
         status: 'active',
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
     ];
 
     for (const dData of driverData) {
-      const driver = await base44Client.entities.Driver.create({
+      const driver = await serviceClient.entities.Driver.create({
         tenant_id: tenantId,
         ...dData,
         status: 'active',
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
     }
 
     // Crear datos relacionados
-    await base44Client.entities.Alert.create({
+    await serviceClient.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'driver_doc',
       entity_id: testData.drivers[4].id,
@@ -91,7 +92,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    await base44Client.entities.Alert.create({
+    await serviceClient.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'vehicle_doc',
       entity_id: testData.vehicles[4].id,
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    await base44Client.entities.Maintenance.create({
+    await serviceClient.entities.Maintenance.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       kind: 'preventive',
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
       performed_at: '2025-05-10',
     });
 
-    await base44Client.entities.Fine.create({
+    await serviceClient.entities.Fine.create({
       tenant_id: tenantId,
       driver_id: testData.drivers[0].id,
       vehicle_id: testData.vehicles[0].id,
@@ -122,7 +123,7 @@ Deno.serve(async (req) => {
       paid: false,
     });
 
-    await base44Client.entities.FuelLog.create({
+    await serviceClient.entities.FuelLog.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,
@@ -133,7 +134,7 @@ Deno.serve(async (req) => {
       logged_at: '2025-05-20T10:30:00',
     });
 
-    await base44Client.entities.Trip.create({
+    await serviceClient.entities.Trip.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,

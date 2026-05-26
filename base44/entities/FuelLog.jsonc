@@ -48,7 +48,6 @@
   ],
   "rls": {
     "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
           "user_condition": {
@@ -67,7 +66,6 @@
       ]
     },
     "read": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
           "user_condition": {
@@ -86,7 +84,6 @@
       ]
     },
     "update": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
           "user_condition": {
@@ -105,7 +102,6 @@
       ]
     },
     "delete": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {
         "role": {
           "$in": [
