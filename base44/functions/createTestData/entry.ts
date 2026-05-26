@@ -9,40 +9,41 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized: Admin or Owner access required' }, { status: 403 });
     }
 
-    console.log(`User: ${user.email}, role: ${user.role}, data: ${JSON.stringify(user.data)}`);
-
     // Determinar environment y tenant
     let isDev = false;
     let tenantId = user.data?.tenant_id;
+    let base44Client = base44;
 
     if (!tenantId) {
       isDev = true;
-      // Buscar tenant en dev database
-      const base44Dev = createClientFromRequest(req, { dataEnv: 'dev' });
-      const tenants = await base44Dev.entities.TenantLicense.filter({ 
+      base44Client = createClientFromRequest(req, { dataEnv: 'dev' });
+      
+      const tenants = await base44Client.entities.TenantLicense.filter({ 
         owner_email: user.email 
       });
-      console.log(`Tenants en dev: ${tenants?.length || 0}`);
       if (!tenants || tenants.length === 0) {
         return Response.json({ 
           error: 'No tienes un tenant asociado. Primero crea un tenant desde el onboarding.',
         }, { status: 400 });
       }
       tenantId = tenants[0].id;
-      console.log(`Tenant ID: ${tenantId}`);
     }
 
-    console.log(`Creando datos para tenant ${tenantId} en ${isDev ? 'dev' : 'prod'}`);
+    // Verificar que el usuario tenga tenant_id en su data
+    const userData = await base44Client.entities.User.filter({ id: user.id });
+    const currentUser = userData[0];
+    
+    if (!currentUser.data?.tenant_id) {
+      // Actualizar usuario con tenant_id
+      await base44Client.entities.User.update(currentUser.id, {
+        data: { ...currentUser.data, tenant_id: tenantId }
+      });
+      console.log(`Usuario actualizado con tenant_id: ${tenantId}`);
+    }
 
-    // Usar service role para bypass RLS
-    const base44Service = isDev 
-      ? createClientFromRequest(req, { dataEnv: 'dev' }).asServiceRole
-      : base44.asServiceRole;
-
+    // Ahora crear datos con el cliente normal (el usuario ya tiene tenant_id)
     const testData = { vehicles: [], drivers: [] };
 
-    // Crear 5 vehículos
-    console.log('Creando vehículos...');
     const vehicleData = [
       { plate: 'TEST-001', make: 'Toyota', model: 'Corolla', year: 2022 },
       { plate: 'TEST-002', make: 'Nissan', model: 'Versa', year: 2021 },
@@ -52,23 +53,15 @@ Deno.serve(async (req) => {
     ];
 
     for (const vData of vehicleData) {
-      try {
-        const vehicle = await base44Service.entities.Vehicle.create({
-          tenant_id: tenantId,
-          ...vData,
-          status: 'active',
-          odometer: Math.floor(Math.random() * 50000) + 5000,
-        });
-        testData.vehicles.push(vehicle);
-        console.log(`Vehículo creado: ${vehicle.plate}`);
-      } catch (err) {
-        console.error(`Error creando vehículo ${vData.plate}: ${err.message}`);
-        throw err;
-      }
+      const vehicle = await base44Client.entities.Vehicle.create({
+        tenant_id: tenantId,
+        ...vData,
+        status: 'active',
+        odometer: Math.floor(Math.random() * 50000) + 5000,
+      });
+      testData.vehicles.push(vehicle);
     }
 
-    // Crear 5 conductores
-    console.log('Creando conductores...');
     const driverData = [
       { full_name: 'Juan Pérez Test', license_no: 'LIC-001', phone: '55-1234-5678', rating: 4.8 },
       { full_name: 'María García Test', license_no: 'LIC-002', phone: '55-8765-4321', rating: 4.9 },
@@ -78,25 +71,17 @@ Deno.serve(async (req) => {
     ];
 
     for (const dData of driverData) {
-      try {
-        const driver = await base44Service.entities.Driver.create({
-          tenant_id: tenantId,
-          ...dData,
-          status: 'active',
-          hire_date: '2024-01-15',
-        });
-        testData.drivers.push(driver);
-        console.log(`Conductor creado: ${driver.full_name}`);
-      } catch (err) {
-        console.error(`Error creando conductor ${dData.full_name}: ${err.message}`);
-        throw err;
-      }
+      const driver = await base44Client.entities.Driver.create({
+        tenant_id: tenantId,
+        ...dData,
+        status: 'active',
+        hire_date: '2024-01-15',
+      });
+      testData.drivers.push(driver);
     }
 
-    console.log('Creando datos relacionados...');
-    
-    // Crear alertas
-    await base44Service.entities.Alert.create({
+    // Crear datos relacionados
+    await base44Client.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'driver_doc',
       entity_id: testData.drivers[4].id,
@@ -106,7 +91,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    await base44Service.entities.Alert.create({
+    await base44Client.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'vehicle_doc',
       entity_id: testData.vehicles[4].id,
@@ -116,8 +101,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    // Crear mantenimiento
-    await base44Service.entities.Maintenance.create({
+    await base44Client.entities.Maintenance.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       kind: 'preventive',
@@ -127,8 +111,7 @@ Deno.serve(async (req) => {
       performed_at: '2025-05-10',
     });
 
-    // Crear multa
-    await base44Service.entities.Fine.create({
+    await base44Client.entities.Fine.create({
       tenant_id: tenantId,
       driver_id: testData.drivers[0].id,
       vehicle_id: testData.vehicles[0].id,
@@ -139,8 +122,7 @@ Deno.serve(async (req) => {
       paid: false,
     });
 
-    // Crear log de combustible
-    await base44Service.entities.FuelLog.create({
+    await base44Client.entities.FuelLog.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,
@@ -151,8 +133,7 @@ Deno.serve(async (req) => {
       logged_at: '2025-05-20T10:30:00',
     });
 
-    // Crear viaje
-    await base44Service.entities.Trip.create({
+    await base44Client.entities.Trip.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,
