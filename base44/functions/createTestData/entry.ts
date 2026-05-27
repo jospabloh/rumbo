@@ -9,22 +9,28 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized: Admin or Owner access required' }, { status: 403 });
     }
 
-    // Siempre crear datos en el entorno dev (TEST)
-    // asServiceRole se obtiene del cliente base, luego se configura dataEnv por entidad
-    const serviceClient = base44.asServiceRole;
+    // Usar siempre el entorno dev (TEST) para todas las operaciones
+    const devClient = createClientFromRequest(req, { dataEnv: 'dev' }).asServiceRole;
 
     // Buscar el tenant del usuario en dev
-    const tenants = await createClientFromRequest(req, { dataEnv: 'dev' }).asServiceRole.entities.TenantLicense.filter({
+    const tenants = await devClient.entities.TenantLicense.filter({
       owner_email: user.email
     });
 
-    if (!tenants || tenants.length === 0) {
+    // Si no hay tenant en dev, buscar por created_by_id
+    let tenantId = tenants?.[0]?.id;
+    if (!tenantId) {
+      const allTenants = await devClient.entities.TenantLicense.list('-created_date', 50);
+      const found = allTenants.find(t => t.created_by_id === user.id) || allTenants[0];
+      tenantId = found?.id;
+    }
+
+    if (!tenantId) {
       return Response.json({
-        error: 'No tienes un tenant en el entorno TEST. Primero crea un tenant desde el onboarding.',
+        error: 'No se encontró un tenant en el entorno TEST. Primero crea tu organización desde el onboarding.',
       }, { status: 400 });
     }
 
-    const tenantId = tenants[0].id;
     const testData = { vehicles: [], drivers: [] };
 
     const vehicleData = [
@@ -36,7 +42,7 @@ Deno.serve(async (req) => {
     ];
 
     for (const vData of vehicleData) {
-      const vehicle = await serviceClient.entities.Vehicle.create({
+      const vehicle = await devClient.entities.Vehicle.create({
         tenant_id: tenantId,
         ...vData,
         status: 'active',
@@ -53,7 +59,7 @@ Deno.serve(async (req) => {
     ];
 
     for (const dData of driverData) {
-      const driver = await serviceClient.entities.Driver.create({
+      const driver = await devClient.entities.Driver.create({
         tenant_id: tenantId,
         ...dData,
         status: 'active',
@@ -62,7 +68,7 @@ Deno.serve(async (req) => {
       testData.drivers.push(driver);
     }
 
-    await serviceClient.entities.Alert.create({
+    await devClient.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'driver_doc',
       entity_id: testData.drivers[3].id,
@@ -73,7 +79,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    await serviceClient.entities.Alert.create({
+    await devClient.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'vehicle_doc',
       entity_id: testData.vehicles[2].id,
@@ -84,7 +90,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    await serviceClient.entities.Alert.create({
+    await devClient.entities.Alert.create({
       tenant_id: tenantId,
       entity_type: 'driver_doc',
       entity_id: testData.drivers[0].id,
@@ -95,7 +101,7 @@ Deno.serve(async (req) => {
       resolved: false,
     });
 
-    await serviceClient.entities.Maintenance.create({
+    await devClient.entities.Maintenance.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       kind: 'preventive',
@@ -106,7 +112,7 @@ Deno.serve(async (req) => {
       next_due_at: '2026-10-10',
     });
 
-    await serviceClient.entities.Maintenance.create({
+    await devClient.entities.Maintenance.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[2].id,
       kind: 'corrective',
@@ -116,7 +122,7 @@ Deno.serve(async (req) => {
       performed_at: '2026-05-01',
     });
 
-    await serviceClient.entities.Fine.create({
+    await devClient.entities.Fine.create({
       tenant_id: tenantId,
       driver_id: testData.drivers[0].id,
       vehicle_id: testData.vehicles[0].id,
@@ -127,7 +133,7 @@ Deno.serve(async (req) => {
       paid: false,
     });
 
-    await serviceClient.entities.Fine.create({
+    await devClient.entities.Fine.create({
       tenant_id: tenantId,
       driver_id: testData.drivers[1].id,
       vehicle_id: testData.vehicles[1].id,
@@ -138,7 +144,7 @@ Deno.serve(async (req) => {
       paid: true,
     });
 
-    await serviceClient.entities.FuelLog.create({
+    await devClient.entities.FuelLog.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,
@@ -149,7 +155,7 @@ Deno.serve(async (req) => {
       logged_at: '2026-05-20T10:30:00',
     });
 
-    await serviceClient.entities.FuelLog.create({
+    await devClient.entities.FuelLog.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[1].id,
       driver_id: testData.drivers[1].id,
@@ -160,7 +166,7 @@ Deno.serve(async (req) => {
       logged_at: '2026-05-18T14:00:00',
     });
 
-    await serviceClient.entities.Trip.create({
+    await devClient.entities.Trip.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[0].id,
       driver_id: testData.drivers[0].id,
@@ -171,7 +177,7 @@ Deno.serve(async (req) => {
       earnings: 450,
     });
 
-    await serviceClient.entities.Trip.create({
+    await devClient.entities.Trip.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[1].id,
       driver_id: testData.drivers[1].id,
@@ -182,7 +188,7 @@ Deno.serve(async (req) => {
       earnings: 380,
     });
 
-    await serviceClient.entities.Trip.create({
+    await devClient.entities.Trip.create({
       tenant_id: tenantId,
       vehicle_id: testData.vehicles[3].id,
       driver_id: testData.drivers[2].id,
