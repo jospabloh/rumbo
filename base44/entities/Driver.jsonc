@@ -79,8 +79,44 @@
         }
       }
     },
-    "read": null,
-    "update": null,
+    "read": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.profile_id": "{{user.id}}"
+        }
+      ]
+    },
+    "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.profile_id": "{{user.id}}"
+        }
+      ]
+    },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {

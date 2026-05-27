@@ -64,7 +64,8 @@
     "platform"
   ],
   "rls": {
-    "create": {
+    "create": null,
+    "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
@@ -83,8 +84,25 @@
         }
       ]
     },
-    "read": null,
-    "update": null,
+    "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.driver_id": "{{user.data.driver_profile_id}}"
+        }
+      ]
+    },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {

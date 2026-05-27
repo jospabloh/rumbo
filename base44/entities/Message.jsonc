@@ -38,25 +38,7 @@
     "sender_id"
   ],
   "rls": {
-    "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
-            }
-          }
-        },
-        {
-          "data.sender_id": "{{user.id}}"
-        }
-      ]
-    },
+    "create": null,
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
@@ -66,8 +48,7 @@
               "$in": [
                 "owner",
                 "admin",
-                "dispatcher",
-                "driver"
+                "dispatcher"
               ]
             }
           }
