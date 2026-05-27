@@ -3,10 +3,10 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Database, CheckCircle2, AlertCircle, Loader2, Users, Truck, Bell, Wrench } from 'lucide-react';
-import { useTenant } from '@/lib/TenantContext';
+
+const DEV_TENANT_ID = '6a15fa15cae320285a4b09ed';
 
 export default function TestDataPage() {
-  const { tenant } = useTenant();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -17,7 +17,7 @@ export default function TestDataPage() {
     setResult(null);
 
     try {
-      const tenantId = tenant.id;
+      const tenantId = DEV_TENANT_ID;
       const vehicles = [];
       const drivers = [];
 
@@ -72,32 +72,6 @@ export default function TestDataPage() {
     }
   };
 
-  if (!tenant) {
-    return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-warning" />
-                No hay tenant configurado
-              </CardTitle>
-              <CardDescription>
-                Necesitas crear un tenant antes de generar datos de prueba
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Los datos de prueba requieren un tenant existente. Si estás en modo TEST, 
-                primero completa el onboarding o crea un tenant desde el panel de administración.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -105,7 +79,7 @@ export default function TestDataPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Generar Datos de Prueba</h1>
             <p className="text-muted-foreground mt-1">
-              Tenant actual: <span className="text-primary font-medium">{tenant.tenant_name}</span>
+              Entorno: <span className="text-warning font-medium">TEST (base de datos de prueba)</span>
             </p>
           </div>
         </div>
