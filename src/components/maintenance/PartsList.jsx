@@ -4,14 +4,19 @@ import { Plus, Package, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTenant } from '@/lib/TenantContext';
 
 export default function PartsList({ vehicles }) {
+  const { tenantId } = useTenant();
   const [parts, setParts] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', sku: '', stock: 0, unit_cost: '', vehicle_id: '' });
   const [saving, setSaving] = useState(false);
 
-  const load = () => base44.entities.Part.list().then(setParts);
+  const load = () => {
+    const q = tenantId ? { tenant_id: tenantId } : {};
+    base44.entities.Part.filter(q).then(setParts);
+  };
   useEffect(() => { load(); }, []);
 
   const handleSave = async (e) => {
@@ -19,6 +24,7 @@ export default function PartsList({ vehicles }) {
     setSaving(true);
     await base44.entities.Part.create({
       ...form,
+      tenant_id: tenantId,
       stock: parseInt(form.stock),
       unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
       vehicle_id: form.vehicle_id || null,
