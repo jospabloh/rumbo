@@ -5,6 +5,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!['admin', 'owner'].includes(user.role)) return Response.json({ error: 'Forbidden: Admin or Owner access required' }, { status: 403 });
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('supabase');
     const authHeader = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };

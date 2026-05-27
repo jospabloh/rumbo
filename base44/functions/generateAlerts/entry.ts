@@ -15,13 +15,20 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!['admin', 'owner'].includes(user.role)) return Response.json({ error: 'Forbidden: Admin or Owner access required' }, { status: 403 });
+
+    const tenantId = user.data?.tenant_id;
+    if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
+
     const [drivers, vehicles, driverDocs, vehicleDocs, maintenance, existingAlerts] = await Promise.all([
-      base44.asServiceRole.entities.Driver.list(),
-      base44.asServiceRole.entities.Vehicle.list(),
+      base44.asServiceRole.entities.Driver.filter({ tenant_id: tenantId }),
+      base44.asServiceRole.entities.Vehicle.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.DriverDocument.list(),
       base44.asServiceRole.entities.VehicleDocument.list(),
-      base44.asServiceRole.entities.Maintenance.filter({ next_due_at: { $exists: true } }),
-      base44.asServiceRole.entities.Alert.filter({ resolved: false }),
+      base44.asServiceRole.entities.Maintenance.filter({ tenant_id: tenantId, next_due_at: { $exists: true } }),
+      base44.asServiceRole.entities.Alert.filter({ tenant_id: tenantId, resolved: false }),
     ]);
 
     const existingKeys = new Set(existingAlerts.map(a => `${a.entity_type}:${a.entity_id}`));
@@ -113,10 +120,10 @@ Deno.serve(async (req) => {
     }
 
     for (const alert of toCreate) {
-      await base44.asServiceRole.entities.Alert.create(alert);
+      await base44.asServiceRole.entities.Alert.create({ ...alert, tenant_id: tenantId });
     }
 
-    return Response.json({ created: toCreate.length, message: `${toCreate.length} alertas generadas` });
+    return Response.json({ created: toCreate.length, message: `${toCreate.length} alerta${toCreate.length === 1 ? '' : 's'} generada${toCreate.length === 1 ? '' : 's'}` });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -6,12 +6,15 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Fetch all data server-side
+    const tenantId = user.data?.tenant_id;
+    if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
+
+    // Fetch data filtered by tenant_id
     const [vehicles, fuelLogs, maintenanceRecords, fines] = await Promise.all([
-      base44.asServiceRole.entities.Vehicle.list(),
-      base44.asServiceRole.entities.FuelLog.list(),
-      base44.asServiceRole.entities.Maintenance.list(),
-      base44.asServiceRole.entities.Fine.list(),
+      base44.entities.Vehicle.filter({ tenant_id: tenantId }),
+      base44.entities.FuelLog.filter({ tenant_id: tenantId }),
+      base44.entities.Maintenance.filter({ tenant_id: tenantId }),
+      base44.entities.Fine.filter({ tenant_id: tenantId }),
     ]);
 
     const results = vehicles.map(vehicle => {
