@@ -90,6 +90,7 @@ const AuthenticatedApp = () => {
         <Route path="/drivers" element={<Drivers />} />
         <Route path="/vehicles" element={<Vehicles />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
+        <Route path="/parts" element={<MaintenancePage defaultTab="parts" />} />
         <Route path="/financial" element={<Financial />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/location" element={<Location />} />

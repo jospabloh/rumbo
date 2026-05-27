@@ -7,7 +7,7 @@ import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
 import PartsList from '@/components/maintenance/PartsList';
 import { useTenant } from '@/lib/TenantContext';
 
-export default function MaintenancePage() {
+export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const { tenantId } = useTenant();
   const [records, setRecords] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -15,7 +15,7 @@ export default function MaintenancePage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
-  const [tab, setTab] = useState('maintenance');
+  const [tab, setTab] = useState(defaultTab);
 
   const load = () => {
     const q = tenantId ? { tenant_id: tenantId } : {};
