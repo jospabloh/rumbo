@@ -79,44 +79,8 @@
         }
       }
     },
-    "read": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
-            }
-          }
-        },
-        {
-          "data.profile_id": "{{user.id}}"
-        }
-      ]
-    },
-    "update": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
-            }
-          }
-        },
-        {
-          "data.profile_id": "{{user.id}}"
-        }
-      ]
-    },
+    "read": null,
+    "update": null,
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {

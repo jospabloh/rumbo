@@ -52,6 +52,7 @@
   ],
   "rls": {
     "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {
         "role": {
           "$in": [
@@ -63,18 +64,21 @@
       }
     },
     "read": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {
         "role": {
           "$in": [
             "owner",
             "admin",
+            "mechanic",
             "dispatcher",
-            "mechanic"
+            "driver"
           ]
         }
       }
     },
     "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {
         "role": {
           "$in": [
@@ -86,6 +90,7 @@
       }
     },
     "delete": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {
         "role": {
           "$in": [

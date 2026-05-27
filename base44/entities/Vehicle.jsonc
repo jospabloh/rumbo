@@ -76,31 +76,13 @@
           "$in": [
             "owner",
             "admin",
-            "dispatcher"
+            "dispatcher",
+            "mechanic"
           ]
         }
       }
     },
-    "read": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher",
-                "mechanic"
-              ]
-            }
-          }
-        },
-        {
-          "data.assigned_driver_id": "{{user.data.driver_profile_id}}"
-        }
-      ]
-    },
+    "read": null,
     "update": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "user_condition": {
