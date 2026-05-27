@@ -9,25 +9,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized: Admin or Owner access required' }, { status: 403 });
     }
 
-    // Usar siempre el entorno dev (TEST) para todas las operaciones
-    const devClient = createClientFromRequest(req, { dataEnv: 'dev' }).asServiceRole;
+    const svc = base44.asServiceRole;
 
-    // Buscar el tenant del usuario en dev
-    const tenants = await devClient.entities.TenantLicense.filter({
-      owner_email: user.email
-    });
+    // Buscar el tenant del usuario
+    let tenantId = user.data?.tenant_id;
 
-    // Si no hay tenant en dev, buscar por created_by_id
-    let tenantId = tenants?.[0]?.id;
     if (!tenantId) {
-      const allTenants = await devClient.entities.TenantLicense.list('-created_date', 50);
-      const found = allTenants.find(t => t.created_by_id === user.id) || allTenants[0];
+      const tenants = await svc.entities.TenantLicense.list('-created_date', 50);
+      const found = tenants.find(t => t.created_by_id === user.id)
+        || tenants.find(t => t.owner_email === user.email)
+        || tenants[0];
       tenantId = found?.id;
     }
 
     if (!tenantId) {
       return Response.json({
-        error: 'No se encontró un tenant en el entorno TEST. Primero crea tu organización desde el onboarding.',
+        error: 'No se encontró un tenant. Primero completa el onboarding.',
       }, { status: 400 });
     }
 
@@ -42,7 +39,7 @@ Deno.serve(async (req) => {
     ];
 
     for (const vData of vehicleData) {
-      const vehicle = await devClient.entities.Vehicle.create({
+      const vehicle = await svc.entities.Vehicle.create({
         tenant_id: tenantId,
         ...vData,
         status: 'active',
@@ -59,7 +56,7 @@ Deno.serve(async (req) => {
     ];
 
     for (const dData of driverData) {
-      const driver = await devClient.entities.Driver.create({
+      const driver = await svc.entities.Driver.create({
         tenant_id: tenantId,
         ...dData,
         status: 'active',
@@ -68,140 +65,26 @@ Deno.serve(async (req) => {
       testData.drivers.push(driver);
     }
 
-    await devClient.entities.Alert.create({
-      tenant_id: tenantId,
-      entity_type: 'driver_doc',
-      entity_id: testData.drivers[3].id,
-      driver_id: testData.drivers[3].id,
-      message: 'Certificado médico vence en 20 días',
-      severity: 'warning',
-      due_date: '2026-06-15',
-      resolved: false,
-    });
+    await svc.entities.Alert.create({ tenant_id: tenantId, entity_type: 'driver_doc', entity_id: testData.drivers[3].id, driver_id: testData.drivers[3].id, message: 'Certificado médico vence en 20 días', severity: 'warning', due_date: '2026-06-15', resolved: false });
+    await svc.entities.Alert.create({ tenant_id: tenantId, entity_type: 'vehicle_doc', entity_id: testData.vehicles[2].id, vehicle_id: testData.vehicles[2].id, message: 'Seguro vencido - TEST-003', severity: 'critical', due_date: '2026-05-20', resolved: false });
+    await svc.entities.Alert.create({ tenant_id: tenantId, entity_type: 'driver_doc', entity_id: testData.drivers[0].id, driver_id: testData.drivers[0].id, message: 'Licencia vence en 15 días - Juan Pérez', severity: 'warning', due_date: '2026-06-10', resolved: false });
 
-    await devClient.entities.Alert.create({
-      tenant_id: tenantId,
-      entity_type: 'vehicle_doc',
-      entity_id: testData.vehicles[2].id,
-      vehicle_id: testData.vehicles[2].id,
-      message: 'Seguro vencido - TEST-003',
-      severity: 'critical',
-      due_date: '2026-05-20',
-      resolved: false,
-    });
+    await svc.entities.Maintenance.create({ tenant_id: tenantId, vehicle_id: testData.vehicles[0].id, kind: 'preventive', description: 'Cambio de aceite y filtros', odometer: 15000, cost: 1200, performed_at: '2026-04-10', next_due_at: '2026-10-10' });
+    await svc.entities.Maintenance.create({ tenant_id: tenantId, vehicle_id: testData.vehicles[2].id, kind: 'corrective', description: 'Reparación de frenos delanteros', odometer: 18200, cost: 3500, performed_at: '2026-05-01' });
 
-    await devClient.entities.Alert.create({
-      tenant_id: tenantId,
-      entity_type: 'driver_doc',
-      entity_id: testData.drivers[0].id,
-      driver_id: testData.drivers[0].id,
-      message: 'Licencia vence en 15 días - Juan Pérez',
-      severity: 'warning',
-      due_date: '2026-06-10',
-      resolved: false,
-    });
+    await svc.entities.Fine.create({ tenant_id: tenantId, driver_id: testData.drivers[0].id, vehicle_id: testData.vehicles[0].id, fine_type: 'Exceso de velocidad', amount: 1500, points: 15, issued_at: '2026-04-10', paid: false });
+    await svc.entities.Fine.create({ tenant_id: tenantId, driver_id: testData.drivers[1].id, vehicle_id: testData.vehicles[1].id, fine_type: 'Semáforo en rojo', amount: 2000, points: 20, issued_at: '2026-05-05', paid: true });
 
-    await devClient.entities.Maintenance.create({
-      tenant_id: tenantId,
-      vehicle_id: testData.vehicles[0].id,
-      kind: 'preventive',
-      description: 'Cambio de aceite y filtros',
-      odometer: 15000,
-      cost: 1200,
-      performed_at: '2026-04-10',
-      next_due_at: '2026-10-10',
-    });
+    await svc.entities.FuelLog.create({ tenant_id: tenantId, vehicle_id: testData.vehicles[0].id, driver_id: testData.drivers[0].id, liters: 45, price_per_liter: 22.5, total_cost: 1012.5, odometer: 31800, logged_at: '2026-05-20T10:30:00' });
+    await svc.entities.FuelLog.create({ tenant_id: tenantId, vehicle_id: testData.vehicles[1].id, driver_id: testData.drivers[1].id, liters: 50, price_per_liter: 22.5, total_cost: 1125, odometer: 47200, logged_at: '2026-05-18T14:00:00' });
 
-    await devClient.entities.Maintenance.create({
-      tenant_id: tenantId,
-      vehicle_id: testData.vehicles[2].id,
-      kind: 'corrective',
-      description: 'Reparación de frenos delanteros',
-      odometer: 18200,
-      cost: 3500,
-      performed_at: '2026-05-01',
-    });
-
-    await devClient.entities.Fine.create({
-      tenant_id: tenantId,
-      driver_id: testData.drivers[0].id,
-      vehicle_id: testData.vehicles[0].id,
-      fine_type: 'Exceso de velocidad',
-      amount: 1500,
-      points: 15,
-      issued_at: '2026-04-10',
-      paid: false,
-    });
-
-    await devClient.entities.Fine.create({
-      tenant_id: tenantId,
-      driver_id: testData.drivers[1].id,
-      vehicle_id: testData.vehicles[1].id,
-      fine_type: 'Semáforo en rojo',
-      amount: 2000,
-      points: 20,
-      issued_at: '2026-05-05',
-      paid: true,
-    });
-
-    await devClient.entities.FuelLog.create({
-      tenant_id: tenantId,
-      vehicle_id: testData.vehicles[0].id,
-      driver_id: testData.drivers[0].id,
-      liters: 45,
-      price_per_liter: 22.5,
-      total_cost: 1012.5,
-      odometer: 31800,
-      logged_at: '2026-05-20T10:30:00',
-    });
-
-    await devClient.entities.FuelLog.create({
-      tenant_id: tenantId,
-      vehicle_id: testData.vehicles[1].id,
-      driver_id: testData.drivers[1].id,
-      liters: 50,
-      price_per_liter: 22.5,
-      total_cost: 1125,
-      odometer: 47200,
-      logged_at: '2026-05-18T14:00:00',
-    });
-
-    await devClient.entities.Trip.create({
-      tenant_id: tenantId,
-      vehicle_id: testData.vehicles[0].id,
-      driver_id: testData.drivers[0].id,
-      platform: 'uber',
-      started_at: '2026-05-20T08:00:00',
-      ended_at: '2026-05-20T12:00:00',
-      distance_km: 85.5,
-      earnings: 450,
-    });
-
-    await devClient.entities.Trip.create({
-      tenant_id: tenantId,
-      vehicle_id: testData.vehicles[1].id,
-      driver_id: testData.drivers[1].id,
-      platform: 'didi',
-      started_at: '2026-05-19T09:00:00',
-      ended_at: '2026-05-19T13:30:00',
-      distance_km: 62.3,
-      earnings: 380,
-    });
-
-    await devClient.entities.Trip.create({
-      tenant_id: tenantId,
-      vehicle_id: testData.vehicles[3].id,
-      driver_id: testData.drivers[2].id,
-      platform: 'particular',
-      started_at: '2026-05-18T07:00:00',
-      ended_at: '2026-05-18T11:00:00',
-      distance_km: 120,
-      earnings: 600,
-    });
+    await svc.entities.Trip.create({ tenant_id: tenantId, vehicle_id: testData.vehicles[0].id, driver_id: testData.drivers[0].id, platform: 'uber', started_at: '2026-05-20T08:00:00', ended_at: '2026-05-20T12:00:00', distance_km: 85.5, earnings: 450 });
+    await svc.entities.Trip.create({ tenant_id: tenantId, vehicle_id: testData.vehicles[1].id, driver_id: testData.drivers[1].id, platform: 'didi', started_at: '2026-05-19T09:00:00', ended_at: '2026-05-19T13:30:00', distance_km: 62.3, earnings: 380 });
+    await svc.entities.Trip.create({ tenant_id: tenantId, vehicle_id: testData.vehicles[3].id, driver_id: testData.drivers[2].id, platform: 'particular', started_at: '2026-05-18T07:00:00', ended_at: '2026-05-18T11:00:00', distance_km: 120, earnings: 600 });
 
     return Response.json({
       success: true,
-      message: 'Datos de prueba creados exitosamente en TEST (dev)',
+      message: 'Datos de prueba creados exitosamente',
       summary: {
         vehicles: testData.vehicles.length,
         drivers: testData.drivers.length,
@@ -212,7 +95,6 @@ Deno.serve(async (req) => {
         trips: 3,
       },
       tenant_id: tenantId,
-      environment: 'dev',
     });
   } catch (error) {
     console.error('Error:', error);
