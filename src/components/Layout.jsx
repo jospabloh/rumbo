@@ -40,8 +40,7 @@ const NAV_GROUPS = [
     items: [
       { path: '/drivers',     icon: Users,     label: 'Conductores',  page: 'drivers' },
       { path: '/vehicles',    icon: Truck,     label: 'Vehículos',    page: 'vehicles' },
-      { path: '/maintenance', icon: Wrench,    label: 'Mantenimiento',page: 'maintenance' },
-      { path: '/parts',       icon: Package,   label: 'Inventario',   page: 'parts' },
+      { path: '/maintenance', icon: Wrench,    label: 'Taller',       page: 'maintenance' },
     ],
   },
   {
