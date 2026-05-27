@@ -49,6 +49,11 @@ export function TenantProvider({ children }) {
 
       setTenant(found);
       setTenantId(found?.id || null);
+
+      // Persist tenant_id on user profile so RLS filters work correctly
+      if (found?.id && user.data?.tenant_id !== found.id) {
+        base44.auth.updateMe({ tenant_id: found.id }).catch(() => {});
+      }
     } catch (e) {
       console.error('TenantContext error:', e);
     } finally {
