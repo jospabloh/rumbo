@@ -29,6 +29,7 @@ const PAGE_PERMISSIONS = {
   messages:    [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER],
   alerts:      [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER],
   import:      [ROLES.OWNER, ROLES.ADMIN],
+  reports:     [ROLES.OWNER, ROLES.ADMIN],
   github:      [ROLES.OWNER, ROLES.ADMIN],
   supabase:    [ROLES.OWNER, ROLES.ADMIN],
   billing:     [ROLES.OWNER, ROLES.ADMIN],

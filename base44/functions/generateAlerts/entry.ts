@@ -22,13 +22,23 @@ Deno.serve(async (req) => {
     const tenantId = user.data?.tenant_id;
     if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
 
-    const [drivers, vehicles, driverDocs, vehicleDocs, maintenance, existingAlerts] = await Promise.all([
+    const [drivers, vehicles, maintenance, existingAlerts] = await Promise.all([
       base44.asServiceRole.entities.Driver.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.Vehicle.filter({ tenant_id: tenantId }),
-      base44.asServiceRole.entities.DriverDocument.list(),
-      base44.asServiceRole.entities.VehicleDocument.list(),
       base44.asServiceRole.entities.Maintenance.filter({ tenant_id: tenantId, next_due_at: { $exists: true } }),
       base44.asServiceRole.entities.Alert.filter({ tenant_id: tenantId, resolved: false }),
+    ]);
+
+    const driverIds = drivers.map(d => d.id);
+    const vehicleIds = vehicles.map(v => v.id);
+
+    const [driverDocs, vehicleDocs] = await Promise.all([
+      driverIds.length > 0
+        ? base44.asServiceRole.entities.DriverDocument.filter({ driver_id: { $in: driverIds } })
+        : Promise.resolve([]),
+      vehicleIds.length > 0
+        ? base44.asServiceRole.entities.VehicleDocument.filter({ vehicle_id: { $in: vehicleIds } })
+        : Promise.resolve([]),
     ]);
 
     const existingKeys = new Set(existingAlerts.map(a => `${a.entity_type}:${a.entity_id}`));

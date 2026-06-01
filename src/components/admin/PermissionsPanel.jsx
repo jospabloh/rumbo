@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Eye, Plus, Pencil, Trash2, RefreshCw, PauseCircle, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-// Permisos granulares por rol para el admin del tenant
-// Cada permiso tiene: ver, crear, editar, eliminar, y algunos tienen: pausar
+import { base44 } from '@/api/base44Client';
+import { useTenant } from '@/lib/TenantContext';
 
 const MODULES = [
   { key: 'vehicles',     label: 'Vehículos' },
@@ -38,76 +37,20 @@ const ACTIONS = [
   { key: 'pause',  label: 'Pausar',   icon: PauseCircle },
 ];
 
-// Permisos por defecto para módulos NUEVOS que se agreguen
-const DEFAULT_MODULE_PERMS = {
-  admin:      { view: true,  create: true,  edit: true,  delete: true,  pause: true  },
-  dispatcher: { view: true,  create: true,  edit: true,  delete: false, pause: false },
-  mechanic:   { view: true,  create: false, edit: true,  delete: false, pause: false },
-  driver:     { view: true,  create: false, edit: false, delete: false, pause: false },
-};
+const ALL_TRUE  = { view: true,  create: true,  edit: true,  delete: true,  pause: true  };
+const ALL_FALSE = { view: false, create: false, edit: false, delete: false, pause: false };
 
-// Permisos por defecto según el diseño original del sistema
+function buildDefault(roleOverrides) {
+  return Object.fromEntries(
+    MODULES.map(m => [m.key, { ...(roleOverrides[m.key] || ALL_FALSE) }])
+  );
+}
+
 const DEFAULT_PERMISSIONS = {
-  admin: {
-    vehicles:    { view: true,  create: true,  edit: true,  delete: true,  pause: true  },
-    drivers:     { view: true,  create: true,  edit: true,  delete: true,  pause: true  },
-    trips:       { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    maintenance: { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    parts:       { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    fuel:        { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    fines:       { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    insurance:   { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    alerts:      { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    messages:    { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    location:    { view: true,  create: false, edit: false, delete: false, pause: false },
-    financial:   { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    reports:     { view: true,  create: true,  edit: false, delete: false, pause: false },
-  },
-  dispatcher: {
-    vehicles:    { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    drivers:     { view: true,  create: true,  edit: true,  delete: false, pause: true  },
-    trips:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    maintenance: { view: true,  create: false, edit: false, delete: false, pause: false },
-    parts:       { view: false, create: false, edit: false, delete: false, pause: false },
-    fuel:        { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    fines:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    insurance:   { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    alerts:      { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    messages:    { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    location:    { view: true,  create: false, edit: false, delete: false, pause: false },
-    financial:   { view: false, create: false, edit: false, delete: false, pause: false },
-    reports:     { view: false, create: false, edit: false, delete: false, pause: false },
-  },
-  mechanic: {
-    vehicles:    { view: true,  create: false, edit: true,  delete: false, pause: true  },
-    drivers:     { view: false, create: false, edit: false, delete: false, pause: false },
-    trips:       { view: false, create: false, edit: false, delete: false, pause: false },
-    maintenance: { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    parts:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    fuel:        { view: false, create: false, edit: false, delete: false, pause: false },
-    fines:       { view: false, create: false, edit: false, delete: false, pause: false },
-    insurance:   { view: false, create: false, edit: false, delete: false, pause: false },
-    alerts:      { view: false, create: false, edit: false, delete: false, pause: false },
-    messages:    { view: false, create: false, edit: false, delete: false, pause: false },
-    location:    { view: false, create: false, edit: false, delete: false, pause: false },
-    financial:   { view: false, create: false, edit: false, delete: false, pause: false },
-    reports:     { view: false, create: false, edit: false, delete: false, pause: false },
-  },
-  driver: {
-    vehicles:    { view: true,  create: false, edit: false, delete: false, pause: false },
-    drivers:     { view: true,  create: false, edit: true,  delete: false, pause: false },
-    trips:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    maintenance: { view: false, create: false, edit: false, delete: false, pause: false },
-    parts:       { view: false, create: false, edit: false, delete: false, pause: false },
-    fuel:        { view: true,  create: true,  edit: false, delete: false, pause: false },
-    fines:       { view: true,  create: false, edit: false, delete: false, pause: false },
-    insurance:   { view: true,  create: false, edit: false, delete: false, pause: false },
-    alerts:      { view: true,  create: false, edit: false, delete: false, pause: false },
-    messages:    { view: true,  create: true,  edit: false, delete: false, pause: false },
-    location:    { view: false, create: false, edit: false, delete: false, pause: false },
-    financial:   { view: false, create: false, edit: false, delete: false, pause: false },
-    reports:     { view: false, create: false, edit: false, delete: false, pause: false },
-  },
+  admin: buildDefault(Object.fromEntries(MODULES.map(m => [m.key, ALL_TRUE]))),
+  dispatcher: buildDefault({}),
+  mechanic:   buildDefault({}),
+  driver:     buildDefault({}),
 };
 
 function PermCell({ value, onChange }) {
@@ -124,15 +67,30 @@ function PermCell({ value, onChange }) {
 }
 
 export default function PermissionsPanel() {
+  const { tenant, tenantId } = useTenant();
   const [activeRole, setActiveRole] = useState('dispatcher');
   const [perms, setPerms] = useState(DEFAULT_PERMISSIONS);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Función para obtener permisos de un módulo (incluye defaults si no existe)
+  useEffect(() => {
+    if (!tenant) return;
+    if (tenant.permissions_config) {
+      try {
+        const saved = JSON.parse(tenant.permissions_config);
+        setPerms(prev => ({
+          ...DEFAULT_PERMISSIONS,
+          ...saved,
+          admin: DEFAULT_PERMISSIONS.admin,
+        }));
+      } catch {
+        setPerms(DEFAULT_PERMISSIONS);
+      }
+    }
+  }, [tenant?.id]);
+
   const getModulePerms = (role, moduleKey) => {
-    if (perms[role]?.[moduleKey]) return perms[role][moduleKey];
-    // Si el módulo no existe en los permisos guardados, usar defaults
-    return DEFAULT_MODULE_PERMS[role] || { view: false, create: false, edit: false, delete: false, pause: false };
+    return perms[role]?.[moduleKey] ?? ALL_FALSE;
   };
 
   const toggle = (module, action) => {
@@ -148,26 +106,19 @@ export default function PermissionsPanel() {
     }));
   };
 
-  // Agregar un nuevo módulo con permisos por defecto
-  const addModule = (moduleKey, moduleLabel) => {
-    setPerms(p => {
-      const newPerms = { ...p };
-      ROLES_FOR_PERMS.forEach(role => {
-        if (!newPerms[role][moduleKey]) {
-          newPerms[role] = {
-            ...newPerms[role],
-            [moduleKey]: { ...DEFAULT_MODULE_PERMS[role] },
-          };
-        }
+  const savePerms = async () => {
+    if (!tenantId) return;
+    setSaving(true);
+    try {
+      const toSave = { ...perms, admin: DEFAULT_PERMISSIONS.admin };
+      await base44.entities.TenantLicense.update(tenantId, {
+        permissions_config: JSON.stringify(toSave),
       });
-      return newPerms;
-    });
-  };
-
-  const savePerms = () => {
-    // En una implementación real, esto se guardaría en TenantLicense.features o en user data
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetRole = () => {
@@ -188,14 +139,13 @@ export default function PermissionsPanel() {
           <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground h-7" onClick={resetRole}>
             <RefreshCw className="w-3 h-3" /> Restablecer
           </Button>
-          <Button size="sm" className="gap-1.5 text-xs h-7" onClick={savePerms}>
+          <Button size="sm" className="gap-1.5 text-xs h-7" onClick={savePerms} disabled={saving}>
             {saved ? <Check className="w-3 h-3" /> : null}
-            {saved ? 'Guardado' : 'Guardar cambios'}
+            {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar cambios'}
           </Button>
         </div>
       </div>
 
-      {/* Role tabs */}
       <div className="flex border-b border-border bg-secondary/20">
         {ROLES_FOR_PERMS.map(r => (
           <button
@@ -212,7 +162,6 @@ export default function PermissionsPanel() {
         ))}
       </div>
 
-      {/* Header row */}
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -226,9 +175,6 @@ export default function PermissionsPanel() {
                   </div>
                 </th>
               ))}
-              <th className="text-center px-2 py-2.5 text-muted-foreground font-medium min-w-[40px]">
-                <span className="text-[10px] uppercase tracking-wider">Agregar</span>
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -238,28 +184,31 @@ export default function PermissionsPanel() {
                 {ACTIONS.map(a => (
                   <td key={a.key} className="px-2 py-2.5 text-center">
                     <div className="flex justify-center">
-                      <PermCell
-                        value={getModulePerms(activeRole, mod.key)[a.key]}
-                        onChange={() => toggle(mod.key, a.key)}
-                      />
+                      {activeRole === 'admin' ? (
+                        <div className="w-7 h-7 rounded-md flex items-center justify-center bg-success/20 text-success">
+                          <Check className="w-3.5 h-3.5" />
+                        </div>
+                      ) : (
+                        <PermCell
+                          value={getModulePerms(activeRole, mod.key)[a.key]}
+                          onChange={() => toggle(mod.key, a.key)}
+                        />
+                      )}
                     </div>
                   </td>
                 ))}
-                <td className="px-2 py-2.5 text-center">
-                  <span className="text-[10px] text-muted-foreground/50">auto</span>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="px-4 py-3 border-t border-border bg-secondary/10 space-y-2">
+      <div className="px-4 py-3 border-t border-border bg-secondary/10 space-y-1">
         <p className="text-xs text-muted-foreground">
-          Los permisos se aplican al rol seleccionado dentro de este tenant. El rol <span className="text-foreground font-medium">Admin</span> siempre tiene acceso completo por defecto.
+          El rol <span className="text-foreground font-medium">Admin</span> siempre tiene acceso completo. Los demás roles comienzan sin acceso — el Admin debe habilitarles los permisos necesarios.
         </p>
         <p className="text-xs text-muted-foreground">
-          <span className="text-success font-medium">Nuevo:</span> Cada módulo nuevo que agregues al sistema heredará automáticamente los permisos por defecto según el rol (Admin: todo habilitado, Dispatcher/Mechanic/Driver: permisos conservadores).
+          Los cambios se guardan en la licencia del tenant y persisten entre sesiones.
         </p>
       </div>
     </section>
