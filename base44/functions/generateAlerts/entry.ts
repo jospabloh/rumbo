@@ -25,8 +25,8 @@ Deno.serve(async (req) => {
     const [drivers, vehicles, driverDocs, vehicleDocs, maintenance, existingAlerts] = await Promise.all([
       base44.asServiceRole.entities.Driver.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.Vehicle.filter({ tenant_id: tenantId }),
-      base44.asServiceRole.entities.DriverDocument.list(),
-      base44.asServiceRole.entities.VehicleDocument.list(),
+      base44.asServiceRole.entities.DriverDocument.filter({ tenant_id: tenantId }),
+      base44.asServiceRole.entities.VehicleDocument.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.Maintenance.filter({ tenant_id: tenantId, next_due_at: { $exists: true } }),
       base44.asServiceRole.entities.Alert.filter({ tenant_id: tenantId, resolved: false }),
     ]);

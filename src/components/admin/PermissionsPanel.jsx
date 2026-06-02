@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { Shield, Eye, Plus, Pencil, Trash2, RefreshCw, PauseCircle, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useTenant } from '@/lib/TenantContext';
+import { Shield, Eye, Plus, Pencil, Trash2, RefreshCw, PauseCircle, Check, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-// Permisos granulares por rol para el admin del tenant
-// Cada permiso tiene: ver, crear, editar, eliminar, y algunos tienen: pausar
 
 const MODULES = [
   { key: 'vehicles',     label: 'Vehículos' },
@@ -21,10 +20,10 @@ const MODULES = [
   { key: 'reports',      label: 'Reportes / Importar' },
 ];
 
-const ROLES_FOR_PERMS = ['admin', 'dispatcher', 'mechanic', 'driver'];
+// Editable roles only — admin is always all-true and not configurable
+const ROLES_FOR_PERMS = ['dispatcher', 'mechanic', 'driver'];
 
 const ROLE_LABELS = {
-  admin:      'Admin',
   dispatcher: 'Dispatcher',
   mechanic:   'Mecánico',
   driver:     'Conductor',
@@ -38,31 +37,13 @@ const ACTIONS = [
   { key: 'pause',  label: 'Pausar',   icon: PauseCircle },
 ];
 
-// Permisos por defecto para módulos NUEVOS que se agreguen
 const DEFAULT_MODULE_PERMS = {
-  admin:      { view: true,  create: true,  edit: true,  delete: true,  pause: true  },
   dispatcher: { view: true,  create: true,  edit: true,  delete: false, pause: false },
   mechanic:   { view: true,  create: false, edit: true,  delete: false, pause: false },
   driver:     { view: true,  create: false, edit: false, delete: false, pause: false },
 };
 
-// Permisos por defecto según el diseño original del sistema
 const DEFAULT_PERMISSIONS = {
-  admin: {
-    vehicles:    { view: true,  create: true,  edit: true,  delete: true,  pause: true  },
-    drivers:     { view: true,  create: true,  edit: true,  delete: true,  pause: true  },
-    trips:       { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    maintenance: { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    parts:       { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    fuel:        { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    fines:       { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    insurance:   { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    alerts:      { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    messages:    { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    location:    { view: true,  create: false, edit: false, delete: false, pause: false },
-    financial:   { view: true,  create: true,  edit: true,  delete: true,  pause: false },
-    reports:     { view: true,  create: true,  edit: false, delete: false, pause: false },
-  },
   dispatcher: {
     vehicles:    { view: true,  create: true,  edit: true,  delete: false, pause: false },
     drivers:     { view: true,  create: true,  edit: true,  delete: false, pause: true  },
@@ -124,14 +105,29 @@ function PermCell({ value, onChange }) {
 }
 
 export default function PermissionsPanel() {
+  const { tenant, tenantId } = useTenant();
   const [activeRole, setActiveRole] = useState('dispatcher');
   const [perms, setPerms] = useState(DEFAULT_PERMISSIONS);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
-  // Función para obtener permisos de un módulo (incluye defaults si no existe)
+  // Load saved permissions from TenantLicense when tenant loads
+  useEffect(() => {
+    if (!tenant?.permissions_config) return;
+    try {
+      const saved = tenant.permissions_config;
+      setPerms(prev => ({
+        ...DEFAULT_PERMISSIONS,
+        dispatcher: { ...DEFAULT_PERMISSIONS.dispatcher, ...(saved.dispatcher || {}) },
+        mechanic:   { ...DEFAULT_PERMISSIONS.mechanic,   ...(saved.mechanic   || {}) },
+        driver:     { ...DEFAULT_PERMISSIONS.driver,     ...(saved.driver     || {}) },
+      }));
+    } catch {}
+  }, [tenant?.id]);
+
   const getModulePerms = (role, moduleKey) => {
     if (perms[role]?.[moduleKey]) return perms[role][moduleKey];
-    // Si el módulo no existe en los permisos guardados, usar defaults
     return DEFAULT_MODULE_PERMS[role] || { view: false, create: false, edit: false, delete: false, pause: false };
   };
 
@@ -148,26 +144,20 @@ export default function PermissionsPanel() {
     }));
   };
 
-  // Agregar un nuevo módulo con permisos por defecto
-  const addModule = (moduleKey, moduleLabel) => {
-    setPerms(p => {
-      const newPerms = { ...p };
-      ROLES_FOR_PERMS.forEach(role => {
-        if (!newPerms[role][moduleKey]) {
-          newPerms[role] = {
-            ...newPerms[role],
-            [moduleKey]: { ...DEFAULT_MODULE_PERMS[role] },
-          };
-        }
-      });
-      return newPerms;
-    });
-  };
-
-  const savePerms = () => {
-    // En una implementación real, esto se guardaría en TenantLicense.features o en user data
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const savePerms = async () => {
+    if (!tenantId) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await base44.entities.TenantLicense.update(tenantId, { permissions_config: perms });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setSaveError('Error al guardar. Intenta de nuevo.');
+      console.error('Permission save failed:', e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetRole = () => {
@@ -188,14 +178,28 @@ export default function PermissionsPanel() {
           <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground h-7" onClick={resetRole}>
             <RefreshCw className="w-3 h-3" /> Restablecer
           </Button>
-          <Button size="sm" className="gap-1.5 text-xs h-7" onClick={savePerms}>
+          <Button size="sm" className="gap-1.5 text-xs h-7" onClick={savePerms} disabled={saving}>
             {saved ? <Check className="w-3 h-3" /> : null}
-            {saved ? 'Guardado' : 'Guardar cambios'}
+            {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar cambios'}
           </Button>
         </div>
       </div>
 
-      {/* Role tabs */}
+      {saveError && (
+        <div className="px-5 py-2 bg-destructive/10 text-destructive text-xs border-b border-destructive/20">
+          {saveError}
+        </div>
+      )}
+
+      {/* Admin all-true banner */}
+      <div className="flex items-center gap-2 px-5 py-2.5 bg-primary/5 border-b border-border">
+        <Lock className="w-3.5 h-3.5 text-primary" />
+        <p className="text-xs text-primary font-medium">
+          Admin — Acceso completo a todos los módulos (no configurable)
+        </p>
+      </div>
+
+      {/* Role tabs — only editable non-admin roles */}
       <div className="flex border-b border-border bg-secondary/20">
         {ROLES_FOR_PERMS.map(r => (
           <button
@@ -212,7 +216,7 @@ export default function PermissionsPanel() {
         ))}
       </div>
 
-      {/* Header row */}
+      {/* Permissions table */}
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -226,9 +230,6 @@ export default function PermissionsPanel() {
                   </div>
                 </th>
               ))}
-              <th className="text-center px-2 py-2.5 text-muted-foreground font-medium min-w-[40px]">
-                <span className="text-[10px] uppercase tracking-wider">Agregar</span>
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -245,9 +246,6 @@ export default function PermissionsPanel() {
                     </div>
                   </td>
                 ))}
-                <td className="px-2 py-2.5 text-center">
-                  <span className="text-[10px] text-muted-foreground/50">auto</span>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -256,10 +254,10 @@ export default function PermissionsPanel() {
 
       <div className="px-4 py-3 border-t border-border bg-secondary/10 space-y-2">
         <p className="text-xs text-muted-foreground">
-          Los permisos se aplican al rol seleccionado dentro de este tenant. El rol <span className="text-foreground font-medium">Admin</span> siempre tiene acceso completo por defecto.
+          Los permisos se aplican al rol seleccionado dentro de este tenant y se guardan en tu configuración. El rol <span className="text-foreground font-medium">Admin</span> siempre tiene acceso completo y no es configurable.
         </p>
         <p className="text-xs text-muted-foreground">
-          <span className="text-success font-medium">Nuevo:</span> Cada módulo nuevo que agregues al sistema heredará automáticamente los permisos por defecto según el rol (Admin: todo habilitado, Dispatcher/Mechanic/Driver: permisos conservadores).
+          Los roles <span className="text-foreground font-medium">Dispatcher, Mecánico y Conductor</span> inician con acceso mínimo. El admin debe habilitar cada permiso explícitamente.
         </p>
       </div>
     </section>

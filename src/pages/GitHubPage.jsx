@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { GitBranch, GitCommit, Github, FileText, AlertCircle, GitPullRequest, Plus, ChevronRight, ArrowLeft } from 'lucide-react';
+import { GitCommit, Github, FileText, AlertCircle, GitPullRequest, Plus, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Truck, Clock, DollarSign, MapPin, TrendingUp } from 'lucide-react';
+import { Truck, Clock, DollarSign, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 
 const platformLabel = { uber: 'Uber', didi: 'DiDi', particular: 'Particular' };

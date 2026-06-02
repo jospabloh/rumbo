@@ -5,6 +5,9 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!['owner', 'admin', 'dispatcher'].includes(user.role)) {
+      return Response.json({ error: 'Forbidden: Owner, Admin or Dispatcher access required' }, { status: 403 });
+    }
 
     const tenantId = user.data?.tenant_id;
     if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
