@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Truck, Bell, Star, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import AlertBadge from '@/components/dashboard/AlertBadge';
 
 export default function DriverHome() {

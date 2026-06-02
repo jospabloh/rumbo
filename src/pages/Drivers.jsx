@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Star, Phone, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Star, Phone, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import DriverForm from '@/components/drivers/DriverForm';

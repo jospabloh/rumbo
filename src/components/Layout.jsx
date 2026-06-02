@@ -6,7 +6,7 @@ import { applyTenantColors } from '@/pages/TenantOnboarding';
 import {
   LayoutDashboard, Users, Truck, Wrench, DollarSign,
   MapPin, MessageSquare, Bell, LogOut, Menu, X,
-  Package, FileText, CreditCard, Shield, ChevronDown
+  FileText, CreditCard, Shield
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
@@ -84,7 +84,7 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
 
 export default function Layout() {
   const location = useLocation();
-  const { tenant } = useTenant();
+  const { tenant, tenantId } = useTenant();
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -107,17 +107,17 @@ export default function Layout() {
   }, [tenant]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !tenantId) return;
     const role = user.role;
     if (role === 'owner' || role === 'admin' || role === 'dispatcher') {
-      base44.entities.Alert.filter({ resolved: false }).then(alerts => {
+      base44.entities.Alert.filter({ resolved: false, tenant_id: tenantId }).then(alerts => {
         setAlertCount(alerts.filter(a => a.severity === 'critical').length);
       }).catch(() => {});
-      base44.entities.Message.filter({ read: false }).then(msgs => {
+      base44.entities.Message.filter({ read: false, tenant_id: tenantId }).then(msgs => {
         setUnreadCount(msgs.length);
       }).catch(() => {});
     }
-  }, [user]);
+  }, [user, tenantId]);
 
   const isDriverRole = checkIsDriver(user?.role);
   const handleLogout = () => base44.auth.logout();

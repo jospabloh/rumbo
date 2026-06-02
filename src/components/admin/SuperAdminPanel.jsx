@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Crown, Building2, RefreshCw, Edit2, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Crown, Building2, RefreshCw, Edit2, Save, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 
 const PLANS = ['trial', 'starter', 'pro', 'enterprise'];
 const STATUSES = ['active', 'expired', 'suspended', 'cancelled'];

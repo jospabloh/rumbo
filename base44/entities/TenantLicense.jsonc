@@ -87,6 +87,10 @@
       "type": "string",
       "title": "Notas"
     },
+    "permissions_config": {
+      "type": "object",
+      "title": "Configuración de permisos por rol"
+    },
     "members": {
       "type": "array",
       "title": "Miembros del tenant",

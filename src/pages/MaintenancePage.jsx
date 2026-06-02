@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Wrench, ChevronRight } from 'lucide-react';
+import { Plus, Search, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import MaintenanceForm from '@/components/maintenance/MaintenanceForm';

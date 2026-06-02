@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Upload, Download, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { Upload, Download, CheckCircle2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DRIVER_COLUMNS = ['nombre', 'licencia', 'vencimiento_licencia', 'vencimiento_medico', 'telefono', 'fecha_contratacion'];
