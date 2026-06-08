@@ -227,14 +227,15 @@ function TenantEditor({ license, onSaved }) {
 }
 
 export default function Admin() {
-  const { tenant, reload: reloadTenant } = useTenant();
+  const { tenant, tenantId, reload: reloadTenant } = useTenant();
   const [user, setUser] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
   const load = () => {
-    base44.entities.User.list().then(users => {
+    const filter = tenantId ? { 'data.tenant_id': tenantId } : {};
+    base44.entities.User.filter(filter).then(users => {
       setMembers(users);
       setLoading(false);
     });
@@ -250,7 +251,7 @@ export default function Admin() {
       }
       load();
     }).catch(() => setLoading(false));
-  }, []);
+  }, [tenantId]);
 
   const handleRoleChange = async (userId, newRole) => {
     await base44.entities.User.update(userId, { role: newRole });
