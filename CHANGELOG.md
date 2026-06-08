@@ -4,6 +4,24 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.0.1] — 2026-06-08
+
+### Security
+
+- **[MEDIUM] Fixed missing tenant filter in Dashboard unread-messages query**: `Message.filter({ read: false })` lacked a `tenant_id` filter. Added `{ read: false, tenant_id: tenantId }` for defense-in-depth tenant isolation (entity-level RLS was already in place).
+- **[LOW] Fixed Admin users list exposed all platform users to owner role**: `User.list()` in `Admin.jsx` was called without a tenant scope. For the `admin` role the existing User RLS already restricted to same-tenant users; for the `owner` role it could return all platform users. Changed to `User.filter({ 'data.tenant_id': tenantId })` to scope the Admin page user list to the current tenant regardless of role.
+
+### Quality
+
+- **Updated SDK version in all Deno edge functions**: All five server-side functions (`generateAlerts`, `calculateCostPerKm`, `createTestData`, `githubRepos`, `supabaseData`) were pinned to `npm:@base44/sdk@0.8.25` while the project moved to `^0.8.31`. Updated all imports to `@0.8.31` to align server-side and client-side SDK versions.
+- ESLint passes with 0 errors.
+
+### Version
+
+- `package.json` version `1.0.0` → `1.0.1`.
+
+---
+
 ## [1.0.0] — 2026-06-02
 
 ### Security

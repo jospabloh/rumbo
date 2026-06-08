@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.0.0 | Updated 2026-06-02**
+**Version 1.0.1 | Updated 2026-06-08**
 
 ---
 
@@ -140,6 +140,14 @@ Admin has full view, create, edit, delete access to every module within their te
 | G2 | Page protection is client-side only (no server-side route guard) — a user with the URL could navigate directly | LOW | **Accepted — Base44 entity RLS provides data-level protection** |
 | G3 | `TenantLicense` read RLS allows any `admin` role to read all TenantLicenses — admins from Tenant A could see Tenant B's license metadata | LOW | **Accepted — required by TenantContext discovery logic; no sensitive operational data exposed** |
 | G4 | New users invited but not yet logged in lack `tenant_id` in their profile — they may not appear in tenant user lists immediately | LOW | **Accepted — resolves automatically on first login** |
+
+## Fixes Applied in v1.0.1
+
+| # | Fix | File | Severity |
+|---|-----|------|----------|
+| F1 | Dashboard `Message.filter` missing `tenant_id` — added explicit tenant filter for defense-in-depth | `src/pages/Dashboard.jsx` | MEDIUM |
+| F2 | `Admin.jsx` `User.list()` replaced with `User.filter({ 'data.tenant_id': tenantId })` — scopes users list to current tenant for all roles including owner | `src/pages/Admin.jsx` | LOW |
+| F3 | SDK version drift — updated all 5 Deno edge functions from `@base44/sdk@0.8.25` to `@0.8.31` | `base44/functions/*/entry.ts` | MEDIUM |
 
 ---
 

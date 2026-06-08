@@ -23,7 +23,7 @@ export default function Dashboard() {
       base44.entities.Vehicle.filter(q),
       base44.entities.Driver.filter(q),
       base44.entities.Alert.filter({ ...q, resolved: false }),
-      base44.entities.Message.filter({ read: false }),
+      base44.entities.Message.filter({ read: false, tenant_id: tenantId }),
       base44.entities.Trip.filter(q, '-started_at', 100),
       base44.entities.FuelLog.filter(q, '-logged_at', 50),
     ]).then(([v, d, a, m, t, f]) => {

@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.0.0 | Updated 2026-06-02**
+**Version 1.0.1 | Updated 2026-06-08**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -265,6 +265,8 @@ All data in Rumbo is strictly scoped to your tenant. Users in one organization c
 - Admin users can only access data within their own tenant.
 - The cost-per-km financial calculation requires at least Dispatcher-level access.
 - Document expiry alerts are generated only for your tenant's drivers and vehicles.
+- The Admin users list is scoped to your tenant, even for platform-level Owner accounts.
+- Unread message counts on the Dashboard are filtered to your tenant.
 
 ---
 
