@@ -28,7 +28,7 @@ export default function Drivers() {
     base44.entities.Driver.filter(query, '-created_date').then(setDrivers).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [tenantId]);
 
   const filtered = drivers.filter(d =>
     d.full_name?.toLowerCase().includes(search.toLowerCase()) ||

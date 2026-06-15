@@ -4,6 +4,24 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.0.2] — 2026-06-15
+
+### Security
+
+- **[LOW] Fixed Messages page: Channel.list() missing tenant_id filter**: `Channel.list()` had no tenant filter in `Messages.jsx`, inconsistent with the defense-in-depth approach applied to Dashboard (v1.0.1) and Layout (v1.0.0). Changed to `Channel.filter({ tenant_id: tenantId })`. Entity-level RLS was already enforcing isolation, but explicit client-side filtering was absent.
+- **[LOW] Fixed Messages page: Message.create() missing tenant_id**: Both text and voice message creation calls lacked an explicit `tenant_id` field. Added `tenant_id: tenantId` to both `Message.create()` calls for defense-in-depth. Entity RLS already scoped writes to the tenant.
+
+### Quality
+
+- **Fixed tenant reload reactivity in Financial, Drivers, Vehicles pages**: `useEffect` hooks in `Financial.jsx`, `Drivers.jsx`, and `Vehicles.jsx` did not list `tenantId` as a dependency, meaning data would not reload if the tenant context changed after initial render. Added `tenantId` to all three dependency arrays.
+- ESLint passes with 0 errors.
+
+### Version
+
+- `package.json` version `1.0.1` → `1.0.2`.
+
+---
+
 ## [1.0.1] — 2026-06-08
 
 ### Security
