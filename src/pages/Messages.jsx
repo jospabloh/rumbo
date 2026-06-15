@@ -4,8 +4,10 @@ import { Send, Mic, MicOff, Plus, Hash, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import NewChannelForm from '@/components/messages/NewChannelForm';
+import { useTenant } from '@/lib/TenantContext';
 
 export default function Messages() {
+  const { tenantId } = useTenant();
   const [channels, setChannels] = useState([]);
   const [messages, setMessages] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
@@ -22,12 +24,13 @@ export default function Messages() {
   useEffect(() => {
     base44.auth.me().then(u => {
       setUser(u);
-      base44.entities.Channel.list().then(c => {
+      const q = tenantId ? { tenant_id: tenantId } : {};
+      base44.entities.Channel.filter(q).then(c => {
         setChannels(c);
         if (c.length > 0) setSelectedChannel(c[0]);
       }).finally(() => setLoading(false));
     });
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => {
     if (!selectedChannel) return;
@@ -75,6 +78,7 @@ export default function Messages() {
       body: newMessage.trim(),
       delivered: false,
       read: false,
+      tenant_id: tenantId,
     });
     setNewMessage('');
     setSending(false);
@@ -98,6 +102,7 @@ export default function Messages() {
         audio_url: file_url,
         delivered: false,
         read: false,
+        tenant_id: tenantId,
       });
     };
     mr.start();

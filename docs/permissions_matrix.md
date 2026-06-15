@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.0.1 | Updated 2026-06-08**
+**Version 1.0.2 | Updated 2026-06-15**
 
 ---
 
@@ -140,6 +140,14 @@ Admin has full view, create, edit, delete access to every module within their te
 | G2 | Page protection is client-side only (no server-side route guard) — a user with the URL could navigate directly | LOW | **Accepted — Base44 entity RLS provides data-level protection** |
 | G3 | `TenantLicense` read RLS allows any `admin` role to read all TenantLicenses — admins from Tenant A could see Tenant B's license metadata | LOW | **Accepted — required by TenantContext discovery logic; no sensitive operational data exposed** |
 | G4 | New users invited but not yet logged in lack `tenant_id` in their profile — they may not appear in tenant user lists immediately | LOW | **Accepted — resolves automatically on first login** |
+
+## Fixes Applied in v1.0.2
+
+| # | Fix | File | Severity |
+|---|-----|------|----------|
+| F4 | `Messages.jsx` `Channel.list()` replaced with `Channel.filter({ tenant_id: tenantId })` — adds explicit defense-in-depth tenant filter for channel list | `src/pages/Messages.jsx` | LOW |
+| F5 | `Messages.jsx` `Message.create()` missing `tenant_id` — added explicit tenant_id to both text and voice message creation for defense-in-depth | `src/pages/Messages.jsx` | LOW |
+| F6 | `Financial.jsx`, `Drivers.jsx`, `Vehicles.jsx` `useEffect` missing `tenantId` dependency — data now reloads when tenant context changes | `src/pages/Financial.jsx`, `Drivers.jsx`, `Vehicles.jsx` | LOW |
 
 ## Fixes Applied in v1.0.1
 

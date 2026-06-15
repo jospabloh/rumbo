@@ -39,7 +39,7 @@ export default function Financial() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [tenantId]);
 
   const totalFuel = fuelLogs.reduce((s, l) => s + (l.total_cost || 0), 0);
   const totalFines = fines.reduce((s, f) => s + (f.amount || 0), 0);

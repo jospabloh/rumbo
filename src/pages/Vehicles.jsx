@@ -32,7 +32,7 @@ export default function Vehicles() {
     ]).then(([v, d]) => { setVehicles(v); setDrivers(d); }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [tenantId]);
 
   const filtered = vehicles.filter(v =>
     v.plate?.toLowerCase().includes(search.toLowerCase()) ||
