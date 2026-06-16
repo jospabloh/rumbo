@@ -110,6 +110,14 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
         status: 'active',
         owner_email: user.email,
       });
+      // Asociar el tenant recién creado al perfil del usuario de inmediato, para que
+      // las reglas RLS (data.tenant_id == user.data.tenant_id) permitan crear registros
+      // sin depender del refresco posterior en TenantContext.
+      try {
+        await base44.auth.updateMe({ tenant_id: tenant.id });
+      } catch (e) {
+        console.error('No se pudo asociar el tenant al usuario tras el onboarding:', e);
+      }
       // Apply colors to CSS vars
       if (colors.primary) applyTenantColors(colors);
       setStep(3);

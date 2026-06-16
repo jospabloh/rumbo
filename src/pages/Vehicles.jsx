@@ -44,6 +44,7 @@ export default function Vehicles() {
     if (editVehicle) {
       await base44.entities.Vehicle.update(editVehicle.id, data);
     } else {
+      if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
       await base44.entities.Vehicle.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);

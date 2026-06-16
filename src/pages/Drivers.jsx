@@ -39,6 +39,7 @@ export default function Drivers() {
     if (editDriver) {
       await base44.entities.Driver.update(editDriver.id, data);
     } else {
+      if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
       await base44.entities.Driver.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);

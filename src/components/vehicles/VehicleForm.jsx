@@ -21,19 +21,26 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
     odometer: vehicle?.odometer || 0,
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await onSave({
-      ...form,
-      year: form.year ? parseInt(form.year) : null,
-      odometer: form.odometer ? parseInt(form.odometer) : 0,
-      assigned_driver_id: form.assigned_driver_id || null,
-    });
-    setSaving(false);
+    setError('');
+    try {
+      await onSave({
+        ...form,
+        year: form.year ? parseInt(form.year) : null,
+        odometer: form.odometer ? parseInt(form.odometer) : 0,
+        assigned_driver_id: form.assigned_driver_id || null,
+      });
+      // onSave cierra el formulario al tener éxito; no reseteamos saving aquí.
+    } catch (err) {
+      setError(err?.message || 'No se pudo guardar el vehículo. Revisa tu conexión e inténtalo de nuevo.');
+      setSaving(false);
+    }
   };
 
   return (
@@ -108,6 +115,9 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
               <Input type="date" value={form.registration_expiry} onChange={e => set('registration_expiry', e.target.value)} className="mt-1 bg-background" />
             </div>
           </div>
+          {error && (
+            <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+          )}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button type="submit" disabled={saving} className="flex-1">{saving ? 'Guardando...' : vehicle ? 'Guardar' : 'Crear vehículo'}</Button>

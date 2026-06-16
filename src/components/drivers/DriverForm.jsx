@@ -22,6 +22,7 @@ export default function DriverForm({ driver, onSave, onClose }) {
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
 
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
@@ -38,8 +39,14 @@ export default function DriverForm({ driver, onSave, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await onSave({ ...form, rating: form.rating ? parseFloat(form.rating) : null });
-    setSaving(false);
+    setError('');
+    try {
+      await onSave({ ...form, rating: form.rating ? parseFloat(form.rating) : null });
+      // onSave cierra el formulario al tener éxito; no reseteamos saving aquí.
+    } catch (err) {
+      setError(err?.message || 'No se pudo guardar el conductor. Revisa tu conexión e inténtalo de nuevo.');
+      setSaving(false);
+    }
   };
 
   return (
@@ -104,6 +111,9 @@ export default function DriverForm({ driver, onSave, onClose }) {
               </label>
             </div>
           </div>
+          {error && (
+            <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+          )}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button type="submit" disabled={saving || uploading} className="flex-1">

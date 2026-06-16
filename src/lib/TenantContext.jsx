@@ -47,13 +47,21 @@ export function TenantProvider({ children }) {
         }
       }
 
+      // Persist tenant_id on the user profile BEFORE exposing the tenant to the app.
+      // Every entity's RLS checks {{user.data.tenant_id}}, so creates/updates are
+      // rejected (403) until this is saved server-side. This MUST be awaited: otherwise
+      // a freshly-onboarded user can open a form and hit "Guardar" before their profile
+      // has the tenant_id, and the save fails silently.
+      if (found?.id && user.data?.tenant_id !== found.id) {
+        try {
+          await base44.auth.updateMe({ tenant_id: found.id });
+        } catch (e) {
+          console.error('No se pudo asociar el tenant al usuario:', e);
+        }
+      }
+
       setTenant(found);
       setTenantId(found?.id || null);
-
-      // Persist tenant_id on user profile so RLS filters work correctly
-      if (found?.id && user.data?.tenant_id !== found.id) {
-        base44.auth.updateMe({ tenant_id: found.id }).catch(() => {});
-      }
     } catch (e) {
       console.error('TenantContext error:', e);
     } finally {
