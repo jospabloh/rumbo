@@ -4,6 +4,24 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.10.0] — 2026-06-16
+
+### Added — Enlaces útiles (per-tenant external links)
+
+- **New `UsefulLink` entity** (tenant-scoped): `label`, `url`, `description`, `active`,
+  `sort_order`. Owner/admin manage; the whole tenant reads.
+- **New "Enlaces útiles" page** (`/links`) in the main nav: each tenant's admin adds links
+  to the external systems they use (e.g. their GPS, the fines portal), and any tenant user
+  opens them in a new tab from inside the app. URLs are auto-normalized to `https://`.
+  This replaces the idea of integrating those external apps — they stay separate, just
+  linked. Read-only license hides the management controls.
+
+### Version
+
+- `package.json` version `1.9.1` → `1.10.0`.
+
+---
+
 ## [1.9.1] — 2026-06-16
 
 ### Fixed

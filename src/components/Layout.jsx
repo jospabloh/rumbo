@@ -6,7 +6,7 @@ import { applyTenantColors } from '@/pages/TenantOnboarding';
 import {
   LayoutDashboard, Users, Truck, Wrench, DollarSign,
   MapPin, MessageSquare, Bell, LogOut, Menu, X,
-  FileText, CreditCard, Shield, Banknote, List
+  FileText, CreditCard, Shield, Banknote, List, Link2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
@@ -61,6 +61,7 @@ const NAV_GROUPS = [
       { path: '/alerts',  icon: Bell,            label: 'Alertas',       page: 'alerts' },
       { path: '/messages',icon: MessageSquare,   label: 'Mensajes',      page: 'messages' },
       { path: '/location',icon: MapPin,          label: 'Ubicación',     page: 'location' },
+      { path: '/links',   icon: Link2,           label: 'Enlaces útiles',page: 'links' },
     ],
   },
   {
