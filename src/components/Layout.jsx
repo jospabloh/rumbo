@@ -10,6 +10,34 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
+import { SUPPORT_URL } from '@/lib/license';
+
+function LicenseBanner({ info }) {
+  if (!info || !info.message || info.state === 'disabled') return null;
+  const styles = {
+    active: 'bg-warning/10 text-warning border-warning/30',
+    past_due: 'bg-warning/10 text-warning border-warning/30',
+    readonly: 'bg-destructive/10 text-destructive border-destructive/30',
+  };
+  return (
+    <div className={`flex items-center gap-2 px-4 py-2 text-sm border-b ${styles[info.state] || styles.active}`}>
+      <Bell className="w-4 h-4 shrink-0" />
+      <span className="flex-1">{info.message}</span>
+      <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="underline shrink-0 text-xs">Renovar</a>
+    </div>
+  );
+}
+
+function LicenseDisabled({ info }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-6">
+      <Shield className="w-14 h-14 text-destructive opacity-60" />
+      <h2 className="text-lg font-bold">Acceso desactivado</h2>
+      <p className="text-sm text-muted-foreground max-w-sm">{info?.message || 'Tu acceso fue desactivado.'}</p>
+      <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Contactar a soporte</a>
+    </div>
+  );
+}
 
 const LogoMark = ({ logoUrl, size = 'md' }) => {
   const [imgError, setImgError] = useState(false);
@@ -85,7 +113,7 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
 
 export default function Layout() {
   const location = useLocation();
-  const { tenant, tenantId } = useTenant();
+  const { tenant, tenantId, licenseInfo } = useTenant();
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -247,7 +275,8 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <LicenseBanner info={licenseInfo} />
+          {licenseInfo?.state === 'disabled' ? <LicenseDisabled info={licenseInfo} /> : <Outlet />}
         </main>
 
         {/* Mobile bottom nav — driver only */}

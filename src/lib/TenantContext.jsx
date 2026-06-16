@@ -9,6 +9,7 @@
  */
 import { createContext, useContext, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { getLicenseInfo, isReadOnly } from '@/lib/license';
 
 const TenantContext = createContext(null);
 
@@ -71,8 +72,11 @@ export function TenantProvider({ children }) {
 
   useEffect(() => { loadTenant(); }, []);
 
+  const licenseInfo = getLicenseInfo(tenant);
+  const readOnly = isReadOnly(licenseInfo);
+
   return (
-    <TenantContext.Provider value={{ tenant, tenantId, loading, reload: loadTenant, setTenant }}>
+    <TenantContext.Provider value={{ tenant, tenantId, loading, reload: loadTenant, setTenant, licenseInfo, readOnly }}>
       {children}
     </TenantContext.Provider>
   );

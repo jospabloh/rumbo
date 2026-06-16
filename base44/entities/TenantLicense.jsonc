@@ -74,6 +74,25 @@
       "format": "date",
       "title": "Fin del periodo de prueba"
     },
+    "current_period_end": {
+      "type": "string",
+      "format": "date",
+      "title": "Fin del periodo pagado"
+    },
+    "billing_cycle": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "annual"
+      ],
+      "title": "Ciclo de cobro",
+      "default": "monthly"
+    },
+    "last_payment_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Último pago confirmado"
+    },
     "renews_at": {
       "type": "string",
       "format": "date",

@@ -4,6 +4,32 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.6.0] — 2026-06-16
+
+### Added — license lifecycle (iteration 1: client-facing gating)
+
+- **License state machine** (`src/lib/license.js`): from `current_period_end` (or trial),
+  computes `active → past_due (1–7 días vencidos) → readonly (8–15) → disabled (16+)`.
+  `status: suspended|cancelled` forces immediate disable (owner override).
+- **Free first month**: onboarding sets `current_period_end = hoy + 1 mes`.
+- **Tenant banner** for upcoming/overdue payment, **read-only flag** exposed via
+  `TenantContext`, and a full **"Acceso desactivado / Contacta a soporte"** screen at day 16.
+- New `TenantLicense` fields: `current_period_end`, `billing_cycle`, `last_payment_at`.
+
+### Pending (next iterations)
+
+- SuperAdmin "Licencias" panel for the app owner (confirm payment / renew across tenants).
+- Mercado Pago auto-billing integration.
+- Per-form write-blocking while read-only.
+- Configurable catalogs (no hardcoded dropdowns).
+- Server-side enforcement of the granular PermissionsPanel.
+
+### Version
+
+- `package.json` version `1.5.0` → `1.6.0`.
+
+---
+
 ## [1.5.0] — 2026-06-16
 
 ### Added — robust, server-side tenant assignment
