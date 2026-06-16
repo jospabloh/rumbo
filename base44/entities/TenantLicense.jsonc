@@ -132,9 +132,7 @@
           "data.owner_email": "{{user.email}}"
         },
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.members.email": "{{user.email}}"
         }
       ]
     },
@@ -147,14 +145,21 @@
           "data.owner_email": "{{user.email}}"
         },
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin"
-              ]
+          "$and": [
+            {
+              "data.members.email": "{{user.email}}"
+            },
+            {
+              "user_condition": {
+                "role": {
+                  "$in": [
+                    "owner",
+                    "admin"
+                  ]
+                }
+              }
             }
-          }
+          ]
         }
       ]
     },

@@ -26,11 +26,6 @@
         },
         {
           "data.tenant_id": "{{user.data.tenant_id}}"
-        },
-        {
-          "user_condition": {
-            "role": "owner"
-          }
         }
       ]
     },
@@ -46,15 +41,15 @@
             },
             {
               "user_condition": {
-                "role": "admin"
+                "role": {
+                  "$in": [
+                    "owner",
+                    "admin"
+                  ]
+                }
               }
             }
           ]
-        },
-        {
-          "user_condition": {
-            "role": "owner"
-          }
         }
       ]
     }

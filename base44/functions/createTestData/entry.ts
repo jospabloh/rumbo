@@ -5,20 +5,19 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
-      return Response.json({ error: 'Unauthorized: Admin or Owner access required' }, { status: 403 });
+    if (!user || user.role !== 'owner') {
+      return Response.json({ error: 'Unauthorized: Owner access required' }, { status: 403 });
     }
 
     const svc = base44.asServiceRole;
 
-    // Buscar el tenant del usuario
+    // Buscar el tenant del usuario (solo del propio owner; nunca el de otro tenant)
     let tenantId = user.data?.tenant_id;
 
     if (!tenantId) {
       const tenants = await svc.entities.TenantLicense.list('-created_date', 50);
       const found = tenants.find(t => t.created_by_id === user.id)
-        || tenants.find(t => t.owner_email === user.email)
-        || tenants[0];
+        || tenants.find(t => t.owner_email === user.email);
       tenantId = found?.id;
     }
 

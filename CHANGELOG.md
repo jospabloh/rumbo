@@ -4,6 +4,37 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.4.0] — 2026-06-16
+
+### Security — multi-tenant isolation hardening (before first real tenant onboards)
+
+- **[HIGH] `TenantLicense` cross-tenant read fixed.** Any `admin` could previously read
+  **every** tenant's license (incl. `members[]` emails/names, `owner_email`, `notes`).
+  Read is now scoped to tenants you created (`created_by_id`), own (`owner_email`), or
+  are a member of (`members.email`). Removed the blanket `role: admin reads all` rule.
+- **[HIGH] `TenantLicense` cross-tenant write fixed.** Any `admin`/`owner` could previously
+  **update any** tenant's license (suspend it, change its plan, raise its own limits).
+  Update now requires you to belong to that tenant (creator / owner_email / member with
+  owner|admin role).
+- **[HIGH] `User` cross-tenant access fixed.** Removed the global `role: owner` branches
+  that let a tenant owner read/update **all** platform users. User read/update are now
+  scoped to the same `tenant_id` (own record always allowed).
+- **Invited users are now bound to their tenant.** Inviting a user records them in the
+  tenant's `members[]`, which is what ties them to the tenant (drives the `members.email`
+  RLS and reliable tenant discovery on first login — previously discovery fell back to
+  "first tenant", which is wrong under multi-tenancy).
+- **Dev/integration functions locked to `owner`.** `supabaseData`, `githubRepos`, and
+  `createTestData` were callable by any `admin` of any tenant (service-role access to the
+  connected Supabase/GitHub, or test-data writes). Now owner-only. The GitHub/Supabase
+  pages are owner-only too. `createTestData` no longer falls back to another tenant when
+  the caller has no tenant.
+
+### Version
+
+- `package.json` version `1.3.0` → `1.4.0`.
+
+---
+
 ## [1.3.0] — 2026-06-16
 
 ### Added
