@@ -22,41 +22,41 @@ export function TenantProvider({ children }) {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
 
-      // Drivers usan el tenant del driver vinculado
-      // Admins/owners usan el tenant que crearon (created_by_id)
-      const all = await base44.entities.TenantLicense.list('-created_date', 50);
-
-      let found = null;
-
-      if (user.role === 'owner' || user.role === 'admin') {
-        // Primero por tenant_id guardado en el perfil del usuario
-        // Luego por creador, por owner_email, por miembro en members[], o primer tenant
-        found = (user.data?.tenant_id && all.find(t => t.id === user.data.tenant_id))
-          || all.find(t => t.created_by_id === user.id)
-          || all.find(t => t.owner_email === user.email)
-          || all.find(t => Array.isArray(t.members) && t.members.some(m => m.email === user.email))
-          || all[0]; // fallback: primer tenant
-      } else {
-        // Para dispatcher, mechanic, driver: buscar el tenant al que pertenecen
-        // Se detecta por: hay algún Driver con profile_id === user.id → obtener su tenant_id
-        const drivers = await base44.entities.Driver.filter({ profile_id: user.id });
-        if (drivers.length > 0 && drivers[0].tenant_id) {
-          found = all.find(t => t.id === drivers[0].tenant_id) || null;
-        } else {
-          found = all[0] || null;
-        }
+      // Fuente de verdad: la función de servidor resuelve y persiste el tenant_id
+      // (y el rol del invitado en su primer login) con service role. Robusto y escalable.
+      let resolvedId = null;
+      try {
+        const res = await base44.functions.invoke('resolveTenant', {});
+        resolvedId = res?.data?.tenant_id || null;
+      } catch (e) {
+        console.error('resolveTenant falló, usando descubrimiento cliente:', e);
       }
 
-      // Persist tenant_id on the user profile BEFORE exposing the tenant to the app.
-      // Every entity's RLS checks {{user.data.tenant_id}}, so creates/updates are
-      // rejected (403) until this is saved server-side. This MUST be awaited: otherwise
-      // a freshly-onboarded user can open a form and hit "Guardar" before their profile
-      // has the tenant_id, and the save fails silently.
-      if (found?.id && user.data?.tenant_id !== found.id) {
-        try {
-          await base44.auth.updateMe({ tenant_id: found.id });
-        } catch (e) {
-          console.error('No se pudo asociar el tenant al usuario:', e);
+      // La licencia completa (branding, plan, etc.) se lee del cliente; la RLS ya lo
+      // permite porque el usuario pertenece al tenant.
+      const all = await base44.entities.TenantLicense.list('-created_date', 50).catch(() => []);
+      const email = (user.email || '').toLowerCase();
+
+      let found = resolvedId ? all.find(t => t.id === resolvedId) || null : null;
+
+      // Respaldo: si la función no resolvió, descubrir en cliente (sin caer a all[0],
+      // que en multi-tenant asignaría al tenant equivocado).
+      if (!found) {
+        if (user.role === 'owner' || user.role === 'admin') {
+          found = (user.data?.tenant_id && all.find(t => t.id === user.data.tenant_id))
+            || all.find(t => t.created_by_id === user.id)
+            || all.find(t => (t.owner_email || '').toLowerCase() === email)
+            || all.find(t => Array.isArray(t.members) && t.members.some(m => (m.email || '').toLowerCase() === email))
+            || null;
+        } else {
+          const drivers = await base44.entities.Driver.filter({ profile_id: user.id }).catch(() => []);
+          if (drivers.length > 0 && drivers[0].tenant_id) {
+            found = all.find(t => t.id === drivers[0].tenant_id) || null;
+          }
+        }
+        // Si encontramos por respaldo y aún no está en el perfil, persistir.
+        if (found?.id && user.data?.tenant_id !== found.id) {
+          try { await base44.auth.updateMe({ tenant_id: found.id }); } catch (e) { /* ignore */ }
         }
       }
 

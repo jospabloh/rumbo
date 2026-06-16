@@ -4,6 +4,25 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.5.0] — 2026-06-16
+
+### Added — robust, server-side tenant assignment
+
+- **New `resolveTenant` edge function.** Single source of truth for binding a user to
+  their tenant. Runs with service role (no client-RLS chicken-and-egg): resolves the tenant
+  by `created_by` → `owner_email` → `members[]`, persists `tenant_id` on the profile, and
+  on an invited user's **first** login applies the role recorded in `members[]` (later role
+  changes stay with the tenant admin). Scales to many tenants.
+- **`TenantContext` now calls `resolveTenant`** as the primary path, with client-side
+  discovery only as a fallback. Removed the unsafe `all[0]` fallback that, under
+  multi-tenancy, could bind a user to the wrong tenant.
+
+### Version
+
+- `package.json` version `1.4.0` → `1.5.0`.
+
+---
+
 ## [1.4.0] — 2026-06-16
 
 ### Security — multi-tenant isolation hardening (before first real tenant onboards)
