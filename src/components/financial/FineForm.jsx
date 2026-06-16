@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/lib/imageUtils';
+import { useCatalog } from '@/lib/catalogs';
 
 export default function FineForm({ vehicles, drivers, onSave, onClose }) {
+  const fineTypes = useCatalog('fine_type');
   const [form, setForm] = useState({ driver_id: '', vehicle_id: '', fine_type: '', amount: '', points: 0, issued_at: '', paid: false, photo_url: '' });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -55,7 +57,10 @@ export default function FineForm({ vehicles, drivers, onSave, onClose }) {
           </div>
           <div>
             <Label>Tipo de infracción</Label>
-            <Input value={form.fine_type} onChange={e => set('fine_type', e.target.value)} className="mt-1 bg-background" />
+            <Select value={form.fine_type} onValueChange={v => set('fine_type', v)}>
+              <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+              <SelectContent>{fineTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

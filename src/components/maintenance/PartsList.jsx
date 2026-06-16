@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useTenant } from '@/lib/TenantContext';
 
 export default function PartsList({ vehicles }) {
-  const { tenantId } = useTenant();
+  const { tenantId, readOnly } = useTenant();
   const [parts, setParts] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', brand: '', sku: '', unit_number: '', stock: 0, unit_cost: '', vehicle_id: '' });
@@ -49,9 +49,11 @@ export default function PartsList({ vehicles }) {
 
   return (
     <div>
-      <div className="flex justify-end mb-3">
-        <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" />Agregar repuesto</Button>
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end mb-3">
+          <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" />Agregar repuesto</Button>
+        </div>
+      )}
 
       <div className="space-y-2">
         {parts.map(p => {

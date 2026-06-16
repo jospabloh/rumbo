@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTenant } from '@/lib/TenantContext';
+import { useCatalog } from '@/lib/catalogs';
 
 const todayStr = () => format(new Date(), 'yyyy-MM-dd');
 
@@ -44,7 +45,8 @@ const statusMeta = {
 };
 
 export default function Rentas() {
-  const { tenantId } = useTenant();
+  const { tenantId, readOnly } = useTenant();
+  const paymentMethods = useCatalog('payment_method');
   const [charges, setCharges] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -144,7 +146,7 @@ export default function Rentas() {
 
   const openPay = (c) => {
     setPayCharge(c);
-    setPayForm({ amount: String(Math.max((c.amount_due || 0) - (c.amount_paid || 0), 0)), method: 'efectivo', note: '' });
+    setPayForm({ amount: String(Math.max((c.amount_due || 0) - (c.amount_paid || 0), 0)), method: paymentMethods[0] || 'Efectivo', note: '' });
     setPayError('');
   };
 
@@ -183,7 +185,7 @@ export default function Rentas() {
           <h1 className="text-xl font-bold">Rentas</h1>
           <p className="text-sm text-muted-foreground">Cobros por unidad · quién pagó y quién debe</p>
         </div>
-        {view === 'cobros' && (
+        {view === 'cobros' && !readOnly && (
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowCharge(true)} className="gap-2"><Plus className="w-4 h-4" />Cobro manual</Button>
             <Button size="sm" onClick={generatePeriodCharges} disabled={generating} className="gap-2">
@@ -276,7 +278,7 @@ export default function Rentas() {
                   <p className="text-xs text-muted-foreground">{d?.full_name || '—'} · {c.period_type === 'daily' ? 'Día' : 'Semana'} {c.period_start}{c.period_end && c.period_end !== c.period_start ? ` → ${c.period_end}` : ''}</p>
                   <p className="text-xs text-muted-foreground">Pagado ${Number(c.amount_paid || 0).toLocaleString()} de ${Number(c.amount_due || 0).toLocaleString()}{remaining > 0 ? ` · debe $${remaining.toLocaleString()}` : ''}</p>
                 </div>
-                {st !== 'paid' && (
+                {st !== 'paid' && !readOnly && (
                   <Button size="sm" variant="outline" onClick={() => openPay(c)} className="gap-1 shrink-0"><Check className="w-3.5 h-3.5" />Pago</Button>
                 )}
               </div>
@@ -310,10 +312,7 @@ export default function Rentas() {
                 <Select value={payForm.method} onValueChange={v => setPayForm(f => ({ ...f, method: v }))}>
                   <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="efectivo">Efectivo</SelectItem>
-                    <SelectItem value="transferencia">Transferencia</SelectItem>
-                    <SelectItem value="deposito">Depósito</SelectItem>
-                    <SelectItem value="otro">Otro</SelectItem>
+                    {paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

@@ -14,7 +14,7 @@ const tabs = [
 ];
 
 export default function Financial() {
-  const { tenantId } = useTenant();
+  const { tenantId, readOnly } = useTenant();
   const [tab, setTab] = useState('fines');
   const [fines, setFines] = useState([]);
   const [claims, setClaims] = useState([]);
@@ -47,7 +47,7 @@ export default function Financial() {
           <h1 className="text-xl font-bold">Financiero</h1>
           <p className="text-sm text-muted-foreground">Multas · Seguros · Costo/km</p>
         </div>
-        {tab !== 'costs' && (
+        {tab !== 'costs' && !readOnly && (
           <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" />Registrar</Button>
         )}
       </div>

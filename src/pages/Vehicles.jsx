@@ -15,7 +15,7 @@ const statusColor = {
 };
 
 export default function Vehicles() {
-  const { tenantId } = useTenant();
+  const { tenantId, readOnly } = useTenant();
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +41,7 @@ export default function Vehicles() {
   );
 
   const handleSave = async (data) => {
+    if (readOnly) throw new Error('Licencia en modo solo lectura: renueva tu pago para hacer cambios.');
     if (editVehicle) {
       await base44.entities.Vehicle.update(editVehicle.id, data);
     } else {
@@ -80,9 +81,11 @@ export default function Vehicles() {
           <h1 className="text-xl font-bold">Vehículos</h1>
           <p className="text-sm text-muted-foreground">{vehicles.length} en total</p>
         </div>
-        <Button size="sm" onClick={() => { setEditVehicle(null); setShowForm(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> Agregar
-        </Button>
+        {!readOnly && (
+          <Button size="sm" onClick={() => { setEditVehicle(null); setShowForm(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> Agregar
+          </Button>
+        )}
       </div>
 
       <div className="relative mb-4">

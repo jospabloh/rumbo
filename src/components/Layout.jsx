@@ -6,7 +6,7 @@ import { applyTenantColors } from '@/pages/TenantOnboarding';
 import {
   LayoutDashboard, Users, Truck, Wrench, DollarSign,
   MapPin, MessageSquare, Bell, LogOut, Menu, X,
-  FileText, CreditCard, Shield, Banknote
+  FileText, CreditCard, Shield, Banknote, List
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
@@ -78,6 +78,7 @@ const NAV_GROUPS = [
       { path: '/financial', icon: DollarSign, label: 'Financiero', page: 'financial' },
       { path: '/import',    icon: FileText,   label: 'Importar',   page: 'import' },
       { path: '/billing',   icon: CreditCard, label: 'Licencia',   page: 'billing' },
+      { path: '/catalogs',  icon: List,       label: 'Catálogos',  page: 'catalogs' },
       { path: '/admin',     icon: Shield,     label: 'Admin',      page: 'admin' },
     ],
   },

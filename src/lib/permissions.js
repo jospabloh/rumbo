@@ -33,6 +33,7 @@ const PAGE_PERMISSIONS = {
   github:      [ROLES.OWNER],
   supabase:    [ROLES.OWNER],
   billing:     [ROLES.OWNER, ROLES.ADMIN],
+  catalogs:    [ROLES.OWNER, ROLES.ADMIN],
   admin:       [ROLES.OWNER, ROLES.ADMIN],
 };
 

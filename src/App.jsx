@@ -27,6 +27,7 @@ import SupabasePage from './pages/SupabasePage';
 import Billing from './pages/Billing';
 import Admin from './pages/Admin';
 import Licenses from './pages/Licenses';
+import Catalogs from './pages/Catalogs';
 import TestData from './pages/TestData';
 // Add page imports here
 
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
         <Route path="/supabase" element={<SupabasePage />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/catalogs" element={<Catalogs />} />
         <Route path="/licenses" element={<Licenses />} />
         <Route path="/test-data" element={<TestData />} />
       </Route>

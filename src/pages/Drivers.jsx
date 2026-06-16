@@ -15,7 +15,7 @@ const statusColor = {
 };
 
 export default function Drivers() {
-  const { tenantId } = useTenant();
+  const { tenantId, readOnly } = useTenant();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -36,6 +36,7 @@ export default function Drivers() {
   );
 
   const handleSave = async (data) => {
+    if (readOnly) throw new Error('Licencia en modo solo lectura: renueva tu pago para hacer cambios.');
     if (editDriver) {
       await base44.entities.Driver.update(editDriver.id, data);
     } else {
@@ -72,9 +73,11 @@ export default function Drivers() {
           <h1 className="text-xl font-bold">Conductores</h1>
           <p className="text-sm text-muted-foreground">{drivers.length} en total</p>
         </div>
-        <Button size="sm" onClick={() => { setEditDriver(null); setShowForm(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> Agregar
-        </Button>
+        {!readOnly && (
+          <Button size="sm" onClick={() => { setEditDriver(null); setShowForm(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> Agregar
+          </Button>
+        )}
       </div>
 
       <div className="relative mb-4">
