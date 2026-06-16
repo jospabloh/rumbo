@@ -25,7 +25,21 @@
           "id": "{{user.id}}"
         },
         {
-          "data.tenant_id": "{{user.data.tenant_id}}"
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": {
+                  "$in": [
+                    "owner",
+                    "admin"
+                  ]
+                }
+              }
+            }
+          ]
         }
       ]
     },
