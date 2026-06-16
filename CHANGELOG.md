@@ -4,6 +4,22 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.9.1] — 2026-06-16
+
+### Fixed
+
+- **CSV Import created records without `tenant_id`** (same bug class as the original save
+  bug) — imported drivers/vehicles would be rejected/orphaned by RLS. Now stamps
+  `tenant_id`, supports `no_unidad` (unit number) for vehicles, removes the obsolete
+  `vencimiento_medico` column, guards against read-only license / missing tenant, and
+  reports partial failures instead of failing silently.
+
+### Version
+
+- `package.json` version `1.9.0` → `1.9.1`.
+
+---
+
 ## [1.9.0] — 2026-06-16
 
 ### Added — granular permissions now enforced in the UI

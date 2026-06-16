@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Upload, Download, CheckCircle2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTenant } from '@/lib/TenantContext';
 
-const DRIVER_COLUMNS = ['nombre', 'licencia', 'vencimiento_licencia', 'vencimiento_medico', 'telefono', 'fecha_contratacion'];
-const VEHICLE_COLUMNS = ['placa', 'marca', 'modelo', 'año', 'vin', 'conductor_asignado'];
+const DRIVER_COLUMNS = ['nombre', 'licencia', 'vencimiento_licencia', 'telefono', 'fecha_contratacion'];
+const VEHICLE_COLUMNS = ['no_unidad', 'placa', 'marca', 'modelo', 'año', 'vin', 'conductor_asignado'];
 
 function parseCSV(text) {
   const lines = text.trim().split('\n');
@@ -31,11 +32,13 @@ function downloadCSV(columns, filename) {
 }
 
 export default function Import() {
+  const { tenantId, readOnly } = useTenant();
   const [importType, setImportType] = useState('drivers');
   const [preview, setPreview] = useState(null);
   const [errors, setErrors] = useState([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
+  const [importError, setImportError] = useState('');
 
   const handleFile = (e) => {
     const file = e.target.files[0];
@@ -60,33 +63,44 @@ export default function Import() {
 
   const handleImport = async () => {
     if (!preview || errors.length > 0) return;
+    if (readOnly) { setImportError('Licencia en modo solo lectura: renueva tu pago para importar.'); return; }
+    if (!tenantId) { setImportError('Tu organización aún se está configurando. Espera unos segundos e inténtalo de nuevo.'); return; }
     setImporting(true);
+    setImportError('');
     let count = 0;
-    for (const row of preview) {
-      if (importType === 'drivers') {
-        await base44.entities.Driver.create({
-          full_name: row['nombre'],
-          license_no: row['licencia'],
-          license_expiry: row['vencimiento_licencia'] || null,
-          phone: row['telefono'] || null,
-          hire_date: row['fecha_contratacion'] || null,
-          status: 'active',
-        });
-      } else {
-        await base44.entities.Vehicle.create({
-          plate: row['placa']?.toUpperCase(),
-          make: row['marca'],
-          model: row['modelo'],
-          year: row['año'] ? parseInt(row['año']) : null,
-          vin: row['vin'],
-          status: 'active',
-        });
+    try {
+      for (const row of preview) {
+        if (importType === 'drivers') {
+          await base44.entities.Driver.create({
+            tenant_id: tenantId,
+            full_name: row['nombre'],
+            license_no: row['licencia'],
+            license_expiry: row['vencimiento_licencia'] || null,
+            phone: row['telefono'] || null,
+            hire_date: row['fecha_contratacion'] || null,
+            status: 'active',
+          });
+        } else {
+          await base44.entities.Vehicle.create({
+            tenant_id: tenantId,
+            unit_number: row['no_unidad'] || null,
+            plate: row['placa']?.toUpperCase() || null,
+            make: row['marca'],
+            model: row['modelo'],
+            year: row['año'] ? parseInt(row['año']) : null,
+            vin: row['vin'],
+            status: 'active',
+          });
+        }
+        count++;
       }
-      count++;
+      setResult({ count });
+      setPreview(null);
+    } catch (e) {
+      setImportError(`Se importaron ${count} de ${preview.length}. ${e?.message || 'Ocurrió un error; revisa los datos e inténtalo de nuevo.'}`);
+    } finally {
+      setImporting(false);
     }
-    setResult({ count });
-    setPreview(null);
-    setImporting(false);
   };
 
   return (
@@ -168,8 +182,9 @@ export default function Import() {
             </div>
           )}
           <div className="px-4 py-3 border-t border-border">
-            <Button onClick={handleImport} disabled={importing || errors.length > 0} className="w-full">
-              {importing ? 'Importando...' : `Confirmar importación de ${preview.length} registros`}
+            {importError && <p className="text-xs text-destructive mb-2">{importError}</p>}
+            <Button onClick={handleImport} disabled={importing || errors.length > 0 || readOnly} className="w-full">
+              {importing ? 'Importando...' : readOnly ? 'Solo lectura' : `Confirmar importación de ${preview.length} registros`}
             </Button>
           </div>
         </div>
