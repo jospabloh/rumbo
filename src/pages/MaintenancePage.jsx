@@ -8,7 +8,7 @@ import PartsList from '@/components/maintenance/PartsList';
 import { useTenant } from '@/lib/TenantContext';
 
 export default function MaintenancePage({ defaultTab = 'maintenance' }) {
-  const { tenantId } = useTenant();
+  const { tenantId, readOnly } = useTenant();
   const [records, setRecords] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
           <h1 className="text-xl font-bold">Mantenimiento</h1>
           <p className="text-sm text-muted-foreground">{records.length} registros</p>
         </div>
-        {tab === 'maintenance' && (
+        {tab === 'maintenance' && !readOnly && (
           <Button size="sm" onClick={() => { setEditRecord(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Registrar
           </Button>

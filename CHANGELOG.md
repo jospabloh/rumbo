@@ -4,6 +4,32 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.8.0] — 2026-06-16
+
+### Added — configurable catalogs (admin-defined, app-consumed)
+
+- **New `Catalog` entity** (tenant-scoped): `category`, `label`, `active`, `sort_order`.
+  Managed by owner/admin, readable by the whole tenant.
+- **`useCatalog(category)` hook + `src/lib/catalogs.js`**: dropdowns read tenant catalog
+  values, falling back to sensible defaults when none are defined yet (so the app works
+  out of the box and the admin can override).
+- **New Catálogos page** (`/catalogs`, owner/admin): create / activate / deactivate /
+  delete values per category (fine types, payment methods, vehicle makes to start).
+- **Wired dropdowns** to catalogs: fine types (FineForm) and payment methods (Rentas).
+
+### Added — read-only enforcement (license)
+
+- When the license is in **read-only** state, the primary write actions are blocked:
+  Drivers, Vehicles, Rentas (generate/manual/pay), Financial, Maintenance and Parts hide
+  their add/register buttons, and Drivers/Vehicles save handlers refuse writes with a
+  clear message.
+
+### Version
+
+- `package.json` version `1.7.0` → `1.8.0`.
+
+---
+
 ## [1.7.0] — 2026-06-16
 
 ### Added — SuperAdmin "Licencias" panel (app owner)
