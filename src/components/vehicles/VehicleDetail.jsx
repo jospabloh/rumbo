@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { compressImage } from '@/lib/imageUtils';
 import { Link } from 'react-router-dom';
 
+const dayLabel = { monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo' };
+
 export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDelete, onRefresh }) {
   const [docs, setDocs] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
@@ -40,6 +42,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
     ['Venc. registro', vehicle.registration_expiry],
     ['Venc. holograma', vehicle.hologram_expiry],
     ['Tarifa de renta', vehicle.rent_amount ? `$${Number(vehicle.rent_amount).toLocaleString()} ${vehicle.rent_frequency === 'daily' ? '/ día' : '/ semana'}` : null],
+    ['Día de cobro', vehicle.rent_frequency !== 'daily' && vehicle.rent_amount ? dayLabel[vehicle.rent_day] : null],
   ].filter(([, v]) => v);
 
   return (

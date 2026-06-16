@@ -85,6 +85,19 @@
       ],
       "title": "Frecuencia de renta",
       "default": "weekly"
+    },
+    "rent_day": {
+      "type": "string",
+      "enum": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "title": "Día de cobro (semanal)"
     }
   },
   "required": [

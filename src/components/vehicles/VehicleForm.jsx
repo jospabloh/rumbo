@@ -23,6 +23,7 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
     odometer: vehicle?.odometer || 0,
     rent_amount: vehicle?.rent_amount || '',
     rent_frequency: vehicle?.rent_frequency || 'weekly',
+    rent_day: vehicle?.rent_day || 'monday',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -141,6 +142,23 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
                 </SelectContent>
               </Select>
             </div>
+            {form.rent_frequency === 'weekly' && (
+              <div>
+                <Label>Día de cobro</Label>
+                <Select value={form.rent_day} onValueChange={v => set('rent_day', v)}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monday">Lunes</SelectItem>
+                    <SelectItem value="tuesday">Martes</SelectItem>
+                    <SelectItem value="wednesday">Miércoles</SelectItem>
+                    <SelectItem value="thursday">Jueves</SelectItem>
+                    <SelectItem value="friday">Viernes</SelectItem>
+                    <SelectItem value="saturday">Sábado</SelectItem>
+                    <SelectItem value="sunday">Domingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           {error && (
             <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>

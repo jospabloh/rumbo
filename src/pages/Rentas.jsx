@@ -10,16 +10,20 @@ import { useTenant } from '@/lib/TenantContext';
 
 const todayStr = () => format(new Date(), 'yyyy-MM-dd');
 
-// Periodo actual (lunes–domingo para semanal, hoy para diaria)
-function currentPeriod(freq) {
+const dayNum = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+// Periodo actual: para semanal la semana arranca en el día de cobro de la unidad
+// (rentDay); para diaria es el día de hoy.
+function currentPeriod(freq, rentDay) {
   const now = new Date();
   if (freq === 'daily') {
     const d = format(now, 'yyyy-MM-dd');
     return { period_start: d, period_end: d };
   }
+  const weekStartsOn = dayNum[rentDay] ?? 1;
   return {
-    period_start: format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
-    period_end: format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+    period_start: format(startOfWeek(now, { weekStartsOn }), 'yyyy-MM-dd'),
+    period_end: format(endOfWeek(now, { weekStartsOn }), 'yyyy-MM-dd'),
   };
 }
 
@@ -109,7 +113,7 @@ export default function Rentas() {
         if (v.status !== 'active') continue;
         if (!v.rent_amount || !v.assigned_driver_id) continue;
         const freq = v.rent_frequency || 'weekly';
-        const { period_start, period_end } = currentPeriod(freq);
+        const { period_start, period_end } = currentPeriod(freq, v.rent_day);
         const exists = charges.some(c => c.vehicle_id === v.id && c.period_start === period_start);
         if (exists) { skipped++; continue; }
         await base44.entities.RentCharge.create({
@@ -328,7 +332,7 @@ function ManualChargeModal({ vehicles, tenantId, onClose, onSaved }) {
   const onVehicle = (id) => {
     const v = vehicles.find(x => x.id === id);
     const freq = v?.rent_frequency || 'weekly';
-    const per = currentPeriod(freq);
+    const per = currentPeriod(freq, v?.rent_day);
     setForm(f => ({
       ...f,
       vehicle_id: id,
