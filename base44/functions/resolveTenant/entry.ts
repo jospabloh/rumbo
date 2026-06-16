@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     const currentTenantId = user.data?.tenant_id || null;
 
     // El owner de la app (gestor de licencias) se define por variable de entorno.
-    const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || 'h.josepablo@gmail.com').toLowerCase();
-    const isAppOwner = email === appOwnerEmail;
+    const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
+    const isAppOwner = !!appOwnerEmail && email === appOwnerEmail;
 
     const tenants = await svc.entities.TenantLicense.list('-created_date', 1000);
 

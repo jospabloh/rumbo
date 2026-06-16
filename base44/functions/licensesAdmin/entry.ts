@@ -30,7 +30,10 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || 'h.josepablo@gmail.com').toLowerCase();
+    const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
+    if (!appOwnerEmail) {
+      return Response.json({ error: 'APP_OWNER_EMAIL no está configurado' }, { status: 403 });
+    }
     if ((user.email || '').toLowerCase() !== appOwnerEmail) {
       return Response.json({ error: 'Forbidden: app owner only' }, { status: 403 });
     }
