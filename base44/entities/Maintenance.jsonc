@@ -71,8 +71,7 @@
             "owner",
             "admin",
             "mechanic",
-            "dispatcher",
-            "driver"
+            "dispatcher"
           ]
         }
       }
