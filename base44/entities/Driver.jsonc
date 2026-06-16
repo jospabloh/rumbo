@@ -69,6 +69,11 @@
       "type": "string",
       "title": "Referido por (conductor)"
     },
+    "referral_bonus_paid": {
+      "type": "boolean",
+      "title": "Bono de referido aplicado",
+      "default": false
+    },
     "profile_id": {
       "type": "string",
       "title": "ID de perfil vinculado"

@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCatalog } from '@/lib/catalogs';
 
 export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
+  const makes = useCatalog('vehicle_make');
   const [form, setForm] = useState({
     plate: vehicle?.plate || '',
     unit_number: vehicle?.unit_number || '',
@@ -80,7 +82,10 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
             </div>
             <div>
               <Label>Marca</Label>
-              <Input value={form.make} onChange={e => set('make', e.target.value)} className="mt-1 bg-background" />
+              <Input value={form.make} onChange={e => set('make', e.target.value)} className="mt-1 bg-background" list="vehicle-makes" />
+              <datalist id="vehicle-makes">
+                {makes.map(m => <option key={m} value={m} />)}
+              </datalist>
             </div>
             <div>
               <Label>Modelo</Label>

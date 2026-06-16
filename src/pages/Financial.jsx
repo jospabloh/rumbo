@@ -6,6 +6,7 @@ import FineForm from '@/components/financial/FineForm';
 import InsuranceClaimForm from '@/components/financial/InsuranceClaimForm';
 import CostPerKm from '@/components/financial/CostPerKm';
 import { useTenant } from '@/lib/TenantContext';
+import { useModulePerms } from '@/lib/modulePerms';
 
 const tabs = [
   { id: 'fines', label: 'Multas', icon: AlertTriangle },
@@ -15,6 +16,7 @@ const tabs = [
 
 export default function Financial() {
   const { tenantId, readOnly } = useTenant();
+  const { can } = useModulePerms();
   const [tab, setTab] = useState('fines');
   const [fines, setFines] = useState([]);
   const [claims, setClaims] = useState([]);
@@ -47,7 +49,7 @@ export default function Financial() {
           <h1 className="text-xl font-bold">Financiero</h1>
           <p className="text-sm text-muted-foreground">Multas · Seguros · Costo/km</p>
         </div>
-        {tab !== 'costs' && !readOnly && (
+        {tab !== 'costs' && !readOnly && can(tab, 'create') && (
           <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" />Registrar</Button>
         )}
       </div>

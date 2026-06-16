@@ -4,6 +4,41 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.9.0] — 2026-06-16
+
+### Added — granular permissions now enforced in the UI
+
+- **`src/lib/modulePerms.js`** + `useModulePerms()`: the per-role/module/action config saved
+  by the PermissionsPanel now actually gates the UI (owner/admin always full). Create/edit
+  actions are blocked in Drivers, Vehicles, Maintenance, Parts and Financial when the
+  tenant's config (or the role default) denies them. The entity RLS remains the hard
+  backstop; this layer can only be equal or more restrictive.
+- PermissionsPanel now shares the single `DEFAULT_PERMISSIONS` source and includes a
+  **Rentas** module row. `TenantContext` exposes `userRole`.
+
+### Added — referral bonus (business rule)
+
+- **Rentas → Referidos** tab: lists each referrer and their referred drivers with on-time
+  weekly-payment progress (X/4). When a referred driver reaches **4 on-time weekly
+  payments** (paid by the collection day), an **Aplicar bono $1,000** action discounts the
+  referrer's open charge and marks the bonus as paid (`Driver.referral_bonus_paid`),
+  preventing double application.
+
+### Added — more catalog wiring
+
+- **Vehicle make** dropdown now offers tenant catalog suggestions (`vehicle_make`).
+
+### Notes
+
+- Non-referred "daily + advance" scheme is supported today with existing tools: set the
+  unit's `rent_frequency = daily` and use **Cobro manual** to charge in advance.
+
+### Version
+
+- `package.json` version `1.8.0` → `1.9.0`.
+
+---
+
 ## [1.8.0] — 2026-06-16
 
 ### Added — configurable catalogs (admin-defined, app-consumed)
