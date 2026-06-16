@@ -14,6 +14,7 @@ import Drivers from './pages/Drivers';
 import Vehicles from './pages/Vehicles';
 import MaintenancePage from './pages/MaintenancePage';
 import Financial from './pages/Financial';
+import Rentas from './pages/Rentas';
 import Alerts from './pages/Alerts';
 import Location from './pages/Location';
 import Messages from './pages/Messages';
@@ -91,6 +92,7 @@ const AuthenticatedApp = () => {
         <Route path="/vehicles" element={<Vehicles />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
 
+        <Route path="/rentas" element={<Rentas />} />
         <Route path="/financial" element={<Financial />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/location" element={<Location />} />

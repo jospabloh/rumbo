@@ -39,6 +39,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
     ['Venc. inspección', vehicle.inspection_expiry],
     ['Venc. registro', vehicle.registration_expiry],
     ['Venc. holograma', vehicle.hologram_expiry],
+    ['Tarifa de renta', vehicle.rent_amount ? `$${Number(vehicle.rent_amount).toLocaleString()} ${vehicle.rent_frequency === 'daily' ? '/ día' : '/ semana'}` : null],
   ].filter(([, v]) => v);
 
   return (

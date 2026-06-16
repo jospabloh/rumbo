@@ -21,6 +21,8 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
     registration_expiry: vehicle?.registration_expiry || '',
     hologram_expiry: vehicle?.hologram_expiry || '',
     odometer: vehicle?.odometer || 0,
+    rent_amount: vehicle?.rent_amount || '',
+    rent_frequency: vehicle?.rent_frequency || 'weekly',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -36,6 +38,7 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
         ...form,
         year: form.year ? parseInt(form.year) : null,
         odometer: form.odometer ? parseInt(form.odometer) : 0,
+        rent_amount: form.rent_amount ? parseFloat(form.rent_amount) : null,
         assigned_driver_id: form.assigned_driver_id || null,
       });
       // onSave cierra el formulario al tener éxito; no reseteamos saving aquí.
@@ -123,6 +126,20 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
             <div>
               <Label>Venc. holograma</Label>
               <Input type="date" value={form.hologram_expiry} onChange={e => set('hologram_expiry', e.target.value)} className="mt-1 bg-background" />
+            </div>
+            <div>
+              <Label>Tarifa de renta ($)</Label>
+              <Input type="number" step="0.01" value={form.rent_amount} onChange={e => set('rent_amount', e.target.value)} className="mt-1 bg-background" placeholder="Ej. 2800" />
+            </div>
+            <div>
+              <Label>Frecuencia de renta</Label>
+              <Select value={form.rent_frequency} onValueChange={v => set('rent_frequency', v)}>
+                <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="daily">Diaria</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           {error && (

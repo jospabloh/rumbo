@@ -1,0 +1,147 @@
+{
+  "name": "RentCharge",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "title": "Vehículo"
+    },
+    "driver_id": {
+      "type": "string",
+      "title": "Conductor"
+    },
+    "period_type": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly"
+      ],
+      "title": "Frecuencia",
+      "default": "weekly"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "title": "Inicio del periodo"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "title": "Fin del periodo"
+    },
+    "amount_due": {
+      "type": "number",
+      "title": "Monto de la renta"
+    },
+    "amount_paid": {
+      "type": "number",
+      "title": "Monto pagado",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "partial",
+        "paid"
+      ],
+      "title": "Estado",
+      "default": "pending"
+    },
+    "payments": {
+      "type": "array",
+      "title": "Pagos recibidos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "title": "Monto"
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha de pago"
+          },
+          "method": {
+            "type": "string",
+            "title": "Método"
+          },
+          "note": {
+            "type": "string",
+            "title": "Nota"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notas"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "period_start",
+    "amount_due"
+  ],
+  "rls": {
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher"
+          ]
+        }
+      }
+    },
+    "read": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin",
+                "dispatcher"
+              ]
+            }
+          }
+        },
+        {
+          "data.driver_id": "{{user.data.driver_profile_id}}"
+        }
+      ]
+    },
+    "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin",
+            "dispatcher"
+          ]
+        }
+      }
+    },
+    "delete": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "owner",
+            "admin"
+          ]
+        }
+      }
+    }
+  }
+}

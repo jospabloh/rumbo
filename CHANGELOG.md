@@ -4,6 +4,47 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.2.0] — 2026-06-16
+
+### Added — Rentas model (core business)
+
+The fleet rents units to drivers (not trip dispatch). This release adds rent tracking
+with **partial payments** and **per-driver outstanding balances** — the operator's main
+pain point ("se me junta el saldo negativo cuando no pagan completo").
+
+- **Per-unit tariff** on `Vehicle`: `rent_amount` and `rent_frequency` (`weekly` default,
+  `daily`). Tariff and frequency vary per unit, as in the real operation.
+- **New `RentCharge` entity** — one charge per period per unit: `amount_due`,
+  `amount_paid`, `status` (pending/partial/paid), and a `payments[]` history (amount,
+  date, method, note). Tenant-scoped RLS (owner/admin/dispatcher manage; drivers can read
+  their own).
+- **New Rentas page** (`/rentas`):
+  - KPIs: **Cobrado hoy**, **Por cobrar**, **Choferes con adeudo**.
+  - **Saldo pendiente por conductor** — accumulates partial shortfalls into a running
+    balance per driver.
+  - **Generar cobros del periodo** — creates the current week/day charge for each active
+    unit with a tariff and an assigned driver (skips duplicates).
+  - **Registrar pago** — supports partial payments; updates balance and status.
+  - **Cobro manual** — ad-hoc charge for advance/daily collection.
+  - Filters: pendientes / parciales / vencidos / pagados; search by unit or driver.
+- **Driver `referred_by_driver_id`** — captures the referral relationship (referral-bonus
+  automation is a follow-up; rules still being defined).
+- **Dashboard** now reflects rentas: **Ingresos hoy = rentas cobradas**, plus **Por
+  cobrar** and **Disponibilidad operativa** (`activos / total`).
+- **Financiero**: removed the **Combustible** tab (no aplica — the driver pays fuel).
+
+### Data Model
+
+- `Vehicle`: added `rent_amount`, `rent_frequency`.
+- `Driver`: added `referred_by_driver_id`.
+- New entity `RentCharge`.
+
+### Version
+
+- `package.json` version `1.1.0` → `1.2.0`.
+
+---
+
 ## [1.1.0] — 2026-06-16
 
 ### Fixed

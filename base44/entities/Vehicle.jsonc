@@ -72,6 +72,19 @@
       "type": "number",
       "title": "Od\u00f3metro (km)",
       "default": 0
+    },
+    "rent_amount": {
+      "type": "number",
+      "title": "Tarifa de renta"
+    },
+    "rent_frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly"
+      ],
+      "title": "Frecuencia de renta",
+      "default": "weekly"
     }
   },
   "required": [

@@ -23,6 +23,7 @@
 | Dashboard (`/`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` `can()` → sidebar + route render |
 | Drivers (`/drivers`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` |
 | Vehicles (`/vehicles`) | ✅ | ✅ | ✅ | ✅ | ❌ | `permissions.js` |
+| Rentas (`/rentas`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` + `RentCharge` RLS |
 | Maintenance (`/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | `permissions.js` |
 | Financial (`/financial`) | ✅ | ✅ | ❌ | ❌ | ❌ | `permissions.js` |
 | Alerts (`/alerts`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` |
@@ -118,6 +119,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | Vehicle | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher | owner, admin |
 | Driver | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher | owner, admin |
 | Trip | (per RLS) | same tenant_id | (per RLS) | owner, admin |
+| RentCharge | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | Alert | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | Message | sender (tenant-scoped) | same tenant_id + role or own sender_id | creator / owner, admin, dispatcher | owner, admin |
 | Channel | owner, admin, dispatcher | same tenant_id + role, broadcast, or own driver_id | owner, admin, dispatcher | owner, admin |

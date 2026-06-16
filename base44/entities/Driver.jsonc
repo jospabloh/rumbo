@@ -65,6 +65,10 @@
       "type": "string",
       "title": "Comprobante de domicilio"
     },
+    "referred_by_driver_id": {
+      "type": "string",
+      "title": "Referido por (conductor)"
+    },
     "profile_id": {
       "type": "string",
       "title": "ID de perfil vinculado"
