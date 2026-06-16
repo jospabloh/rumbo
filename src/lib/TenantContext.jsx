@@ -16,6 +16,7 @@ const TenantContext = createContext(null);
 export function TenantProvider({ children }) {
   const [tenant, setTenant] = useState(null);
   const [tenantId, setTenantId] = useState(null);
+  const [isAppOwner, setIsAppOwner] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadTenant = async () => {
@@ -29,6 +30,7 @@ export function TenantProvider({ children }) {
       try {
         const res = await base44.functions.invoke('resolveTenant', {});
         resolvedId = res?.data?.tenant_id || null;
+        setIsAppOwner(!!res?.data?.is_app_owner);
       } catch (e) {
         console.error('resolveTenant falló, usando descubrimiento cliente:', e);
       }
@@ -76,7 +78,7 @@ export function TenantProvider({ children }) {
   const readOnly = isReadOnly(licenseInfo);
 
   return (
-    <TenantContext.Provider value={{ tenant, tenantId, loading, reload: loadTenant, setTenant, licenseInfo, readOnly }}>
+    <TenantContext.Provider value={{ tenant, tenantId, isAppOwner, loading, reload: loadTenant, setTenant, licenseInfo, readOnly }}>
       {children}
     </TenantContext.Provider>
   );

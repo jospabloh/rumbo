@@ -113,7 +113,7 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
 
 export default function Layout() {
   const location = useLocation();
-  const { tenant, tenantId, licenseInfo } = useTenant();
+  const { tenant, tenantId, licenseInfo, isAppOwner } = useTenant();
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -157,6 +157,11 @@ export default function Layout() {
     items: group.items.filter(item => can(user?.role, item.page)),
   })).filter(group => group.items.length > 0);
 
+  // El owner de la app ve la sección Licencias (gestión de todas las tenants).
+  const navGroups = isAppOwner
+    ? [...filteredGroups, { label: 'Plataforma', items: [{ path: '/licenses', icon: Shield, label: 'Licencias', page: 'licenses' }] }]
+    : filteredGroups;
+
   const SidebarContent = ({ onLinkClick }) => (
     <>
       {/* Logo */}
@@ -179,7 +184,7 @@ export default function Layout() {
               alertCount={0} unreadCount={0} />
           ))
         ) : (
-          filteredGroups.map((group, gi) => (
+          navGroups.map((group, gi) => (
             <div key={gi}>
               {group.label && (
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-1">{group.label}</p>

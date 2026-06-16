@@ -26,6 +26,10 @@ Deno.serve(async (req) => {
     const email = (user.email || '').toLowerCase();
     const currentTenantId = user.data?.tenant_id || null;
 
+    // El owner de la app (gestor de licencias) se define por variable de entorno.
+    const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || 'h.josepablo@gmail.com').toLowerCase();
+    const isAppOwner = email === appOwnerEmail;
+
     const tenants = await svc.entities.TenantLicense.list('-created_date', 1000);
 
     // 1) tenant ya asignado y todavía válido
@@ -49,6 +53,7 @@ Deno.serve(async (req) => {
       return Response.json({
         tenant_id: null,
         role: user.role,
+        is_app_owner: isAppOwner,
         needs_onboarding: ['owner', 'admin'].includes(user.role),
       });
     }
@@ -69,6 +74,7 @@ Deno.serve(async (req) => {
     return Response.json({
       tenant_id: tenant.id,
       role: patch.role || user.role,
+      is_app_owner: isAppOwner,
       needs_onboarding: false,
       tenant: {
         id: tenant.id,

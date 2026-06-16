@@ -4,6 +4,28 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.7.0] — 2026-06-16
+
+### Added — SuperAdmin "Licencias" panel (app owner)
+
+- **App owner identity** via `APP_OWNER_EMAIL` env var (default `h.josepablo@gmail.com`).
+  `resolveTenant` now returns `is_app_owner`, surfaced through `TenantContext`.
+- **New `licensesAdmin` edge function** — app-owner-only (the single legitimate
+  cross-tenant exception, service-role): `list` all licenses, `renew` (confirm payment →
+  extends `current_period_end` by month/year, sets `last_payment_at`, status active),
+  `set_status` (active/suspended/cancelled/expired manual override). Per-tenant RLS stays
+  intact for everyone else.
+- **New `/licenses` page**, shown only to the app owner: all tenants with state badge,
+  vigencia, admin email, member count; buttons **Confirmar pago mensual / Renovar anual**
+  and a status override. Mercado Pago charges independently; this is the manual
+  verify-and-renew flow.
+
+### Version
+
+- `package.json` version `1.6.0` → `1.7.0`.
+
+---
+
 ## [1.6.0] — 2026-06-16
 
 ### Added — license lifecycle (iteration 1: client-facing gating)
