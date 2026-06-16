@@ -4,6 +4,214 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.7.0] — 2026-06-16
+
+### Added — SuperAdmin "Licencias" panel (app owner)
+
+- **App owner identity** via `APP_OWNER_EMAIL` env var (default `h.josepablo@gmail.com`).
+  `resolveTenant` now returns `is_app_owner`, surfaced through `TenantContext`.
+- **New `licensesAdmin` edge function** — app-owner-only (the single legitimate
+  cross-tenant exception, service-role): `list` all licenses, `renew` (confirm payment →
+  extends `current_period_end` by month/year, sets `last_payment_at`, status active),
+  `set_status` (active/suspended/cancelled/expired manual override). Per-tenant RLS stays
+  intact for everyone else.
+- **New `/licenses` page**, shown only to the app owner: all tenants with state badge,
+  vigencia, admin email, member count; buttons **Confirmar pago mensual / Renovar anual**
+  and a status override. Mercado Pago charges independently; this is the manual
+  verify-and-renew flow.
+
+### Version
+
+- `package.json` version `1.6.0` → `1.7.0`.
+
+---
+
+## [1.6.0] — 2026-06-16
+
+### Added — license lifecycle (iteration 1: client-facing gating)
+
+- **License state machine** (`src/lib/license.js`): from `current_period_end` (or trial),
+  computes `active → past_due (1–7 días vencidos) → readonly (8–15) → disabled (16+)`.
+  `status: suspended|cancelled` forces immediate disable (owner override).
+- **Free first month**: onboarding sets `current_period_end = hoy + 1 mes`.
+- **Tenant banner** for upcoming/overdue payment, **read-only flag** exposed via
+  `TenantContext`, and a full **"Acceso desactivado / Contacta a soporte"** screen at day 16.
+- New `TenantLicense` fields: `current_period_end`, `billing_cycle`, `last_payment_at`.
+
+### Pending (next iterations)
+
+- SuperAdmin "Licencias" panel for the app owner (confirm payment / renew across tenants).
+- Mercado Pago auto-billing integration.
+- Per-form write-blocking while read-only.
+- Configurable catalogs (no hardcoded dropdowns).
+- Server-side enforcement of the granular PermissionsPanel.
+
+### Version
+
+- `package.json` version `1.5.0` → `1.6.0`.
+
+---
+
+## [1.5.0] — 2026-06-16
+
+### Added — robust, server-side tenant assignment
+
+- **New `resolveTenant` edge function.** Single source of truth for binding a user to
+  their tenant. Runs with service role (no client-RLS chicken-and-egg): resolves the tenant
+  by `created_by` → `owner_email` → `members[]`, persists `tenant_id` on the profile, and
+  on an invited user's **first** login applies the role recorded in `members[]` (later role
+  changes stay with the tenant admin). Scales to many tenants.
+- **`TenantContext` now calls `resolveTenant`** as the primary path, with client-side
+  discovery only as a fallback. Removed the unsafe `all[0]` fallback that, under
+  multi-tenancy, could bind a user to the wrong tenant.
+
+### Version
+
+- `package.json` version `1.4.0` → `1.5.0`.
+
+---
+
+## [1.4.0] — 2026-06-16
+
+### Security — multi-tenant isolation hardening (before first real tenant onboards)
+
+- **[HIGH] `TenantLicense` cross-tenant read fixed.** Any `admin` could previously read
+  **every** tenant's license (incl. `members[]` emails/names, `owner_email`, `notes`).
+  Read is now scoped to tenants you created (`created_by_id`), own (`owner_email`), or
+  are a member of (`members.email`). Removed the blanket `role: admin reads all` rule.
+- **[HIGH] `TenantLicense` cross-tenant write fixed.** Any `admin`/`owner` could previously
+  **update any** tenant's license (suspend it, change its plan, raise its own limits).
+  Update now requires you to belong to that tenant (creator / owner_email / member with
+  owner|admin role).
+- **[HIGH] `User` cross-tenant access fixed.** Removed the global `role: owner` branches
+  that let a tenant owner read/update **all** platform users. User read/update are now
+  scoped to the same `tenant_id` (own record always allowed).
+- **Invited users are now bound to their tenant.** Inviting a user records them in the
+  tenant's `members[]`, which is what ties them to the tenant (drives the `members.email`
+  RLS and reliable tenant discovery on first login — previously discovery fell back to
+  "first tenant", which is wrong under multi-tenancy).
+- **Dev/integration functions locked to `owner`.** `supabaseData`, `githubRepos`, and
+  `createTestData` were callable by any `admin` of any tenant (service-role access to the
+  connected Supabase/GitHub, or test-data writes). Now owner-only. The GitHub/Supabase
+  pages are owner-only too. `createTestData` no longer falls back to another tenant when
+  the caller has no tenant.
+
+### Version
+
+- `package.json` version `1.3.0` → `1.4.0`.
+
+---
+
+## [1.3.0] — 2026-06-16
+
+### Added
+
+- **Rentas → vista de Ingresos**: nuevo reporte de pagos recibidos. En modo **Día**
+  muestra cuánto entró y **de quién** (cada pago: conductor, unidad, método, monto); en
+  modo **Semana** muestra el total, el ingreso por conductor y **quién quedó debiendo y
+  cuánto**. Resuelve la necesidad de ver ingreso diario (varios choferes pagan diario) vs.
+  ingreso semanal con adeudos.
+- **Conductores → Referido**: campo **"Referido por (conductor)"** en el formulario y badge
+  **Referido** en lista y expediente. (La automatización del bono de $1,000 — al cumplir el
+  referido sus pagos puntuales, descontándolo de la renta del que refiere — queda como
+  siguiente paso.)
+- **Día de cobro por unidad** (`Vehicle.rent_day`): la renta semanal se cobra en distintos
+  días según la unidad; el generador de cobros ancla la semana al día de cada unidad.
+
+### Changed
+
+- **Placa ahora opcional**: el identificador operativo es el **No. de unidad** (U01, U02…).
+  Las vistas usan la unidad como respaldo cuando no hay placa.
+
+### Data Model
+
+- `Vehicle`: `rent_day` added; `plate` no longer required.
+
+### Version
+
+- `package.json` version `1.2.0` → `1.3.0`.
+
+---
+
+## [1.2.0] — 2026-06-16
+
+### Added — Rentas model (core business)
+
+The fleet rents units to drivers (not trip dispatch). This release adds rent tracking
+with **partial payments** and **per-driver outstanding balances** — the operator's main
+pain point ("se me junta el saldo negativo cuando no pagan completo").
+
+- **Per-unit tariff** on `Vehicle`: `rent_amount` and `rent_frequency` (`weekly` default,
+  `daily`). Tariff and frequency vary per unit, as in the real operation.
+- **New `RentCharge` entity** — one charge per period per unit: `amount_due`,
+  `amount_paid`, `status` (pending/partial/paid), and a `payments[]` history (amount,
+  date, method, note). Tenant-scoped RLS (owner/admin/dispatcher manage; drivers can read
+  their own).
+- **New Rentas page** (`/rentas`):
+  - KPIs: **Cobrado hoy**, **Por cobrar**, **Choferes con adeudo**.
+  - **Saldo pendiente por conductor** — accumulates partial shortfalls into a running
+    balance per driver.
+  - **Generar cobros del periodo** — creates the current week/day charge for each active
+    unit with a tariff and an assigned driver (skips duplicates).
+  - **Registrar pago** — supports partial payments; updates balance and status.
+  - **Cobro manual** — ad-hoc charge for advance/daily collection.
+  - Filters: pendientes / parciales / vencidos / pagados; search by unit or driver.
+- **Driver `referred_by_driver_id`** — captures the referral relationship (referral-bonus
+  automation is a follow-up; rules still being defined).
+- **Dashboard** now reflects rentas: **Ingresos hoy = rentas cobradas**, plus **Por
+  cobrar** and **Disponibilidad operativa** (`activos / total`).
+- **Financiero**: removed the **Combustible** tab (no aplica — the driver pays fuel).
+
+### Data Model
+
+- `Vehicle`: added `rent_amount`, `rent_frequency`.
+- `Driver`: added `referred_by_driver_id`.
+- New entity `RentCharge`.
+
+### Version
+
+- `package.json` version `1.1.0` → `1.2.0`.
+
+---
+
+## [1.1.0] — 2026-06-16
+
+### Fixed
+
+- **[HIGH] Drivers/Vehicles save hangs and does not persist.** Root cause: entity RLS
+  requires `data.tenant_id == user.data.tenant_id`, but the user's `tenant_id` was
+  persisted via a fire-and-forget `updateMe()` that was not awaited and swallowed
+  errors, so a freshly-onboarded user could save before their profile had the tenant.
+  `TenantContext` now awaits `updateMe`, and `TenantOnboarding` sets `tenant_id`
+  immediately after creating the license. `DriverForm`/`VehicleForm` now use
+  `try/catch`, always reset the saving state, and surface a clear inline error instead
+  of spinning on "Guardando..." forever. `Drivers`/`Vehicles` guard `create` when the
+  tenant is not ready yet.
+
+### Changed (client feedback — quick wins)
+
+- **Conductores:** removed *Certificado médico* (no aplica). Added per-driver document
+  uploads: **Licencia, INE, Comprobante de domicilio** (each a separate file field,
+  image or PDF), shown in the driver form and file detail.
+- **Vehículos:** added **No. de unidad** and **Vencimiento de holograma** fields
+  (form, detail, and list). Hologram expiry now feeds the automatic alert generation.
+- **Inventario:** added **Marca** and **No. de unidad** to parts.
+- **Dashboard:** removed *Viajes hoy* and *Rating promedio* cards (no aplican).
+  "Ingresos hoy" relabelled toward rentas (to be wired to the rentas model next).
+
+### Data Model
+
+- `Driver`: removed `medical_cert_expiry`; added `license_file_url`, `ine_file_url`,
+  `address_proof_file_url`.
+- `Vehicle`: added `unit_number`, `hologram_expiry`.
+- `Part`: added `brand`, `unit_number`.
+
+### Version
+
+- `package.json` version `1.0.2` → `1.1.0`.
+
+---
+
 ## [1.0.2] — 2026-06-15
 
 ### Security

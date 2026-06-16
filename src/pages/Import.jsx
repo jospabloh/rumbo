@@ -68,7 +68,6 @@ export default function Import() {
           full_name: row['nombre'],
           license_no: row['licencia'],
           license_expiry: row['vencimiento_licencia'] || null,
-          medical_cert_expiry: row['vencimiento_medico'] || null,
           phone: row['telefono'] || null,
           hire_date: row['fecha_contratacion'] || null,
           status: 'active',

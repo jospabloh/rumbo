@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Star, Fuel } from 'lucide-react';
-import { format, isToday } from 'date-fns';
+import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Banknote, Gauge } from 'lucide-react';
+import { format } from 'date-fns';
 import StatCard from '@/components/dashboard/StatCard';
 import AlertBadge from '@/components/dashboard/AlertBadge';
 import { useTenant } from '@/lib/TenantContext';
@@ -13,8 +13,7 @@ export default function Dashboard() {
   const [drivers, setDrivers] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [trips, setTrips] = useState([]);
-  const [fuelLogs, setFuelLogs] = useState([]);
+  const [rentCharges, setRentCharges] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,15 +23,13 @@ export default function Dashboard() {
       base44.entities.Driver.filter(q),
       base44.entities.Alert.filter({ ...q, resolved: false }),
       base44.entities.Message.filter({ read: false, tenant_id: tenantId }),
-      base44.entities.Trip.filter(q, '-started_at', 100),
-      base44.entities.FuelLog.filter(q, '-logged_at', 50),
-    ]).then(([v, d, a, m, t, f]) => {
+      base44.entities.RentCharge.filter(q, '-period_start', 300),
+    ]).then(([v, d, a, m, r]) => {
       setVehicles(v);
       setDrivers(d);
       setAlerts(a);
       setMessages(m);
-      setTrips(t);
-      setFuelLogs(f);
+      setRentCharges(r);
     }).finally(() => setLoading(false));
   }, [tenantId]);
 
@@ -42,9 +39,12 @@ export default function Dashboard() {
   const activeDrivers = drivers.filter(d => d.status === 'active').length;
   const criticalAlerts = alerts.filter(a => a.severity === 'critical');
   const warningAlerts = alerts.filter(a => a.severity === 'warning');
-  const todayTrips = trips.filter(t => t.started_at && isToday(new Date(t.started_at)));
-  const totalEarnings = todayTrips.reduce((s, t) => s + (t.earnings || 0), 0);
-  const avgRating = drivers.length > 0 ? (drivers.reduce((s, d) => s + (d.rating || 0), 0) / drivers.filter(d => d.rating).length || 0).toFixed(1) : '—';
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const collectedToday = rentCharges.reduce((s, c) =>
+    s + (c.payments || []).filter(p => p.paid_at === todayStr).reduce((a, p) => a + (p.amount || 0), 0), 0);
+  const totalDue = rentCharges.reduce((s, c) => s + Math.max((c.amount_due || 0) - (c.amount_paid || 0), 0), 0);
+  const totalVehicles = vehicles.length;
+  const availability = totalVehicles > 0 ? Math.round((activeVehicles / totalVehicles) * 100) : 0;
 
   if (loading) {
     return (
@@ -81,10 +81,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard icon={Fuel} label="Viajes hoy" value={todayTrips.length} sub="completados" color="blue" />
-        <StatCard icon={DollarSign} label="Ingresos hoy" value={`$${totalEarnings.toFixed(0)}`} sub="suma de viajes" color="green" />
-        <StatCard icon={Star} label="Rating promedio" value={avgRating} sub="flotilla" color="yellow" />
-        <StatCard icon={TrendingUp} label="Flota total" value={vehicles.length} sub="vehículos" color="gray" />
+        <StatCard icon={DollarSign} label="Ingresos hoy" value={`$${collectedToday.toLocaleString()}`} sub="rentas cobradas" color="green" link="/rentas" />
+        <StatCard icon={Banknote} label="Por cobrar" value={`$${totalDue.toLocaleString()}`} sub="rentas pendientes" color="red" link="/rentas" />
+        <StatCard icon={Gauge} label="Disponibilidad" value={`${availability}%`} sub="unidades operando" color="blue" />
+        <StatCard icon={TrendingUp} label="Flota total" value={totalVehicles} sub="vehículos" color="gray" />
       </div>
 
       {/* Fleet status */}

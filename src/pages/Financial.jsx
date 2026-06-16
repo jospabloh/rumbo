@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Fuel, AlertTriangle, Shield, DollarSign } from 'lucide-react';
+import { Plus, AlertTriangle, Shield, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import FuelLogForm from '@/components/financial/FuelLogForm';
 import FineForm from '@/components/financial/FineForm';
 import InsuranceClaimForm from '@/components/financial/InsuranceClaimForm';
 import CostPerKm from '@/components/financial/CostPerKm';
 import { useTenant } from '@/lib/TenantContext';
 
 const tabs = [
-  { id: 'fuel', label: 'Combustible', icon: Fuel },
   { id: 'fines', label: 'Multas', icon: AlertTriangle },
   { id: 'insurance', label: 'Seguros', icon: Shield },
   { id: 'costs', label: 'Costo/km', icon: DollarSign },
@@ -17,8 +15,7 @@ const tabs = [
 
 export default function Financial() {
   const { tenantId } = useTenant();
-  const [tab, setTab] = useState('fuel');
-  const [fuelLogs, setFuelLogs] = useState([]);
+  const [tab, setTab] = useState('fines');
   const [fines, setFines] = useState([]);
   const [claims, setClaims] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -29,19 +26,17 @@ export default function Financial() {
   const load = () => {
     const q = tenantId ? { tenant_id: tenantId } : {};
     Promise.all([
-      base44.entities.FuelLog.filter(q, '-logged_at'),
       base44.entities.Fine.filter(q, '-issued_at'),
       base44.entities.InsuranceClaim.filter(q, '-created_date'),
       base44.entities.Vehicle.filter(q),
       base44.entities.Driver.filter(q),
-    ]).then(([f, fi, c, v, d]) => {
-      setFuelLogs(f); setFines(fi); setClaims(c); setVehicles(v); setDrivers(d);
+    ]).then(([fi, c, v, d]) => {
+      setFines(fi); setClaims(c); setVehicles(v); setDrivers(d);
     }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [tenantId]);
 
-  const totalFuel = fuelLogs.reduce((s, l) => s + (l.total_cost || 0), 0);
   const totalFines = fines.reduce((s, f) => s + (f.amount || 0), 0);
   const unpaidFines = fines.filter(f => !f.paid).length;
 
@@ -50,7 +45,7 @@ export default function Financial() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold">Financiero</h1>
-          <p className="text-sm text-muted-foreground">Combustible · Multas · Seguros</p>
+          <p className="text-sm text-muted-foreground">Multas · Seguros · Costo/km</p>
         </div>
         {tab !== 'costs' && (
           <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" />Registrar</Button>
@@ -58,11 +53,7 @@ export default function Financial() {
       </div>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <div className="bg-card border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold">${totalFuel.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground">Combustible</p>
-        </div>
+      <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-card border border-border rounded-xl p-3 text-center">
           <p className="text-lg font-bold">${totalFines.toFixed(0)}</p>
           <p className="text-xs text-muted-foreground">{unpaidFines} multas pend.</p>
@@ -85,24 +76,6 @@ export default function Financial() {
 
       {loading ? (
         <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-      ) : tab === 'fuel' ? (
-        <div className="space-y-2">
-          {fuelLogs.map(log => {
-            const v = vehicles.find(x => x.id === log.vehicle_id);
-            const d = drivers.find(x => x.id === log.driver_id);
-            return (
-              <div key={log.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><Fuel className="w-4 h-4" /></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{v?.plate || 'Vehículo'}</p>
-                  <p className="text-xs text-muted-foreground">{d?.full_name || '—'} · {log.liters}L · {new Date(log.logged_at || log.created_date).toLocaleDateString()}</p>
-                </div>
-                <p className="text-sm font-bold">${parseFloat(log.total_cost || 0).toFixed(2)}</p>
-              </div>
-            );
-          })}
-          {fuelLogs.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">Sin registros de combustible</p>}
-        </div>
       ) : tab === 'fines' ? (
         <div className="space-y-2">
           {fines.map(f => {
@@ -154,7 +127,6 @@ export default function Financial() {
         <CostPerKm vehicles={vehicles} />
       )}
 
-      {showForm && tab === 'fuel' && <FuelLogForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.FuelLog.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
       {showForm && tab === 'fines' && <FineForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.Fine.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
       {showForm && tab === 'insurance' && <InsuranceClaimForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.InsuranceClaim.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
     </div>

@@ -44,6 +44,7 @@ export default function Vehicles() {
     if (editVehicle) {
       await base44.entities.Vehicle.update(editVehicle.id, data);
     } else {
+      if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
       await base44.entities.Vehicle.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);
@@ -103,7 +104,8 @@ export default function Vehicles() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm">{v.plate}</p>
+                    <p className="font-bold text-sm">{v.plate || (v.unit_number ? `#${v.unit_number}` : 'Sin identificar')}</p>
+                    {v.plate && v.unit_number && <span className="text-xs text-muted-foreground">#{v.unit_number}</span>}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[v.status]}`}>{statusLabel[v.status]}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{v.make} {v.model} {v.year && `· ${v.year}`} · {driver?.full_name || 'Sin asignar'}</p>

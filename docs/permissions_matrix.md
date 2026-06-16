@@ -23,6 +23,7 @@
 | Dashboard (`/`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` `can()` → sidebar + route render |
 | Drivers (`/drivers`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` |
 | Vehicles (`/vehicles`) | ✅ | ✅ | ✅ | ✅ | ❌ | `permissions.js` |
+| Rentas (`/rentas`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` + `RentCharge` RLS |
 | Maintenance (`/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | `permissions.js` |
 | Financial (`/financial`) | ✅ | ✅ | ❌ | ❌ | ❌ | `permissions.js` |
 | Alerts (`/alerts`) | ✅ | ✅ | ✅ | ❌ | ❌ | `permissions.js` |
@@ -113,11 +114,12 @@ Admin has full view, create, edit, delete access to every module within their te
 
 | Entity | Create | Read | Update | Delete |
 |--------|--------|------|--------|--------|
-| TenantLicense | owner only | creator / owner_email / any admin | creator / owner_email / admin, owner | creator / owner_email |
-| User | — | same tenant_id / own record / owner | own record / admin, owner | — |
+| TenantLicense | owner only | creator / owner_email / member | creator / owner_email / member(owner,admin) | creator / owner_email |
+| User | — | own record / same tenant_id | own record / same-tenant owner,admin | — |
 | Vehicle | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher | owner, admin |
 | Driver | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher | owner, admin |
 | Trip | (per RLS) | same tenant_id | (per RLS) | owner, admin |
+| RentCharge | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | Alert | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | Message | sender (tenant-scoped) | same tenant_id + role or own sender_id | creator / owner, admin, dispatcher | owner, admin |
 | Channel | owner, admin, dispatcher | same tenant_id + role, broadcast, or own driver_id | owner, admin, dispatcher | owner, admin |
@@ -138,7 +140,7 @@ Admin has full view, create, edit, delete access to every module within their te
 |---|-----|----------|--------|
 | G1 | Granular PermissionsPanel permissions are saved to backend (v1.0.0) but not yet enforced at the API/entity level — only used in admin UI display | MEDIUM | **Documented — enforcement is a future priority** |
 | G2 | Page protection is client-side only (no server-side route guard) — a user with the URL could navigate directly | LOW | **Accepted — Base44 entity RLS provides data-level protection** |
-| G3 | `TenantLicense` read RLS allows any `admin` role to read all TenantLicenses — admins from Tenant A could see Tenant B's license metadata | LOW | **Accepted — required by TenantContext discovery logic; no sensitive operational data exposed** |
+| G3 | `TenantLicense` read RLS allowed any `admin` to read all TenantLicenses — cross-tenant license/PII exposure | ~~LOW~~ | **FIXED v1.4.0 — read scoped to creator / owner_email / members.email; invites now populate members[]** |
 | G4 | New users invited but not yet logged in lack `tenant_id` in their profile — they may not appear in tenant user lists immediately | LOW | **Accepted — resolves automatically on first login** |
 
 ## Fixes Applied in v1.0.2

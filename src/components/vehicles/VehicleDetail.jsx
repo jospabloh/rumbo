@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { compressImage } from '@/lib/imageUtils';
 import { Link } from 'react-router-dom';
 
+const dayLabel = { monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo' };
+
 export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDelete, onRefresh }) {
   const [docs, setDocs] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
@@ -30,6 +32,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
   };
 
   const fields = [
+    ['No. de unidad', vehicle.unit_number],
     ['Marca / Modelo', `${vehicle.make || ''} ${vehicle.model || ''} ${vehicle.year ? `(${vehicle.year})` : ''}`],
     ['VIN', vehicle.vin],
     ['Odómetro', vehicle.odometer ? `${vehicle.odometer.toLocaleString()} km` : null],
@@ -37,6 +40,9 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
     ['Venc. seguro', vehicle.insurance_expiry],
     ['Venc. inspección', vehicle.inspection_expiry],
     ['Venc. registro', vehicle.registration_expiry],
+    ['Venc. holograma', vehicle.hologram_expiry],
+    ['Tarifa de renta', vehicle.rent_amount ? `$${Number(vehicle.rent_amount).toLocaleString()} ${vehicle.rent_frequency === 'daily' ? '/ día' : '/ semana'}` : null],
+    ['Día de cobro', vehicle.rent_frequency !== 'daily' && vehicle.rent_amount ? dayLabel[vehicle.rent_day] : null],
   ].filter(([, v]) => v);
 
   return (
@@ -57,7 +63,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
           <Truck className="w-7 h-7" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">{vehicle.plate}</h2>
+          <h2 className="text-xl font-bold">{vehicle.plate || (vehicle.unit_number ? `#${vehicle.unit_number}` : 'Vehículo')}</h2>
           <p className="text-sm text-muted-foreground">{vehicle.make} {vehicle.model} {vehicle.year && `· ${vehicle.year}`}</p>
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

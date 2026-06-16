@@ -70,7 +70,7 @@ function UserRow({ member, onRoleChange, onInvite, isCurrentUser }) {
   );
 }
 
-function InviteForm({ onInvited }) {
+function InviteForm({ tenant, onInvited }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('driver');
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,19 @@ function InviteForm({ onInvited }) {
   const send = async () => {
     if (!email.trim()) return;
     setLoading(true);
-    await base44.users.inviteUser(email.trim(), role);
+    const cleanEmail = email.trim().toLowerCase();
+    await base44.users.inviteUser(cleanEmail, role);
+    // Registrar al invitado en members[] del tenant: es lo que ata al usuario a este
+    // tenant (RLS de TenantLicense por members.email) y permite el descubrimiento en
+    // el primer login del invitado.
+    if (tenant?.id) {
+      const existing = Array.isArray(tenant.members) ? tenant.members : [];
+      if (!existing.some(m => m.email?.toLowerCase() === cleanEmail)) {
+        await base44.entities.TenantLicense.update(tenant.id, {
+          members: [...existing, { email: cleanEmail, role }],
+        }).catch(() => {});
+      }
+    }
     setDone(true);
     setLoading(false);
     setTimeout(() => { setDone(false); setEmail(''); onInvited(); }, 2000);
@@ -334,7 +346,7 @@ export default function Admin() {
             <Mail className="w-4 h-4 text-muted-foreground" />
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Invitar usuario</p>
           </div>
-          <InviteForm onInvited={load} />
+          <InviteForm tenant={tenant} onInvited={load} />
         </div>
       </section>
 

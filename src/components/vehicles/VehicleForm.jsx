@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
   const [form, setForm] = useState({
     plate: vehicle?.plate || '',
+    unit_number: vehicle?.unit_number || '',
     make: vehicle?.make || '',
     model: vehicle?.model || '',
     year: vehicle?.year || '',
@@ -18,22 +19,34 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
     insurance_expiry: vehicle?.insurance_expiry || '',
     inspection_expiry: vehicle?.inspection_expiry || '',
     registration_expiry: vehicle?.registration_expiry || '',
+    hologram_expiry: vehicle?.hologram_expiry || '',
     odometer: vehicle?.odometer || 0,
+    rent_amount: vehicle?.rent_amount || '',
+    rent_frequency: vehicle?.rent_frequency || 'weekly',
+    rent_day: vehicle?.rent_day || 'monday',
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await onSave({
-      ...form,
-      year: form.year ? parseInt(form.year) : null,
-      odometer: form.odometer ? parseInt(form.odometer) : 0,
-      assigned_driver_id: form.assigned_driver_id || null,
-    });
-    setSaving(false);
+    setError('');
+    try {
+      await onSave({
+        ...form,
+        year: form.year ? parseInt(form.year) : null,
+        odometer: form.odometer ? parseInt(form.odometer) : 0,
+        rent_amount: form.rent_amount ? parseFloat(form.rent_amount) : null,
+        assigned_driver_id: form.assigned_driver_id || null,
+      });
+      // onSave cierra el formulario al tener éxito; no reseteamos saving aquí.
+    } catch (err) {
+      setError(err?.message || 'No se pudo guardar el vehículo. Revisa tu conexión e inténtalo de nuevo.');
+      setSaving(false);
+    }
   };
 
   return (
@@ -47,8 +60,12 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Placa *</Label>
-              <Input value={form.plate} onChange={e => set('plate', e.target.value.toUpperCase())} required className="mt-1 bg-background" />
+              <Label>No. de unidad</Label>
+              <Input value={form.unit_number} onChange={e => set('unit_number', e.target.value)} className="mt-1 bg-background" placeholder="Ej. U01" />
+            </div>
+            <div>
+              <Label>Placa</Label>
+              <Input value={form.plate} onChange={e => set('plate', e.target.value.toUpperCase())} className="mt-1 bg-background" />
             </div>
             <div>
               <Label>Estado</Label>
@@ -107,7 +124,45 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
               <Label>Venc. registro</Label>
               <Input type="date" value={form.registration_expiry} onChange={e => set('registration_expiry', e.target.value)} className="mt-1 bg-background" />
             </div>
+            <div>
+              <Label>Venc. holograma</Label>
+              <Input type="date" value={form.hologram_expiry} onChange={e => set('hologram_expiry', e.target.value)} className="mt-1 bg-background" />
+            </div>
+            <div>
+              <Label>Tarifa de renta ($)</Label>
+              <Input type="number" step="0.01" value={form.rent_amount} onChange={e => set('rent_amount', e.target.value)} className="mt-1 bg-background" placeholder="Ej. 2800" />
+            </div>
+            <div>
+              <Label>Frecuencia de renta</Label>
+              <Select value={form.rent_frequency} onValueChange={v => set('rent_frequency', v)}>
+                <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="daily">Diaria</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {form.rent_frequency === 'weekly' && (
+              <div>
+                <Label>Día de cobro</Label>
+                <Select value={form.rent_day} onValueChange={v => set('rent_day', v)}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monday">Lunes</SelectItem>
+                    <SelectItem value="tuesday">Martes</SelectItem>
+                    <SelectItem value="wednesday">Miércoles</SelectItem>
+                    <SelectItem value="thursday">Jueves</SelectItem>
+                    <SelectItem value="friday">Viernes</SelectItem>
+                    <SelectItem value="saturday">Sábado</SelectItem>
+                    <SelectItem value="sunday">Domingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
+          {error && (
+            <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+          )}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button type="submit" disabled={saving} className="flex-1">{saving ? 'Guardando...' : vehicle ? 'Guardar' : 'Crear vehículo'}</Button>

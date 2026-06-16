@@ -34,9 +34,9 @@ Deno.serve(async (req) => {
     const existingKeys = new Set(existingAlerts.map(a => `${a.entity_type}:${a.entity_id}`));
     const toCreate = [];
 
-    // Driver license + medical expiry
+    // Driver license expiry
     for (const d of drivers) {
-      for (const [field, label] of [['license_expiry', 'Licencia'], ['medical_cert_expiry', 'Cert. médico']]) {
+      for (const [field, label] of [['license_expiry', 'Licencia']]) {
         const days = daysUntil(d[field]);
         if (days !== null && days <= 30) {
           const key = `driver_doc:${d.id}-${field}`;
@@ -68,10 +68,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Vehicle insurance, inspection, registration
+    // Vehicle insurance, inspection, registration, hologram
     for (const v of vehicles) {
       for (const [field, label] of [
-        ['insurance_expiry', 'Seguro'], ['inspection_expiry', 'Inspección'], ['registration_expiry', 'Registro'],
+        ['insurance_expiry', 'Seguro'], ['inspection_expiry', 'Inspección'], ['registration_expiry', 'Registro'], ['hologram_expiry', 'Holograma'],
       ]) {
         const days = daysUntil(v[field]);
         if (days !== null && days <= 30) {

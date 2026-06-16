@@ -10,9 +10,17 @@
       "type": "string",
       "title": "Nombre"
     },
+    "brand": {
+      "type": "string",
+      "title": "Marca"
+    },
     "sku": {
       "type": "string",
       "title": "SKU"
+    },
+    "unit_number": {
+      "type": "string",
+      "title": "No. de unidad"
     },
     "stock": {
       "type": "number",

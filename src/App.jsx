@@ -14,6 +14,7 @@ import Drivers from './pages/Drivers';
 import Vehicles from './pages/Vehicles';
 import MaintenancePage from './pages/MaintenancePage';
 import Financial from './pages/Financial';
+import Rentas from './pages/Rentas';
 import Alerts from './pages/Alerts';
 import Location from './pages/Location';
 import Messages from './pages/Messages';
@@ -25,6 +26,7 @@ import GitHubPage from './pages/GitHubPage';
 import SupabasePage from './pages/SupabasePage';
 import Billing from './pages/Billing';
 import Admin from './pages/Admin';
+import Licenses from './pages/Licenses';
 import TestData from './pages/TestData';
 // Add page imports here
 
@@ -91,6 +93,7 @@ const AuthenticatedApp = () => {
         <Route path="/vehicles" element={<Vehicles />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
 
+        <Route path="/rentas" element={<Rentas />} />
         <Route path="/financial" element={<Financial />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/location" element={<Location />} />
@@ -103,6 +106,7 @@ const AuthenticatedApp = () => {
         <Route path="/supabase" element={<SupabasePage />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/licenses" element={<Licenses />} />
         <Route path="/test-data" element={<TestData />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

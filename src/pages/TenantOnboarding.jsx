@@ -98,6 +98,10 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
         const res = await base44.integrations.Core.UploadFile({ file: logoFile });
         logo_url = res.file_url;
       }
+      // Primer mes gratis: la licencia queda vigente hasta hoy + 1 mes.
+      const freeUntil = new Date();
+      freeUntil.setMonth(freeUntil.getMonth() + 1);
+      const freeUntilStr = freeUntil.toISOString().slice(0, 10);
       const tenant = await base44.entities.TenantLicense.create({
         tenant_name: form.tenant_name.trim(),
         slogan: form.slogan.trim(),
@@ -109,7 +113,18 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
         plan: 'trial',
         status: 'active',
         owner_email: user.email,
+        trial_ends_at: freeUntilStr,
+        current_period_end: freeUntilStr,
+        billing_cycle: 'monthly',
       });
+      // Asociar el tenant recién creado al perfil del usuario de inmediato, para que
+      // las reglas RLS (data.tenant_id == user.data.tenant_id) permitan crear registros
+      // sin depender del refresco posterior en TenantContext.
+      try {
+        await base44.auth.updateMe({ tenant_id: tenant.id });
+      } catch (e) {
+        console.error('No se pudo asociar el tenant al usuario tras el onboarding:', e);
+      }
       // Apply colors to CSS vars
       if (colors.primary) applyTenantColors(colors);
       setStep(3);

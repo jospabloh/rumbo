@@ -10,6 +10,10 @@
       "type": "string",
       "title": "Placa"
     },
+    "unit_number": {
+      "type": "string",
+      "title": "No. de unidad"
+    },
     "make": {
       "type": "string",
       "title": "Marca"
@@ -59,15 +63,44 @@
       "format": "date",
       "title": "Vencimiento registro"
     },
+    "hologram_expiry": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento holograma"
+    },
     "odometer": {
       "type": "number",
       "title": "Od\u00f3metro (km)",
       "default": 0
+    },
+    "rent_amount": {
+      "type": "number",
+      "title": "Tarifa de renta"
+    },
+    "rent_frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly"
+      ],
+      "title": "Frecuencia de renta",
+      "default": "weekly"
+    },
+    "rent_day": {
+      "type": "string",
+      "enum": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "title": "Día de cobro (semanal)"
     }
   },
-  "required": [
-    "plate"
-  ],
+  "required": [],
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",

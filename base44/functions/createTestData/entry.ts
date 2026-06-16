@@ -5,20 +5,19 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
-      return Response.json({ error: 'Unauthorized: Admin or Owner access required' }, { status: 403 });
+    if (!user || user.role !== 'owner') {
+      return Response.json({ error: 'Unauthorized: Owner access required' }, { status: 403 });
     }
 
     const svc = base44.asServiceRole;
 
-    // Buscar el tenant del usuario
+    // Buscar el tenant del usuario (solo del propio owner; nunca el de otro tenant)
     let tenantId = user.data?.tenant_id;
 
     if (!tenantId) {
       const tenants = await svc.entities.TenantLicense.list('-created_date', 50);
       const found = tenants.find(t => t.created_by_id === user.id)
-        || tenants.find(t => t.owner_email === user.email)
-        || tenants[0];
+        || tenants.find(t => t.owner_email === user.email);
       tenantId = found?.id;
     }
 
@@ -48,11 +47,11 @@ Deno.serve(async (req) => {
     }
 
     const driverData = [
-      { full_name: 'Juan Pérez Test', license_no: 'LIC-001', phone: '55-1234-5678', rating: 4.8, license_expiry: '2026-06-10', medical_cert_expiry: '2026-08-20' },
-      { full_name: 'María García Test', license_no: 'LIC-002', phone: '55-8765-4321', rating: 4.9, license_expiry: '2027-03-15', medical_cert_expiry: '2026-11-10' },
-      { full_name: 'Carlos López Test', license_no: 'LIC-003', phone: '55-1111-2222', rating: 4.5, license_expiry: '2026-09-05', medical_cert_expiry: '2027-01-15' },
-      { full_name: 'Ana Martínez Test', license_no: 'LIC-004', phone: '55-3333-4444', rating: 4.2, license_expiry: '2026-07-01', medical_cert_expiry: '2026-06-15' },
-      { full_name: 'Roberto Sánchez Test', license_no: 'LIC-005', phone: '55-5555-6666', rating: 5.0, license_expiry: '2027-06-01', medical_cert_expiry: '2027-06-01' },
+      { full_name: 'Juan Pérez Test', license_no: 'LIC-001', phone: '55-1234-5678', rating: 4.8, license_expiry: '2026-06-10' },
+      { full_name: 'María García Test', license_no: 'LIC-002', phone: '55-8765-4321', rating: 4.9, license_expiry: '2027-03-15' },
+      { full_name: 'Carlos López Test', license_no: 'LIC-003', phone: '55-1111-2222', rating: 4.5, license_expiry: '2026-09-05' },
+      { full_name: 'Ana Martínez Test', license_no: 'LIC-004', phone: '55-3333-4444', rating: 4.2, license_expiry: '2026-07-01' },
+      { full_name: 'Roberto Sánchez Test', license_no: 'LIC-005', phone: '55-5555-6666', rating: 5.0, license_expiry: '2027-06-01' },
     ];
 
     for (const dData of driverData) {

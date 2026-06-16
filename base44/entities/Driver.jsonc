@@ -19,11 +19,6 @@
       "format": "date",
       "title": "Vencimiento de licencia"
     },
-    "medical_cert_expiry": {
-      "type": "string",
-      "format": "date",
-      "title": "Vencimiento cert. m\u00e9dico"
-    },
     "background_check_date": {
       "type": "string",
       "format": "date",
@@ -57,6 +52,22 @@
     "photo_url": {
       "type": "string",
       "title": "Foto"
+    },
+    "license_file_url": {
+      "type": "string",
+      "title": "Archivo de licencia"
+    },
+    "ine_file_url": {
+      "type": "string",
+      "title": "Archivo de INE"
+    },
+    "address_proof_file_url": {
+      "type": "string",
+      "title": "Comprobante de domicilio"
+    },
+    "referred_by_driver_id": {
+      "type": "string",
+      "title": "Referido por (conductor)"
     },
     "profile_id": {
       "type": "string",
