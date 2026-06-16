@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Star, Fuel } from 'lucide-react';
+import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import StatCard from '@/components/dashboard/StatCard';
 import AlertBadge from '@/components/dashboard/AlertBadge';
@@ -14,7 +14,6 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [messages, setMessages] = useState([]);
   const [trips, setTrips] = useState([]);
-  const [fuelLogs, setFuelLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,14 +24,12 @@ export default function Dashboard() {
       base44.entities.Alert.filter({ ...q, resolved: false }),
       base44.entities.Message.filter({ read: false, tenant_id: tenantId }),
       base44.entities.Trip.filter(q, '-started_at', 100),
-      base44.entities.FuelLog.filter(q, '-logged_at', 50),
-    ]).then(([v, d, a, m, t, f]) => {
+    ]).then(([v, d, a, m, t]) => {
       setVehicles(v);
       setDrivers(d);
       setAlerts(a);
       setMessages(m);
       setTrips(t);
-      setFuelLogs(f);
     }).finally(() => setLoading(false));
   }, [tenantId]);
 
@@ -44,7 +41,6 @@ export default function Dashboard() {
   const warningAlerts = alerts.filter(a => a.severity === 'warning');
   const todayTrips = trips.filter(t => t.started_at && isToday(new Date(t.started_at)));
   const totalEarnings = todayTrips.reduce((s, t) => s + (t.earnings || 0), 0);
-  const avgRating = drivers.length > 0 ? (drivers.reduce((s, d) => s + (d.rating || 0), 0) / drivers.filter(d => d.rating).length || 0).toFixed(1) : '—';
 
   if (loading) {
     return (
@@ -80,10 +76,8 @@ export default function Dashboard() {
         <StatCard icon={MessageSquare} label="No leídos" value={messages.length} sub="mensajes" color="purple" link="/messages" />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard icon={Fuel} label="Viajes hoy" value={todayTrips.length} sub="completados" color="blue" />
-        <StatCard icon={DollarSign} label="Ingresos hoy" value={`$${totalEarnings.toFixed(0)}`} sub="suma de viajes" color="green" />
-        <StatCard icon={Star} label="Rating promedio" value={avgRating} sub="flotilla" color="yellow" />
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard icon={DollarSign} label="Ingresos hoy" value={`$${totalEarnings.toFixed(0)}`} sub="rentas del día" color="green" />
         <StatCard icon={TrendingUp} label="Flota total" value={vehicles.length} sub="vehículos" color="gray" />
       </div>
 

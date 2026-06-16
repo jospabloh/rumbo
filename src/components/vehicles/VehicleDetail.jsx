@@ -30,6 +30,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
   };
 
   const fields = [
+    ['No. de unidad', vehicle.unit_number],
     ['Marca / Modelo', `${vehicle.make || ''} ${vehicle.model || ''} ${vehicle.year ? `(${vehicle.year})` : ''}`],
     ['VIN', vehicle.vin],
     ['Odómetro', vehicle.odometer ? `${vehicle.odometer.toLocaleString()} km` : null],
@@ -37,6 +38,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
     ['Venc. seguro', vehicle.insurance_expiry],
     ['Venc. inspección', vehicle.inspection_expiry],
     ['Venc. registro', vehicle.registration_expiry],
+    ['Venc. holograma', vehicle.hologram_expiry],
   ].filter(([, v]) => v);
 
   return (

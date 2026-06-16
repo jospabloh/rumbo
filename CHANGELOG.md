@@ -4,6 +4,44 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.1.0] — 2026-06-16
+
+### Fixed
+
+- **[HIGH] Drivers/Vehicles save hangs and does not persist.** Root cause: entity RLS
+  requires `data.tenant_id == user.data.tenant_id`, but the user's `tenant_id` was
+  persisted via a fire-and-forget `updateMe()` that was not awaited and swallowed
+  errors, so a freshly-onboarded user could save before their profile had the tenant.
+  `TenantContext` now awaits `updateMe`, and `TenantOnboarding` sets `tenant_id`
+  immediately after creating the license. `DriverForm`/`VehicleForm` now use
+  `try/catch`, always reset the saving state, and surface a clear inline error instead
+  of spinning on "Guardando..." forever. `Drivers`/`Vehicles` guard `create` when the
+  tenant is not ready yet.
+
+### Changed (client feedback — quick wins)
+
+- **Conductores:** removed *Certificado médico* (no aplica). Added per-driver document
+  uploads: **Licencia, INE, Comprobante de domicilio** (each a separate file field,
+  image or PDF), shown in the driver form and file detail.
+- **Vehículos:** added **No. de unidad** and **Vencimiento de holograma** fields
+  (form, detail, and list). Hologram expiry now feeds the automatic alert generation.
+- **Inventario:** added **Marca** and **No. de unidad** to parts.
+- **Dashboard:** removed *Viajes hoy* and *Rating promedio* cards (no aplican).
+  "Ingresos hoy" relabelled toward rentas (to be wired to the rentas model next).
+
+### Data Model
+
+- `Driver`: removed `medical_cert_expiry`; added `license_file_url`, `ine_file_url`,
+  `address_proof_file_url`.
+- `Vehicle`: added `unit_number`, `hologram_expiry`.
+- `Part`: added `brand`, `unit_number`.
+
+### Version
+
+- `package.json` version `1.0.2` → `1.1.0`.
+
+---
+
 ## [1.0.2] — 2026-06-15
 
 ### Security

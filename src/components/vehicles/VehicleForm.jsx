@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
   const [form, setForm] = useState({
     plate: vehicle?.plate || '',
+    unit_number: vehicle?.unit_number || '',
     make: vehicle?.make || '',
     model: vehicle?.model || '',
     year: vehicle?.year || '',
@@ -18,6 +19,7 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
     insurance_expiry: vehicle?.insurance_expiry || '',
     inspection_expiry: vehicle?.inspection_expiry || '',
     registration_expiry: vehicle?.registration_expiry || '',
+    hologram_expiry: vehicle?.hologram_expiry || '',
     odometer: vehicle?.odometer || 0,
   });
   const [saving, setSaving] = useState(false);
@@ -56,6 +58,10 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
             <div>
               <Label>Placa *</Label>
               <Input value={form.plate} onChange={e => set('plate', e.target.value.toUpperCase())} required className="mt-1 bg-background" />
+            </div>
+            <div>
+              <Label>No. de unidad</Label>
+              <Input value={form.unit_number} onChange={e => set('unit_number', e.target.value)} className="mt-1 bg-background" />
             </div>
             <div>
               <Label>Estado</Label>
@@ -113,6 +119,10 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
             <div>
               <Label>Venc. registro</Label>
               <Input type="date" value={form.registration_expiry} onChange={e => set('registration_expiry', e.target.value)} className="mt-1 bg-background" />
+            </div>
+            <div>
+              <Label>Venc. holograma</Label>
+              <Input type="date" value={form.hologram_expiry} onChange={e => set('hologram_expiry', e.target.value)} className="mt-1 bg-background" />
             </div>
           </div>
           {error && (

@@ -105,6 +105,7 @@ export default function Vehicles() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-sm">{v.plate}</p>
+                    {v.unit_number && <span className="text-xs text-muted-foreground">#{v.unit_number}</span>}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[v.status]}`}>{statusLabel[v.status]}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{v.make} {v.model} {v.year && `· ${v.year}`} · {driver?.full_name || 'Sin asignar'}</p>

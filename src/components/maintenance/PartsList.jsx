@@ -10,7 +10,7 @@ export default function PartsList({ vehicles }) {
   const { tenantId } = useTenant();
   const [parts, setParts] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', sku: '', stock: 0, unit_cost: '', vehicle_id: '' });
+  const [form, setForm] = useState({ name: '', brand: '', sku: '', unit_number: '', stock: 0, unit_cost: '', vehicle_id: '' });
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -29,7 +29,7 @@ export default function PartsList({ vehicles }) {
       unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
       vehicle_id: form.vehicle_id || null,
     });
-    setForm({ name: '', sku: '', stock: 0, unit_cost: '', vehicle_id: '' });
+    setForm({ name: '', brand: '', sku: '', unit_number: '', stock: 0, unit_cost: '', vehicle_id: '' });
     setShowForm(false);
     load();
     setSaving(false);
@@ -62,8 +62,8 @@ export default function PartsList({ vehicles }) {
                 <Package className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">{p.name}</p>
-                <p className="text-xs text-muted-foreground">{p.sku && `SKU: ${p.sku} · `}{v ? v.plate : 'General'}</p>
+                <p className="text-sm font-semibold">{p.name}{p.brand && <span className="text-muted-foreground font-normal"> · {p.brand}</span>}</p>
+                <p className="text-xs text-muted-foreground">{p.sku && `SKU: ${p.sku} · `}{p.unit_number && `Unidad ${p.unit_number} · `}{v ? v.plate : 'General'}</p>
                 {p.unit_cost && <p className="text-xs text-muted-foreground">${parseFloat(p.unit_cost).toFixed(2)} c/u</p>}
               </div>
               <div className="flex items-center gap-2">
@@ -92,6 +92,14 @@ export default function PartsList({ vehicles }) {
                 <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required className="mt-1 bg-background" />
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Marca</Label>
+                  <Input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} className="mt-1 bg-background" />
+                </div>
+                <div>
+                  <Label>No. de unidad</Label>
+                  <Input value={form.unit_number} onChange={e => setForm(f => ({ ...f, unit_number: e.target.value }))} className="mt-1 bg-background" />
+                </div>
                 <div>
                   <Label>SKU</Label>
                   <Input value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} className="mt-1 bg-background" />

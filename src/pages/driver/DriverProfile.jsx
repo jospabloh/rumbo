@@ -65,7 +65,6 @@ export default function DriverProfile() {
         {[
           { label: 'No. licencia', value: driver.license_no },
           { label: 'Venc. licencia', value: driver.license_expiry },
-          { label: 'Cert. médico', value: driver.medical_cert_expiry },
           { label: 'Contratación', value: driver.hire_date },
         ].map(({ label, value }) => value ? (
           <div key={label}>

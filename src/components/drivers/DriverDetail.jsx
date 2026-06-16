@@ -121,7 +121,6 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
         {[
           ['Licencia', driver.license_no],
           ['Venc. licencia', driver.license_expiry],
-          ['Cert. médico', driver.medical_cert_expiry],
           ['Antecedentes', driver.background_check_date],
           ['Contratación', driver.hire_date],
         ].map(([label, val]) => val ? (
@@ -132,10 +131,31 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
         ) : null)}
       </div>
 
-      {/* Documents */}
+      {/* Documentos del conductor (licencia, INE, comprobante) */}
+      <div className="bg-card border border-border rounded-xl p-4 mb-4">
+        <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><FileText className="w-4 h-4" />Documentos del conductor</h3>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            ['Licencia', driver.license_file_url],
+            ['INE', driver.ine_file_url],
+            ['Comprobante', driver.address_proof_file_url],
+          ].map(([label, url]) => (
+            <div key={label} className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">{label}</p>
+              {url ? (
+                <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Ver archivo</a>
+              ) : (
+                <span className="text-xs text-muted-foreground/60">—</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Documentos adicionales */}
       <div className="bg-card border border-border rounded-xl p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm flex items-center gap-2"><FileText className="w-4 h-4" />Documentos</h3>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><FileText className="w-4 h-4" />Documentos adicionales</h3>
           {isAdmin && (
             <label className="text-xs text-primary cursor-pointer flex items-center gap-1 hover:opacity-80">
               <Upload className="w-3 h-3" />{uploadingDoc ? 'Subiendo...' : 'Subir'}
