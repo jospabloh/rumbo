@@ -112,6 +112,9 @@ export default function Drivers() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[d.status]}`}>
                     {statusLabel[d.status]}
                   </span>
+                  {d.referred_by_driver_id && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-primary/10 text-primary">Referido</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
                   {d.phone && <span className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{d.phone}</span>}
@@ -131,6 +134,7 @@ export default function Drivers() {
       {showForm && (
         <DriverForm
           driver={editDriver}
+          drivers={drivers}
           onSave={handleSave}
           onClose={() => { setShowForm(false); setEditDriver(null); }}
         />

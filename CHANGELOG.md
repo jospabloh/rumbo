@@ -4,6 +4,37 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.3.0] — 2026-06-16
+
+### Added
+
+- **Rentas → vista de Ingresos**: nuevo reporte de pagos recibidos. En modo **Día**
+  muestra cuánto entró y **de quién** (cada pago: conductor, unidad, método, monto); en
+  modo **Semana** muestra el total, el ingreso por conductor y **quién quedó debiendo y
+  cuánto**. Resuelve la necesidad de ver ingreso diario (varios choferes pagan diario) vs.
+  ingreso semanal con adeudos.
+- **Conductores → Referido**: campo **"Referido por (conductor)"** en el formulario y badge
+  **Referido** en lista y expediente. (La automatización del bono de $1,000 — al cumplir el
+  referido sus pagos puntuales, descontándolo de la renta del que refiere — queda como
+  siguiente paso.)
+- **Día de cobro por unidad** (`Vehicle.rent_day`): la renta semanal se cobra en distintos
+  días según la unidad; el generador de cobros ancla la semana al día de cada unidad.
+
+### Changed
+
+- **Placa ahora opcional**: el identificador operativo es el **No. de unidad** (U01, U02…).
+  Las vistas usan la unidad como respaldo cuando no hay placa.
+
+### Data Model
+
+- `Vehicle`: `rent_day` added; `plate` no longer required.
+
+### Version
+
+- `package.json` version `1.2.0` → `1.3.0`.
+
+---
+
 ## [1.2.0] — 2026-06-16
 
 ### Added — Rentas model (core business)

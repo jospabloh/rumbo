@@ -100,9 +100,7 @@
       "title": "Día de cobro (semanal)"
     }
   },
-  "required": [
-    "plate"
-  ],
+  "required": [],
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",

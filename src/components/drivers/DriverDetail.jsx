@@ -113,6 +113,9 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
             driver.status === 'active' ? 'bg-success/10 text-success' :
             driver.status === 'suspended' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
           }`}>{driver.status === 'active' ? 'Activo' : driver.status === 'suspended' ? 'Suspendido' : 'Inactivo'}</span>
+          {driver.referred_by_driver_id && (
+            <span className="mt-1 ml-2 inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-primary/10 text-primary">Referido</span>
+          )}
         </div>
       </div>
 

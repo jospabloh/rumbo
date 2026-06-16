@@ -60,12 +60,12 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Placa *</Label>
-              <Input value={form.plate} onChange={e => set('plate', e.target.value.toUpperCase())} required className="mt-1 bg-background" />
+              <Label>No. de unidad</Label>
+              <Input value={form.unit_number} onChange={e => set('unit_number', e.target.value)} className="mt-1 bg-background" placeholder="Ej. U01" />
             </div>
             <div>
-              <Label>No. de unidad</Label>
-              <Input value={form.unit_number} onChange={e => set('unit_number', e.target.value)} className="mt-1 bg-background" />
+              <Label>Placa</Label>
+              <Input value={form.plate} onChange={e => set('plate', e.target.value.toUpperCase())} className="mt-1 bg-background" />
             </div>
             <div>
               <Label>Estado</Label>

@@ -63,7 +63,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
           <Truck className="w-7 h-7" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">{vehicle.plate}</h2>
+          <h2 className="text-xl font-bold">{vehicle.plate || (vehicle.unit_number ? `#${vehicle.unit_number}` : 'Vehículo')}</h2>
           <p className="text-sm text-muted-foreground">{vehicle.make} {vehicle.model} {vehicle.year && `· ${vehicle.year}`}</p>
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

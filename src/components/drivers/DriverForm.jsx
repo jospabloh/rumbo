@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/lib/imageUtils';
 
-export default function DriverForm({ driver, onSave, onClose }) {
+export default function DriverForm({ driver, drivers = [], onSave, onClose }) {
   const [form, setForm] = useState({
     full_name: driver?.full_name || '',
+    referred_by_driver_id: driver?.referred_by_driver_id || '',
     license_no: driver?.license_no || '',
     license_expiry: driver?.license_expiry || '',
     background_check_date: driver?.background_check_date || '',
@@ -114,6 +115,18 @@ export default function DriverForm({ driver, onSave, onClose }) {
                   <SelectItem value="active">Activo</SelectItem>
                   <SelectItem value="suspended">Suspendido</SelectItem>
                   <SelectItem value="inactive">Inactivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>Referido por (conductor)</Label>
+              <Select value={form.referred_by_driver_id || 'none'} onValueChange={v => set('referred_by_driver_id', v === 'none' ? '' : v)}>
+                <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Directo (no referido)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Directo (no referido)</SelectItem>
+                  {drivers.filter(d => d.id !== driver?.id).map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
