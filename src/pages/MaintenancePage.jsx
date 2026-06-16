@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
 import PartsList from '@/components/maintenance/PartsList';
 import { useTenant } from '@/lib/TenantContext';
+import { useModulePerms } from '@/lib/modulePerms';
 
 export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const { tenantId, readOnly } = useTenant();
+  const { can } = useModulePerms();
   const [records, setRecords] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
           <h1 className="text-xl font-bold">Mantenimiento</h1>
           <p className="text-sm text-muted-foreground">{records.length} registros</p>
         </div>
-        {tab === 'maintenance' && !readOnly && (
+        {tab === 'maintenance' && !readOnly && can('maintenance', 'create') && (
           <Button size="sm" onClick={() => { setEditRecord(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Registrar
           </Button>

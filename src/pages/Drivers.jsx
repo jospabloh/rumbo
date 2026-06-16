@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import DriverForm from '@/components/drivers/DriverForm';
 import DriverDetail from '@/components/drivers/DriverDetail';
 import { useTenant } from '@/lib/TenantContext';
+import { useModulePerms } from '@/lib/modulePerms';
 
 const statusLabel = { active: 'Activo', suspended: 'Suspendido', inactive: 'Inactivo' };
 const statusColor = {
@@ -16,6 +17,7 @@ const statusColor = {
 
 export default function Drivers() {
   const { tenantId, readOnly } = useTenant();
+  const { can } = useModulePerms();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -38,8 +40,10 @@ export default function Drivers() {
   const handleSave = async (data) => {
     if (readOnly) throw new Error('Licencia en modo solo lectura: renueva tu pago para hacer cambios.');
     if (editDriver) {
+      if (!can('drivers', 'edit')) throw new Error('No tienes permiso para editar conductores.');
       await base44.entities.Driver.update(editDriver.id, data);
     } else {
+      if (!can('drivers', 'create')) throw new Error('No tienes permiso para crear conductores.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
       await base44.entities.Driver.create({ ...data, tenant_id: tenantId });
     }
@@ -73,7 +77,7 @@ export default function Drivers() {
           <h1 className="text-xl font-bold">Conductores</h1>
           <p className="text-sm text-muted-foreground">{drivers.length} en total</p>
         </div>
-        {!readOnly && (
+        {!readOnly && can('drivers', 'create') && (
           <Button size="sm" onClick={() => { setEditDriver(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Agregar
           </Button>

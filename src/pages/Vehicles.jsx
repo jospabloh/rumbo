@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import VehicleForm from '@/components/vehicles/VehicleForm';
 import VehicleDetail from '@/components/vehicles/VehicleDetail';
 import { useTenant } from '@/lib/TenantContext';
+import { useModulePerms } from '@/lib/modulePerms';
 
 const statusLabel = { active: 'Activo', maintenance: 'Mantenimiento', inactive: 'Inactivo' };
 const statusColor = {
@@ -16,6 +17,7 @@ const statusColor = {
 
 export default function Vehicles() {
   const { tenantId, readOnly } = useTenant();
+  const { can } = useModulePerms();
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,8 +45,10 @@ export default function Vehicles() {
   const handleSave = async (data) => {
     if (readOnly) throw new Error('Licencia en modo solo lectura: renueva tu pago para hacer cambios.');
     if (editVehicle) {
+      if (!can('vehicles', 'edit')) throw new Error('No tienes permiso para editar vehículos.');
       await base44.entities.Vehicle.update(editVehicle.id, data);
     } else {
+      if (!can('vehicles', 'create')) throw new Error('No tienes permiso para crear vehículos.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
       await base44.entities.Vehicle.create({ ...data, tenant_id: tenantId });
     }
@@ -81,7 +85,7 @@ export default function Vehicles() {
           <h1 className="text-xl font-bold">Vehículos</h1>
           <p className="text-sm text-muted-foreground">{vehicles.length} en total</p>
         </div>
-        {!readOnly && (
+        {!readOnly && can('vehicles', 'create') && (
           <Button size="sm" onClick={() => { setEditVehicle(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Agregar
           </Button>

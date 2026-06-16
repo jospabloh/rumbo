@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTenant } from '@/lib/TenantContext';
+import { useModulePerms } from '@/lib/modulePerms';
 
 export default function PartsList({ vehicles }) {
   const { tenantId, readOnly } = useTenant();
+  const { can } = useModulePerms();
   const [parts, setParts] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', brand: '', sku: '', unit_number: '', stock: 0, unit_cost: '', vehicle_id: '' });
@@ -49,7 +51,7 @@ export default function PartsList({ vehicles }) {
 
   return (
     <div>
-      {!readOnly && (
+      {!readOnly && can('parts', 'create') && (
         <div className="flex justify-end mb-3">
           <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" />Agregar repuesto</Button>
         </div>

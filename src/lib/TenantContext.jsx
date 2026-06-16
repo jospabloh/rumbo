@@ -17,12 +17,14 @@ export function TenantProvider({ children }) {
   const [tenant, setTenant] = useState(null);
   const [tenantId, setTenantId] = useState(null);
   const [isAppOwner, setIsAppOwner] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadTenant = async () => {
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
+      setUserRole(user.role || null);
 
       // Fuente de verdad: la función de servidor resuelve y persiste el tenant_id
       // (y el rol del invitado en su primer login) con service role. Robusto y escalable.
@@ -78,7 +80,7 @@ export function TenantProvider({ children }) {
   const readOnly = isReadOnly(licenseInfo);
 
   return (
-    <TenantContext.Provider value={{ tenant, tenantId, isAppOwner, loading, reload: loadTenant, setTenant, licenseInfo, readOnly }}>
+    <TenantContext.Provider value={{ tenant, tenantId, isAppOwner, userRole, loading, reload: loadTenant, setTenant, licenseInfo, readOnly }}>
       {children}
     </TenantContext.Provider>
   );

@@ -3,14 +3,15 @@ import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { Shield, Eye, Plus, Pencil, Trash2, RefreshCw, PauseCircle, Check, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DEFAULT_PERMISSIONS } from '@/lib/modulePerms';
 
 const MODULES = [
   { key: 'vehicles',     label: 'Vehículos' },
   { key: 'drivers',      label: 'Conductores' },
+  { key: 'rentas',       label: 'Rentas' },
   { key: 'trips',        label: 'Viajes' },
   { key: 'maintenance',  label: 'Mantenimiento' },
   { key: 'parts',        label: 'Inventario / Partes' },
-  { key: 'fuel',         label: 'Combustible' },
   { key: 'fines',        label: 'Multas / Infracciones' },
   { key: 'insurance',    label: 'Seguros / Siniestros' },
   { key: 'alerts',       label: 'Alertas' },
@@ -41,54 +42,6 @@ const DEFAULT_MODULE_PERMS = {
   dispatcher: { view: true,  create: true,  edit: true,  delete: false, pause: false },
   mechanic:   { view: true,  create: false, edit: true,  delete: false, pause: false },
   driver:     { view: true,  create: false, edit: false, delete: false, pause: false },
-};
-
-const DEFAULT_PERMISSIONS = {
-  dispatcher: {
-    vehicles:    { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    drivers:     { view: true,  create: true,  edit: true,  delete: false, pause: true  },
-    trips:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    maintenance: { view: true,  create: false, edit: false, delete: false, pause: false },
-    parts:       { view: false, create: false, edit: false, delete: false, pause: false },
-    fuel:        { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    fines:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    insurance:   { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    alerts:      { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    messages:    { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    location:    { view: true,  create: false, edit: false, delete: false, pause: false },
-    financial:   { view: false, create: false, edit: false, delete: false, pause: false },
-    reports:     { view: false, create: false, edit: false, delete: false, pause: false },
-  },
-  mechanic: {
-    vehicles:    { view: true,  create: false, edit: true,  delete: false, pause: true  },
-    drivers:     { view: false, create: false, edit: false, delete: false, pause: false },
-    trips:       { view: false, create: false, edit: false, delete: false, pause: false },
-    maintenance: { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    parts:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    fuel:        { view: false, create: false, edit: false, delete: false, pause: false },
-    fines:       { view: false, create: false, edit: false, delete: false, pause: false },
-    insurance:   { view: false, create: false, edit: false, delete: false, pause: false },
-    alerts:      { view: false, create: false, edit: false, delete: false, pause: false },
-    messages:    { view: false, create: false, edit: false, delete: false, pause: false },
-    location:    { view: false, create: false, edit: false, delete: false, pause: false },
-    financial:   { view: false, create: false, edit: false, delete: false, pause: false },
-    reports:     { view: false, create: false, edit: false, delete: false, pause: false },
-  },
-  driver: {
-    vehicles:    { view: true,  create: false, edit: false, delete: false, pause: false },
-    drivers:     { view: true,  create: false, edit: true,  delete: false, pause: false },
-    trips:       { view: true,  create: true,  edit: true,  delete: false, pause: false },
-    maintenance: { view: false, create: false, edit: false, delete: false, pause: false },
-    parts:       { view: false, create: false, edit: false, delete: false, pause: false },
-    fuel:        { view: true,  create: true,  edit: false, delete: false, pause: false },
-    fines:       { view: true,  create: false, edit: false, delete: false, pause: false },
-    insurance:   { view: true,  create: false, edit: false, delete: false, pause: false },
-    alerts:      { view: true,  create: false, edit: false, delete: false, pause: false },
-    messages:    { view: true,  create: true,  edit: false, delete: false, pause: false },
-    location:    { view: false, create: false, edit: false, delete: false, pause: false },
-    financial:   { view: false, create: false, edit: false, delete: false, pause: false },
-    reports:     { view: false, create: false, edit: false, delete: false, pause: false },
-  },
 };
 
 function PermCell({ value, onChange }) {
