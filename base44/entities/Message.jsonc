@@ -4,31 +4,11 @@
   "properties": {
     "tenant_id": {
       "type": "string",
-      "title": "Tenant",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "title": "Tenant"
     },
     "channel_id": {
       "type": "string",
-      "title": "Canal",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "title": "Canal"
     },
     "channel_kind": {
       "type": "string",
@@ -37,88 +17,28 @@
         "direct"
       ],
       "title": "Tipo de canal (denormalizado)",
-      "description": "Copia de Channel.kind al crear el mensaje. Permite que la RLS de lectura deje leer los mensajes de un canal broadcast a todo el tenant sin tener que consultar la entidad Channel (las RLS de Base44 no hacen joins).",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "description": "Copia de Channel.kind al crear el mensaje. Permite que la RLS de lectura deje leer los mensajes de un canal broadcast a todo el tenant sin tener que consultar la entidad Channel (las RLS de Base44 no hacen joins)."
     },
     "channel_driver_id": {
       "type": "string",
       "title": "Conductor del canal (denormalizado)",
-      "description": "Copia de Channel.driver_id al crear el mensaje. Permite que la RLS de lectura deje a un conductor leer los mensajes de su propio canal directo (channel_driver_id == driver_profile_id), no solo los que él mismo envió.",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "description": "Copia de Channel.driver_id al crear el mensaje. Permite que la RLS de lectura deje a un conductor leer los mensajes de su propio canal directo (channel_driver_id == driver_profile_id), no solo los que él mismo envió."
     },
     "sender_id": {
       "type": "string",
-      "title": "Remitente (user id)",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "title": "Remitente (user id)"
     },
     "sender_name": {
       "type": "string",
-      "title": "Nombre del remitente",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "title": "Nombre del remitente"
     },
     "body": {
       "type": "string",
-      "title": "Mensaje",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "title": "Mensaje"
     },
     "audio_url": {
       "type": "string",
-      "title": "URL de audio",
-      "rls": {
-        "write": {
-          "$or": [
-            { "created_by_id": "{{user.id}}" },
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } },
-            { "user_condition": { "role": "dispatcher" } }
-          ]
-        }
-      }
+      "title": "URL de audio"
     },
     "delivered": {
       "type": "boolean",
@@ -183,29 +103,19 @@
           "created_by_id": "{{user.id}}"
         },
         {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
+          "user_condition": {
+            "role": "owner"
+          }
         },
         {
-          "data.channel_kind": "broadcast"
+          "user_condition": {
+            "role": "admin"
+          }
         },
         {
-          "data.channel_driver_id": "{{user.data.driver_profile_id}}"
+          "user_condition": {
+            "role": "dispatcher"
+          }
         }
       ],
       "user_condition": {
