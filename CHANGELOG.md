@@ -4,6 +4,31 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.11.2] — 2026-06-17
+
+### Fixed — el acuse "entregado/leído" del conductor ahora sí persiste (RLS de Message)
+
+Complemento de 1.11.1: aunque el conductor ya podía **leer** los mensajes, su acuse de
+"entregado/leído" no se guardaba porque la RLS de `update` de `Message` solo permitía al
+creador o al staff (fallaba en silencio en `loadMessages`).
+
+- **RLS de `update` de `Message` extendida** a los destinatarios del canal
+  (`channel_kind == "broadcast"` o `channel_driver_id == driver_profile_id`), igual que la
+  de lectura.
+- **Protección a nivel de campo (field-level `write`)** en `tenant_id`, `channel_id`,
+  `channel_kind`, `channel_driver_id`, `sender_id`, `sender_name`, `body` y `audio_url`:
+  solo el **creador o el staff** pueden escribirlos. Así un destinatario que pasa la RLS de
+  update **solo** puede tocar `delivered` / `read`, nunca el contenido del mensaje (mismo
+  patrón field-level que `User.role`). El gate de licencia (`write_access`) se mantiene.
+- No requiere cambios de frontend: `Messages.jsx` ya marcaba `delivered`/`read` al abrir el
+  canal; ahora la escritura es aceptada para el destinatario.
+
+### Version
+
+- `package.json` version `1.11.1` → `1.11.2`.
+
+---
+
 ## [1.11.1] — 2026-06-17
 
 ### Fixed — los conductores no podían leer los mensajes que les enviaban (RLS de Message)
