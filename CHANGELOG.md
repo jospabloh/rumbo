@@ -4,6 +4,43 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.11.0] — 2026-06-17
+
+### Added — bloqueo de escritura por licencia, aplicado en el backend (no solo UI)
+
+Hasta ahora el corte por falta de pago (`readonly` / `disabled`) se aplicaba **solo en el
+frontend**: un tenant vencido seguía pudiendo escribir si llamaba al SDK directamente,
+porque las RLS solo validaban rol + tenant. Esto cierra ese hueco para comercializar la app.
+
+- **Nuevo campo server-authoritative `write_access` (`enabled` | `blocked`) en `User`**
+  (`rls.write: false`). Solo lo escribe `resolveTenant` con service role; el cliente no
+  puede tocarlo.
+- **`resolveTenant` calcula `write_access`** desde el estado de la licencia, con la misma
+  política que `src/lib/license.js`: `enabled` mientras está `active` o en gracia
+  `past_due` (1–7 días vencida); `blocked` al pasar a `readonly` (8–15 días),
+  `disabled` (16+), `suspended` o `cancelled`. El owner de la app nunca se autobloquea.
+- **RLS de `create` / `update` / `delete` endurecida en las 18 entidades operativas**
+  (Vehicle, Driver, Trip, Maintenance, Part, Fine, FuelLog, InsuranceClaim, RentCharge,
+  Alert, Message, Channel, DriverDocument, VehicleDocument, DriverPrivateNote,
+  LocationRequest, Catalog, UsefulLink): ahora exigen
+  `user_condition: { write_access: "enabled" }`. La **lectura no cambia** (la app queda
+  en solo lectura). Un tenant vencido recibe error de RLS aunque le pegue al SDK.
+- **Frontend:** `isWriteBlocked()` en `license.js` y `writeBlocked` en `TenantContext`;
+  el contexto revalida tenant/licencia cada 15 min y al volver el foco a la pestaña, para
+  que una sesión abierta que cruza la fecha de vencimiento no conserve permiso de escritura.
+- **Tests:** +7 casos sobre el mapeo estado-de-licencia → bloqueo de escritura.
+
+> Nota de frescura: `write_access` se recalcula cada vez que el cliente llama a
+> `resolveTenant` (carga de la app + revalidación cada 15 min + al enfocar). Para que el
+> corte sea totalmente independiente del cliente, conviene programar una ejecución diaria
+> de `resolveTenant` (o una función equivalente) como tarea programada en el panel de Base44.
+
+### Version
+
+- `package.json` version `1.10.0` → `1.11.0`.
+
+---
+
 ## [1.10.0] — 2026-06-16
 
 ### Added — Enlaces útiles (per-tenant external links)

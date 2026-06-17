@@ -42,7 +42,10 @@
             "role": "dispatcher"
           }
         }
-      ]
+      ],
+      "user_condition": {
+        "write_access": "enabled"
+      }
     },
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
@@ -82,7 +85,10 @@
             "role": "dispatcher"
           }
         }
-      ]
+      ],
+      "user_condition": {
+        "write_access": "enabled"
+      }
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
@@ -97,7 +103,10 @@
             "role": "admin"
           }
         }
-      ]
+      ],
+      "user_condition": {
+        "write_access": "enabled"
+      }
     }
   }
 }

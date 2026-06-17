@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getLicenseInfo, isReadOnly, isDisabled, SUPPORT_URL } from '../license.js';
+import { getLicenseInfo, isReadOnly, isDisabled, isWriteBlocked, SUPPORT_URL } from '../license.js';
 
 /** Build an ISO date string that is `offsetDays` away from today (negative = past). */
 function dateOffset(offsetDays) {
@@ -156,6 +156,43 @@ describe('isReadOnly() and isDisabled() helpers', () => {
     const info = getLicenseInfo({ current_period_end: dateOffset(-8) });
     expect(isReadOnly(info)).toBe(true);
     expect(isDisabled(info)).toBe(false);
+  });
+});
+
+describe('isWriteBlocked() — gate de escritura por licencia', () => {
+  it('permite escribir mientras la licencia está vigente (active)', () => {
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(10) }))).toBe(false);
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(0) }))).toBe(false);
+  });
+
+  it('permite escribir durante la gracia past_due (1–7 días vencida)', () => {
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(-1) }))).toBe(false);
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(-7) }))).toBe(false);
+  });
+
+  it('bloquea la escritura en readonly (8–15 días vencida)', () => {
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(-8) }))).toBe(true);
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(-15) }))).toBe(true);
+  });
+
+  it('bloquea la escritura en disabled (16+ días vencida)', () => {
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(-16) }))).toBe(true);
+    expect(isWriteBlocked(getLicenseInfo({ current_period_end: dateOffset(-60) }))).toBe(true);
+  });
+
+  it('bloquea la escritura cuando el owner suspende o cancela', () => {
+    expect(isWriteBlocked(getLicenseInfo({ status: 'suspended' }))).toBe(true);
+    expect(isWriteBlocked(getLicenseInfo({ status: 'cancelled' }))).toBe(true);
+  });
+
+  it('no bloquea cuando no hay tenant o no hay fecha de corte (no-op seguro)', () => {
+    expect(isWriteBlocked(getLicenseInfo(null))).toBe(false);
+    expect(isWriteBlocked(getLicenseInfo({ status: 'active' }))).toBe(false);
+  });
+
+  it('devuelve false para null/undefined', () => {
+    expect(isWriteBlocked(null)).toBe(false);
+    expect(isWriteBlocked(undefined)).toBe(false);
   });
 });
 
