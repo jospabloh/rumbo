@@ -36,6 +36,13 @@
       "rls": {
         "write": false
       }
+    },
+    "driver_profile_id": {
+      "type": "string",
+      "description": "Id del registro Driver vinculado a este usuario. Server-authoritative: solo lo setea resolveTenant con service role. write:false evita que un conductor lo falsifique para acceder a los datos de otro conductor.",
+      "rls": {
+        "write": false
+      }
     }
   },
   "required": [

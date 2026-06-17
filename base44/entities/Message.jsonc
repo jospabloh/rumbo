@@ -2,6 +2,10 @@
   "name": "Message",
   "type": "object",
   "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
     "channel_id": {
       "type": "string",
       "title": "Canal"

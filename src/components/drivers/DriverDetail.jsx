@@ -42,6 +42,7 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
       driver_id: driver.id,
       author_id: user.id,
       note: newNote.trim(),
+      tenant_id: driver.tenant_id,
     });
     setNewNote('');
     base44.entities.DriverPrivateNote.filter({ driver_id: driver.id }).then(setNotes);
@@ -58,6 +59,7 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
       driver_id: driver.id,
       doc_type: 'other',
       file_url,
+      tenant_id: driver.tenant_id,
     });
     base44.entities.DriverDocument.filter({ driver_id: driver.id }).then(setDocs);
     setUploadingDoc(false);
