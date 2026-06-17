@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { isAdminOrOwner } from '@/lib/permissions';
+import { vehicleLimit, driverLimit } from '@/lib/plans';
 import { Button } from '@/components/ui/button';
 import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users, Crown, Shield, Navigation, Wrench, Car, User } from 'lucide-react';
 
@@ -132,12 +133,12 @@ export default function Billing() {
           <div className="bg-secondary rounded-lg p-4">
             <Truck className="w-4 h-4 text-muted-foreground mb-1" />
             <p className="text-2xl font-bold text-foreground">{vehicles.length}</p>
-            <p className="text-xs text-muted-foreground">de {license?.max_vehicles || 5} vehículos</p>
+            <p className="text-xs text-muted-foreground">de {Number.isFinite(vehicleLimit(license)) ? vehicleLimit(license) : '∞'} vehículos</p>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <Users className="w-4 h-4 text-muted-foreground mb-1" />
             <p className="text-2xl font-bold text-foreground">{drivers.length}</p>
-            <p className="text-xs text-muted-foreground">de {license?.max_drivers || 5} conductores</p>
+            <p className="text-xs text-muted-foreground">de {Number.isFinite(driverLimit(license)) ? driverLimit(license) : '∞'} conductores</p>
           </div>
           {daysUntilTrial !== null && (
             <div className={`rounded-lg p-4 ${daysUntilTrial <= 7 ? 'bg-critical/10' : 'bg-secondary'}`}>

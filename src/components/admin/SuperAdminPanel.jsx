@@ -4,6 +4,7 @@ import { Crown, Building2, RefreshCw, Edit2, Save, ChevronDown, ChevronUp } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PLAN_LIMITS } from '@/lib/plans';
 
 const PLANS = ['trial', 'starter', 'pro', 'enterprise'];
 const STATUSES = ['active', 'expired', 'suspended', 'cancelled'];
@@ -68,7 +69,7 @@ function TenantRow({ license, onSave }) {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Plan</label>
-                <Select value={form.plan} onValueChange={v => setForm(p => ({ ...p, plan: v }))}>
+                <Select value={form.plan} onValueChange={v => setForm(p => ({ ...p, plan: v, max_vehicles: PLAN_LIMITS[v].max_vehicles, max_drivers: PLAN_LIMITS[v].max_drivers }))}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>{PLANS.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
                 </Select>
@@ -81,12 +82,12 @@ function TenantRow({ license, onSave }) {
                 </Select>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Veh. máximos</label>
-                <Input type="number" value={form.max_vehicles || 5} onChange={f('max_vehicles')} className="bg-secondary border-border text-sm h-8" />
+                <label className="text-xs text-muted-foreground mb-1 block">Veh. máximos (0 = ilimitado)</label>
+                <Input type="number" value={form.max_vehicles ?? ''} onChange={f('max_vehicles')} className="bg-secondary border-border text-sm h-8" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Conductores máximos</label>
-                <Input type="number" value={form.max_drivers || 5} onChange={f('max_drivers')} className="bg-secondary border-border text-sm h-8" />
+                <label className="text-xs text-muted-foreground mb-1 block">Conductores máximos (0 = ilimitado)</label>
+                <Input type="number" value={form.max_drivers ?? ''} onChange={f('max_drivers')} className="bg-secondary border-border text-sm h-8" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Fin del trial</label>
@@ -110,8 +111,8 @@ function TenantRow({ license, onSave }) {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs">
                 <div><span className="text-muted-foreground">Plan: </span><span className="font-medium capitalize">{license.plan}</span></div>
                 <div><span className="text-muted-foreground">Estado: </span><span className={`font-medium capitalize ${STATUS_COLOR[license.status]?.split(' ')[0]}`}>{license.status}</span></div>
-                <div><span className="text-muted-foreground">Vehículos max: </span><span className="font-medium">{license.max_vehicles ?? 5}</span></div>
-                <div><span className="text-muted-foreground">Conductores max: </span><span className="font-medium">{license.max_drivers ?? 5}</span></div>
+                <div><span className="text-muted-foreground">Vehículos max: </span><span className="font-medium">{!license.max_vehicles ? 'Ilimitado' : license.max_vehicles}</span></div>
+                <div><span className="text-muted-foreground">Conductores max: </span><span className="font-medium">{!license.max_drivers ? 'Ilimitado' : license.max_drivers}</span></div>
                 {license.trial_ends_at && <div><span className="text-muted-foreground">Trial hasta: </span><span className="font-medium">{new Date(license.trial_ends_at).toLocaleDateString('es-MX')}</span></div>}
                 {license.renews_at && <div><span className="text-muted-foreground">Renovación: </span><span className="font-medium">{new Date(license.renews_at).toLocaleDateString('es-MX')}</span></div>}
                 {license.notes && <div className="col-span-2 sm:col-span-3"><span className="text-muted-foreground">Notas: </span><span className="font-medium">{license.notes}</span></div>}

@@ -7,6 +7,7 @@ import VehicleForm from '@/components/vehicles/VehicleForm';
 import VehicleDetail from '@/components/vehicles/VehicleDetail';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
+import { vehicleLimit, PLAN_LABELS } from '@/lib/plans';
 
 const statusLabel = { active: 'Activo', maintenance: 'Mantenimiento', inactive: 'Inactivo' };
 const statusColor = {
@@ -16,8 +17,9 @@ const statusColor = {
 };
 
 export default function Vehicles() {
-  const { tenantId, readOnly } = useTenant();
+  const { tenantId, readOnly, tenant } = useTenant();
   const { can } = useModulePerms();
+  const limit = vehicleLimit(tenant);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,7 @@ export default function Vehicles() {
     } else {
       if (!can('vehicles', 'create')) throw new Error('No tienes permiso para crear vehículos.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
+      if (vehicles.length >= limit) throw new Error(`Alcanzaste el límite de ${limit} vehículos de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
       await base44.entities.Vehicle.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);
@@ -83,7 +86,7 @@ export default function Vehicles() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold">Vehículos</h1>
-          <p className="text-sm text-muted-foreground">{vehicles.length} en total</p>
+          <p className="text-sm text-muted-foreground">{vehicles.length}{Number.isFinite(limit) ? ` / ${limit}` : ''} en total</p>
         </div>
         {!readOnly && can('vehicles', 'create') && (
           <Button size="sm" onClick={() => { setEditVehicle(null); setShowForm(true); }} className="gap-2">
