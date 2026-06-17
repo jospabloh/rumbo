@@ -85,29 +85,45 @@
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "dispatcher"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "dispatcher"
+          }
         }
-      }
+      ]
     },
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
             }
-          }
+          ]
         },
         {
           "data.profile_id": "{{user.id}}"
@@ -118,15 +134,23 @@
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
             }
-          }
+          ]
         },
         {
           "data.profile_id": "{{user.id}}"
@@ -135,14 +159,18 @@
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     }
   }
 }

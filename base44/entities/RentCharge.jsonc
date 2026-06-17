@@ -8,7 +8,7 @@
     },
     "vehicle_id": {
       "type": "string",
-      "title": "Vehículo"
+      "title": "Veh\u00edculo"
     },
     "driver_id": {
       "type": "string",
@@ -69,7 +69,7 @@
           },
           "method": {
             "type": "string",
-            "title": "Método"
+            "title": "M\u00e9todo"
           },
           "note": {
             "type": "string",
@@ -91,29 +91,45 @@
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "dispatcher"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "dispatcher"
+          }
         }
-      }
+      ]
     },
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
             }
-          }
+          ]
         },
         {
           "data.driver_id": "{{user.data.driver_profile_id}}"
@@ -122,26 +138,38 @@
     },
     "update": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "dispatcher"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "dispatcher"
+          }
         }
-      }
+      ]
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     }
   }
 }
