@@ -15,7 +15,33 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *
  * En el primer login del invitado persiste tenant_id (y su rol invitado) en el perfil.
  * En logins posteriores NO toca el rol (lo administra el admin del tenant).
+ *
+ * Además calcula write_access (enabled/blocked) desde el estado de la licencia y lo
+ * persiste en el perfil. Es la fuente de verdad del bloqueo de escritura por falta de
+ * pago: las RLS de create/update/delete de cada entidad operativa exigen
+ * user_condition write_access='enabled', así que un tenant vencido no puede escribir
+ * ni siquiera llamando al SDK directamente. La lectura no se ve afectada (solo lectura).
  */
+
+/**
+ * Política de licencia (espejo de src/lib/license.js). Devuelve 'enabled' mientras la
+ * licencia está active o en gracia past_due (1–7 días vencida); 'blocked' al pasar a
+ * readonly (8–15) o disabled (16+), o si el owner la marca suspended/cancelled.
+ */
+function computeWriteAccess(tenant: any): 'enabled' | 'blocked' {
+  if (!tenant) return 'enabled'; // sin tenant la RLS de tenant_id ya bloquea la escritura
+  if (tenant.status === 'cancelled' || tenant.status === 'suspended') return 'blocked';
+  const endStr = tenant.current_period_end || tenant.trial_ends_at;
+  if (!endStr) return 'enabled'; // activa sin fecha de corte
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const end = new Date(endStr); end.setHours(0, 0, 0, 0);
+  const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000);
+  if (daysLeft >= 0) return 'enabled';       // vigente
+  const overdue = -daysLeft;
+  if (overdue <= 7) return 'enabled';        // past_due: 7 días de gracia, app usable
+  return 'blocked';                          // readonly (8–15) / disabled (16+)
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -50,11 +76,17 @@ Deno.serve(async (req) => {
     }
 
     if (!tenant) {
+      // Sin tenant la escritura ya está bloqueada por la RLS de tenant_id; reseteamos
+      // write_access a 'enabled' para no dejar marcado a un usuario que dejó un tenant vencido.
+      if (user.data?.write_access === 'blocked') {
+        await svc.entities.User.update(user.id, { write_access: 'enabled' });
+      }
       return Response.json({
         tenant_id: null,
         role: user.role,
         is_app_owner: isAppOwner,
         needs_onboarding: ['owner', 'admin'].includes(user.role),
+        write_access: 'enabled',
       });
     }
 
@@ -74,10 +106,15 @@ Deno.serve(async (req) => {
       driverProfileId = drv?.id || null;
     } catch (_e) { /* el usuario no tiene un registro Driver vinculado */ }
 
+    // Bloqueo de escritura por licencia. El owner de la app nunca se autobloquea
+    // (gestiona las licencias), el resto depende del estado de su tenant.
+    const writeAccess = isAppOwner ? 'enabled' : computeWriteAccess(tenant);
+
     // Persistir cambios en el perfil del usuario (service role, salta RLS de forma segura)
     const patch: Record<string, unknown> = {};
     if (user.data?.tenant_id !== tenant.id) patch.tenant_id = tenant.id;
     if ((user.data?.driver_profile_id || null) !== driverProfileId) patch.driver_profile_id = driverProfileId;
+    if ((user.data?.write_access || 'enabled') !== writeAccess) patch.write_access = writeAccess;
     // El rol invitado solo se aplica en el primer enganche al tenant; después lo maneja el admin.
     if (!alreadyAssigned && member?.role && member.role !== user.role) patch.role = member.role;
     if (Object.keys(patch).length) {
@@ -89,6 +126,7 @@ Deno.serve(async (req) => {
       role: patch.role || user.role,
       is_app_owner: isAppOwner,
       needs_onboarding: false,
+      write_access: writeAccess,
       tenant: {
         id: tenant.id,
         tenant_name: tenant.tenant_name,

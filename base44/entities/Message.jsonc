@@ -44,7 +44,10 @@
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "data.sender_id": "{{user.id}}"
+      "data.sender_id": "{{user.id}}",
+      "user_condition": {
+        "write_access": "enabled"
+      }
     },
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
@@ -98,7 +101,10 @@
             }
           ]
         }
-      ]
+      ],
+      "user_condition": {
+        "write_access": "enabled"
+      }
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
@@ -113,7 +119,10 @@
             "role": "admin"
           }
         }
-      ]
+      ],
+      "user_condition": {
+        "write_access": "enabled"
+      }
     }
   }
 }

@@ -9,7 +9,13 @@
  */
 import { createContext, useContext, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { getLicenseInfo, isReadOnly } from '@/lib/license';
+import { getLicenseInfo, isReadOnly, isWriteBlocked } from '@/lib/license';
+
+// Cada cuánto se revalida el tenant/licencia mientras la app está abierta. La licencia
+// cambia de estado por día; revalidar periódicamente evita que una sesión que quedó
+// abierta cruzando la fecha de vencimiento conserve permiso de escritura indefinidamente.
+// El backend (resolveTenant) recalcula write_access en cada llamada.
+const REVALIDATE_MS = 15 * 60 * 1000;
 
 const TenantContext = createContext(null);
 
@@ -73,13 +79,24 @@ export function TenantProvider({ children }) {
     }
   };
 
-  useEffect(() => { loadTenant(); }, []);
+  useEffect(() => {
+    loadTenant();
+    // Revalidación periódica + al volver el foco a la pestaña: mantiene write_access
+    // (y el estado de licencia que ve la UI) fresco sin obligar a recargar la página.
+    const interval = setInterval(() => { loadTenant(); }, REVALIDATE_MS);
+    const onFocus = () => { if (document.visibilityState === 'visible') loadTenant(); };
+    document.addEventListener('visibilitychange', onFocus);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onFocus); };
+  }, []);
 
   const licenseInfo = getLicenseInfo(tenant);
   const readOnly = isReadOnly(licenseInfo);
+  // Escritura bloqueada (readonly o disabled). El backend lo aplica de forma dura vía RLS;
+  // esto solo es para que la UI oculte botones de crear/editar/eliminar.
+  const writeBlocked = isWriteBlocked(licenseInfo);
 
   return (
-    <TenantContext.Provider value={{ tenant, tenantId, isAppOwner, userRole, loading, reload: loadTenant, setTenant, licenseInfo, readOnly }}>
+    <TenantContext.Provider value={{ tenant, tenantId, isAppOwner, userRole, loading, reload: loadTenant, setTenant, licenseInfo, readOnly, writeBlocked }}>
       {children}
     </TenantContext.Provider>
   );

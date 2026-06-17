@@ -58,3 +58,12 @@ export function getLicenseInfo(tenant) {
 
 export const isReadOnly = (info) => info?.state === 'readonly';
 export const isDisabled = (info) => info?.state === 'disabled';
+
+/**
+ * Escritura bloqueada: readonly (8–15 días vencida) o disabled (16+ / suspended /
+ * cancelled). active y past_due (gracia 1–7 días) sí permiten escribir.
+ *
+ * Espejo de computeWriteAccess() en base44/functions/resolveTenant: el frontend lo usa
+ * para ocultar acciones; el backend lo aplica de forma dura vía RLS (write_access).
+ */
+export const isWriteBlocked = (info) => info?.state === 'readonly' || info?.state === 'disabled';

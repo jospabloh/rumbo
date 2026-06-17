@@ -43,6 +43,18 @@
       "rls": {
         "write": false
       }
+    },
+    "write_access": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "blocked"
+      ],
+      "default": "enabled",
+      "description": "Permiso de escritura segun el estado de la licencia del tenant. 'enabled' mientras la licencia esta active o past_due (gracia); 'blocked' cuando pasa a readonly (8+ dias vencido) o disabled (16+) / suspended / cancelled. Server-authoritative: solo lo setea resolveTenant con service role (write:false). Las RLS de create/update/delete de cada entidad operativa exigen user_condition write_access='enabled', por lo que un tenant vencido no puede escribir ni siquiera llamando al SDK directamente.",
+      "rls": {
+        "write": false
+      }
     }
   },
   "required": [

@@ -112,6 +112,12 @@ Admin has full view, create, edit, delete access to every module within their te
 
 ## Backend / Entity RLS Summary
 
+> **License write-gate (v1.11.0):** every operational entity below additionally requires
+> `user_condition: { write_access: "enabled" }` on **create / update / delete**. `write_access`
+> is server-set by `resolveTenant` from the license state (`blocked` when `readonly`/`disabled`/
+> `suspended`/`cancelled`). Read is never gated by it — an expired tenant keeps read-only access.
+
+
 | Entity | Create | Read | Update | Delete |
 |--------|--------|------|--------|--------|
 | TenantLicense | owner only | creator / owner_email / member | creator / owner_email / member(owner,admin) | creator / owner_email |
@@ -142,6 +148,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | G2 | Page protection is client-side only (no server-side route guard) — a user with the URL could navigate directly | LOW | **Accepted — Base44 entity RLS provides data-level protection** |
 | G3 | `TenantLicense` read RLS allowed any `admin` to read all TenantLicenses — cross-tenant license/PII exposure | ~~LOW~~ | **FIXED v1.4.0 — read scoped to creator / owner_email / members.email; invites now populate members[]** |
 | G4 | New users invited but not yet logged in lack `tenant_id` in their profile — they may not appear in tenant user lists immediately | LOW | **Accepted — resolves automatically on first login** |
+| G5 | License lapse (`readonly`/`disabled`) was enforced **client-side only** — an expired tenant could still write via the SDK directly | ~~MEDIUM~~ | **FIXED v1.11.0 — server-authoritative `User.write_access` (set by `resolveTenant`) + `user_condition: { write_access: "enabled" }` on create/update/delete RLS of all 18 operational entities. Reads stay allowed (read-only). Freshness: recomputed on each `resolveTenant` call (app load + 15-min revalidation + focus); for fully client-independent cutoff, schedule a daily `resolveTenant` run in the Base44 dashboard.** |
 
 ## Fixes Applied in v1.0.2
 
