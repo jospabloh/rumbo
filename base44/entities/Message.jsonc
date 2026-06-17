@@ -10,6 +10,20 @@
       "type": "string",
       "title": "Canal"
     },
+    "channel_kind": {
+      "type": "string",
+      "enum": [
+        "broadcast",
+        "direct"
+      ],
+      "title": "Tipo de canal (denormalizado)",
+      "description": "Copia de Channel.kind al crear el mensaje. Permite que la RLS de lectura deje leer los mensajes de un canal broadcast a todo el tenant sin tener que consultar la entidad Channel (las RLS de Base44 no hacen joins)."
+    },
+    "channel_driver_id": {
+      "type": "string",
+      "title": "Conductor del canal (denormalizado)",
+      "description": "Copia de Channel.driver_id al crear el mensaje. Permite que la RLS de lectura deje a un conductor leer los mensajes de su propio canal directo (channel_driver_id == driver_profile_id), no solo los que él mismo envió."
+    },
     "sender_id": {
       "type": "string",
       "title": "Remitente (user id)"
@@ -73,6 +87,12 @@
         },
         {
           "data.sender_id": "{{user.id}}"
+        },
+        {
+          "data.channel_kind": "broadcast"
+        },
+        {
+          "data.channel_driver_id": "{{user.data.driver_profile_id}}"
         }
       ]
     },

@@ -4,6 +4,39 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.11.1] — 2026-06-17
+
+### Fixed — los conductores no podían leer los mensajes que les enviaban (RLS de Message)
+
+El advisor de seguridad de Base44 marcaba `Message` porque su RLS de lectura solo dejaba
+leer a staff (owner/admin/dispatcher) y al **propio remitente** (`sender_id == user.id`).
+Un conductor no podía leer los mensajes que le enviaban (broadcast o su canal directo),
+porque esos mensajes llevan el `sender_id` del staff, no el suyo — el chat quedaba roto
+del lado del conductor.
+
+- **Nuevos campos denormalizados en `Message`: `channel_kind` y `channel_driver_id`**,
+  copiados de `Channel.kind` / `Channel.driver_id` al crear el mensaje. Las RLS de Base44
+  no hacen joins, así que la pertenencia al canal debe viajar en el propio mensaje.
+- **RLS de lectura de `Message` extendida** para espejar la de `Channel`: además de staff
+  y remitente, ahora deja leer cuando `channel_kind == "broadcast"` (todo el tenant) o
+  `channel_driver_id == {{user.data.driver_profile_id}}` (canal directo del conductor).
+  La escritura no cambia y el aislamiento por `tenant_id` se mantiene.
+- **`Messages.jsx`** ahora setea `channel_kind` y `channel_driver_id` al crear mensajes
+  de texto y de voz.
+
+> Nota de deploy: los mensajes creados **antes** de este cambio no tienen los campos
+> denormalizados, así que un conductor seguirá sin poder leer el histórico previo. Si
+> hace falta, hay que hacer un backfill (copiar kind/driver_id del canal a sus mensajes).
+> Pendiente aparte: el acuse "entregado/leído" del conductor aún no persiste porque la
+> RLS de `update` de `Message` solo permite al creador o al staff (falla en silencio, sin
+> regresión); habilitarlo requeriría permiso de update acotado al destinatario.
+
+### Version
+
+- `package.json` version `1.11.0` → `1.11.1`.
+
+---
+
 ## [1.11.0] — 2026-06-17
 
 ### Added — bloqueo de escritura por licencia, aplicado en el backend (no solo UI)
