@@ -12,7 +12,26 @@
         "mechanic",
         "driver",
         "user"
-      ]
+      ],
+      "rls": {
+        "write": {
+          "user_condition": {
+            "role": {
+              "$in": [
+                "owner",
+                "admin"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant del usuario. Server-authoritative: solo lo escribe resolveTenant con service role. Los clientes no pueden modificarlo (write: false), lo que evita que un usuario reapunte su perfil a otro tenant y lea datos ajenos vía RLS.",
+      "rls": {
+        "write": false
+      }
     }
   },
   "required": [

@@ -31,6 +31,7 @@ import Catalogs from './pages/Catalogs';
 import UsefulLinks from './pages/UsefulLinks';
 import TestData from './pages/TestData';
 import RequireAppOwner from './components/RequireAppOwner';
+import ErrorBoundary from './components/ErrorBoundary';
 // Add page imports here
 
 const TenantGate = ({ children }) => {
@@ -128,7 +129,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <TenantProvider>
-            <AuthenticatedApp />
+            <ErrorBoundary>
+              <AuthenticatedApp />
+            </ErrorBoundary>
           </TenantProvider>
         </Router>
         <Toaster />
