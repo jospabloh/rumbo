@@ -7,6 +7,7 @@ import DriverForm from '@/components/drivers/DriverForm';
 import DriverDetail from '@/components/drivers/DriverDetail';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
+import { driverLimit, PLAN_LABELS } from '@/lib/plans';
 
 const statusLabel = { active: 'Activo', suspended: 'Suspendido', inactive: 'Inactivo' };
 const statusColor = {
@@ -16,8 +17,9 @@ const statusColor = {
 };
 
 export default function Drivers() {
-  const { tenantId, readOnly } = useTenant();
+  const { tenantId, readOnly, tenant } = useTenant();
   const { can } = useModulePerms();
+  const limit = driverLimit(tenant);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -45,6 +47,7 @@ export default function Drivers() {
     } else {
       if (!can('drivers', 'create')) throw new Error('No tienes permiso para crear conductores.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
+      if (drivers.length >= limit) throw new Error(`Alcanzaste el límite de ${limit} conductores de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
       await base44.entities.Driver.create({ ...data, tenant_id: tenantId });
     }
     setShowForm(false);
@@ -75,7 +78,7 @@ export default function Drivers() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold">Conductores</h1>
-          <p className="text-sm text-muted-foreground">{drivers.length} en total</p>
+          <p className="text-sm text-muted-foreground">{drivers.length}{Number.isFinite(limit) ? ` / ${limit}` : ''} en total</p>
         </div>
         {!readOnly && can('drivers', 'create') && (
           <Button size="sm" onClick={() => { setEditDriver(null); setShowForm(true); }} className="gap-2">

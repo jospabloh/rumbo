@@ -4,6 +4,37 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.12.0] — 2026-06-17
+
+### Added — planes comerciales con cupos de vehículos/conductores
+
+Definición de los niveles de licencia y aplicación de sus cupos (antes `max_vehicles` /
+`max_drivers` eran solo informativos).
+
+- **`src/lib/plans.js`**: `PLAN_LIMITS` (trial 5/5, starter 15/20, pro 50/75, enterprise
+  ilimitado), `PLAN_LABELS` (Prueba / Starter / Pro / Flotilla) y helpers
+  `vehicleLimit()` / `driverLimit()` / `atVehicleLimit()` / `atDriverLimit()`. El cupo
+  efectivo es `license.max_vehicles` (si está definido) y, si no, el default del plan;
+  `0` / vacío = ilimitado.
+- **Gate de creación** en `Vehicles.jsx` y `Drivers.jsx`: al alcanzar el cupo, se bloquea
+  la creación con un mensaje de "mejora tu plan". El encabezado muestra `usados / cupo`.
+- **Billing.jsx** muestra el cupo del plan (∞ para ilimitado) en vez del fijo "5".
+- **SuperAdminPanel**: al cambiar el plan de un tenant se prellenan `max_vehicles` /
+  `max_drivers` con los defaults del plan (editables); `0 = ilimitado` en el formulario y
+  "Ilimitado" en la vista.
+- **Tests**: +7 sobre cupos y límites.
+
+> Alcance: el gate de cupos se aplica en el **frontend** (no es una frontera de seguridad;
+> exceder el cupo no expone datos de nadie). Una aplicación dura a nivel de datos exigiría
+> enrutar la creación por una función de servidor que cuente los registros del tenant.
+> Tampoco se restringen módulos por plan todavía (los planes se diferencian por cupo).
+
+### Version
+
+- `package.json` version `1.11.2` → `1.12.0`.
+
+---
+
 ## [1.11.2] — 2026-06-17
 
 ### Fixed — el acuse "entregado/leído" del conductor ahora sí persiste (RLS de Message)
