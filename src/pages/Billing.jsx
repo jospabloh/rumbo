@@ -91,11 +91,11 @@ export default function Billing() {
   const StatusIcon = statusInfo.icon;
 
   const daysUntilRenewal = license?.renews_at
-    ? Math.ceil((new Date(license.renews_at) - new Date()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((new Date(license.renews_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   const daysUntilTrial = license?.trial_ends_at
-    ? Math.ceil((new Date(license.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((new Date(license.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   return (

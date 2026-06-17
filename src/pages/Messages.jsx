@@ -57,7 +57,7 @@ export default function Messages() {
   const loadMessages = async () => {
     if (!selectedChannel) return;
     const msgs = await base44.entities.Message.filter({ channel_id: selectedChannel.id }, '-created_date', 100);
-    const sorted = msgs.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+    const sorted = msgs.sort((a, b) => new Date(a.created_date).getTime() - new Date(b.created_date).getTime());
     setMessages(sorted);
     // Mark as delivered/read
     const unread = sorted.filter(m => !m.read && m.sender_id !== user?.id);

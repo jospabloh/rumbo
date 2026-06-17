@@ -9,7 +9,7 @@ const colorMap = {
   gray: 'text-muted-foreground bg-muted',
 };
 
-export default function StatCard({ icon: Icon, label, value, sub, color = 'blue', link }) {
+export default function StatCard({ icon: Icon, label, value, sub, color = 'blue', link = null }) {
   const card = (
     <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3">
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colorMap[color]}`}>

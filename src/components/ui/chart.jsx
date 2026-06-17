@@ -22,7 +22,8 @@ function useChart() {
   return context
 }
 
-const ChartContainer = React.forwardRef(({ id, className, children, config, ...props }, ref) => {
+const ChartContainer = /** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<'div'> & { id?: string; config: object } & React.RefAttributes<HTMLDivElement>>} */ (
+  React.forwardRef(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId()
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
 
@@ -43,7 +44,8 @@ const ChartContainer = React.forwardRef(({ id, className, children, config, ...p
       </div>
     </ChartContext.Provider>)
   );
-})
+  })
+)
 ChartContainer.displayName = "Chart"
 
 const ChartStyle = ({
@@ -79,7 +81,8 @@ return color ? `  --color-${key}: ${color};` : null
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
-const ChartTooltipContent = React.forwardRef((
+const ChartTooltipContent = /** @type {React.ForwardRefExoticComponent<any>} */ (
+  React.forwardRef((
   {
     active,
     payload,
@@ -211,12 +214,14 @@ const ChartTooltipContent = React.forwardRef((
       </div>
     </div>)
   );
-})
+  })
+)
 ChartTooltipContent.displayName = "ChartTooltip"
 
 const ChartLegend = RechartsPrimitive.Legend
 
-const ChartLegendContent = React.forwardRef((
+const ChartLegendContent = /** @type {React.ForwardRefExoticComponent<any>} */ (
+  React.forwardRef((
   { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey },
   ref
 ) => {
@@ -259,7 +264,8 @@ const ChartLegendContent = React.forwardRef((
       })}
     </div>)
   );
-})
+  })
+)
 ChartLegendContent.displayName = "ChartLegend"
 
 // Helper to extract item config from a payload.

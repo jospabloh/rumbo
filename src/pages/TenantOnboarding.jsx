@@ -73,11 +73,12 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
           }
         }
       });
+      const colorResult = /** @type {{ primary?: string; secondary?: string; accent?: string; background?: string }} */ (result);
       setColors({
-        primary: result.primary || '#3b82f6',
-        secondary: result.secondary || '#64748b',
-        accent: result.accent || '#8b5cf6',
-        background: result.background || '#0f172a',
+        primary: colorResult.primary || '#3b82f6',
+        secondary: colorResult.secondary || '#64748b',
+        accent: colorResult.accent || '#8b5cf6',
+        background: colorResult.background || '#0f172a',
       });
     } catch (e) {
       setError('No se pudo extraer los colores. Ingrésalos manualmente.');
