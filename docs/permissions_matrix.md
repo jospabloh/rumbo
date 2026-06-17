@@ -127,7 +127,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | Trip | (per RLS) | same tenant_id | (per RLS) | owner, admin |
 | RentCharge | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | Alert | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
-| Message | sender (tenant-scoped) | same tenant_id + role or own sender_id | creator / owner, admin, dispatcher | owner, admin |
+| Message | sender (tenant-scoped) | same tenant_id + (role / own sender_id / broadcast channel / own driver channel) | creator / owner, admin, dispatcher | owner, admin |
 | Channel | owner, admin, dispatcher | same tenant_id + role, broadcast, or own driver_id | owner, admin, dispatcher | owner, admin |
 | FuelLog | (per entity RLS) | same tenant_id | (per RLS) | owner, admin |
 | Fine | (per entity RLS) | same tenant_id | (per RLS) | owner, admin |

@@ -73,6 +73,8 @@ export default function Messages() {
     setSending(true);
     await base44.entities.Message.create({
       channel_id: selectedChannel.id,
+      channel_kind: selectedChannel.kind,
+      channel_driver_id: selectedChannel.driver_id || null,
       sender_id: user.id,
       sender_name: user.full_name,
       body: newMessage.trim(),
@@ -96,6 +98,8 @@ export default function Messages() {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       await base44.entities.Message.create({
         channel_id: selectedChannel.id,
+        channel_kind: selectedChannel.kind,
+        channel_driver_id: selectedChannel.driver_id || null,
         sender_id: user.id,
         sender_name: user.full_name,
         body: null,
