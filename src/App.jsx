@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -30,6 +30,7 @@ import Licenses from './pages/Licenses';
 import Catalogs from './pages/Catalogs';
 import UsefulLinks from './pages/UsefulLinks';
 import TestData from './pages/TestData';
+import Landing from './pages/Landing';
 import RequireAppOwner from './components/RequireAppOwner';
 import ErrorBoundary from './components/ErrorBoundary';
 // Add page imports here
@@ -122,6 +123,20 @@ const AuthenticatedApp = () => {
 };
 
 
+/**
+ * AppShell — decides between the public marketing landing and the
+ * authenticated app. The landing must render WITHOUT going through the
+ * auth gate (which redirects unauthenticated visitors to login), so we
+ * short-circuit it here based on the URL.
+ */
+const AppShell = () => {
+  const location = useLocation();
+  if (/^\/landing\/?$/i.test(location.pathname)) {
+    return <Landing />;
+  }
+  return <AuthenticatedApp />;
+};
+
 function App() {
 
   return (
@@ -130,7 +145,7 @@ function App() {
         <Router>
           <TenantProvider>
             <ErrorBoundary>
-              <AuthenticatedApp />
+              <AppShell />
             </ErrorBoundary>
           </TenantProvider>
         </Router>
