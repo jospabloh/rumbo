@@ -34,8 +34,7 @@
   .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
   header{padding:28px 0 8px}
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
-  .brand .mark{width:34px;height:34px;border-radius:10px;background:var(--primary);
-    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900}
+  .brand .mark{width:36px;height:36px;border-radius:10px;display:block}
   .hero{text-align:center;padding:48px 0 8px}
   .hero h1{font-size:clamp(28px,5vw,46px);line-height:1.1;letter-spacing:-.02em}
   .hero p{color:var(--muted);max-width:620px;margin:14px auto 0;font-size:18px}
@@ -79,7 +78,23 @@
 <div class="wrap">
 
   <header>
-    <div class="brand"><span class="mark">R</span> Rumbo</div>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 512 512" role="img" aria-label="Rumbo">
+        <rect width="512" height="512" rx="112" fill="#3E6B5C"/>
+        <g fill="#ffffff">
+          <path d="M112 430 L112 356 C112 341 119 330 132 326 L172 314 L216 256 C223 246 235 240 250 240 L262 240 C277 240 289 246 296 256 L340 314 L380 326 C393 330 400 341 400 356 L400 430 Z"/>
+          <rect x="150" y="424" width="44" height="24" rx="9"/>
+          <rect x="318" y="424" width="44" height="24" rx="9"/>
+          <path d="M256 94 C209 94 171 132 171 179 C171 236 256 336 256 336 C256 336 341 236 341 179 C341 132 303 94 256 94 Z"/>
+        </g>
+        <g fill="#3E6B5C">
+          <circle cx="256" cy="179" r="38"/>
+          <ellipse cx="152" cy="360" rx="27" ry="15" transform="rotate(-16 152 360)"/>
+          <ellipse cx="360" cy="360" rx="27" ry="15" transform="rotate(16 360 360)"/>
+        </g>
+      </svg>
+      Rumbo
+    </div>
   </header>
 
   <section class="hero">

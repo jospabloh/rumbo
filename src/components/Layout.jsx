@@ -45,11 +45,8 @@ const LogoMark = ({ logoUrl, size = 'md' }) => {
   if (logoUrl && !imgError) {
     return <img src={logoUrl} alt="logo" className={`${sz} rounded-lg object-cover`} onError={() => setImgError(true)} />;
   }
-  return (
-    <div className={`${sz} bg-primary rounded-lg flex items-center justify-center`}>
-      <span className={`text-white font-bold ${size === 'sm' ? 'text-xs' : 'text-sm'}`}>R</span>
-    </div>
-  );
+  // Logo oficial de Rumbo (fallback cuando el tenant no tiene logo propio).
+  return <img src="/rumbo-logo.svg" alt="Rumbo" className={`${sz} rounded-lg`} />;
 };
 
 // Nav items grouped

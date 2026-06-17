@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Rumbo">
+  <rect width="512" height="512" rx="112" fill="#3E6B5C"/>
+  <g fill="#ffffff">
+    <!-- Carro de frente -->
+    <path d="M112 430
+             L112 356
+             C112 341 119 330 132 326
+             L172 314
+             L216 256
+             C223 246 235 240 250 240
+             L262 240
+             C277 240 289 246 296 256
+             L340 314
+             L380 326
+             C393 330 400 341 400 356
+             L400 430 Z"/>
+    <rect x="150" y="424" width="44" height="24" rx="9"/>
+    <rect x="318" y="424" width="44" height="24" rx="9"/>
+    <!-- Pin de ubicacion -->
+    <path d="M256 94
+             C209 94 171 132 171 179
+             C171 236 256 336 256 336
+             C256 336 341 236 341 179
+             C341 132 303 94 256 94 Z"/>
+  </g>
+  <!-- Negativos en verde -->
+  <g fill="#3E6B5C">
+    <circle cx="256" cy="179" r="38"/>
+    <ellipse cx="152" cy="360" rx="27" ry="15" transform="rotate(-16 152 360)"/>
+    <ellipse cx="360" cy="360" rx="27" ry="15" transform="rotate(16 360 360)"/>
+  </g>
+</svg>

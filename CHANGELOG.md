@@ -4,6 +4,27 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.13.0] — 2026-06-17
+
+### Added — logo oficial de Rumbo (dentro y fuera de la app)
+
+- **`public/rumbo-logo.svg`**: logo oficial (auto de frente con pin de ubicación, blanco
+  sobre verde) como SVG escalable. Una sola fuente, se sirve en `/rumbo-logo.svg`.
+- **Dentro de la app**: el fallback de marca (`LogoMark` en `Layout.jsx`) y el onboarding
+  (`TenantOnboarding.jsx`) ahora muestran el logo oficial en vez de la "R". El logo propio
+  de cada tenant sigue teniendo prioridad donde aplica.
+- **Favicon y título**: `index.html` usa el logo como favicon y el título pasa de
+  "Base44 APP" a "Rumbo" (se quitó el `<link rel="manifest">` que apuntaba a un archivo
+  inexistente).
+- **Fuera de la app**: la landing `marketing/precios.html` usa el logo (SVG inline, sigue
+  siendo un solo archivo autocontenido).
+
+### Version
+
+- `package.json` version `1.12.0` → `1.13.0`.
+
+---
+
 ## [1.12.0] — 2026-06-17
 
 ### Added — planes comerciales con cupos de vehículos/conductores
