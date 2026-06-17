@@ -4,6 +4,23 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.13.1] — 2026-06-17
+
+### Changed — se usa el logo PNG oficial (provisto por el cliente)
+
+- Se reemplaza la recreación en SVG por el archivo oficial **`public/rumbo.png`** (1024×1024).
+- App: favicon (`index.html`), `LogoMark` (`Layout.jsx`) y onboarding (`TenantOnboarding.jsx`)
+  apuntan a `/rumbo.png`.
+- Landing `marketing/precios.html`: usa `rumbo.png` (relativo) — debe subirse en la misma
+  carpeta que el HTML en el sitio externo.
+- Se elimina `public/rumbo-logo.svg` (ya no se usa).
+
+### Version
+
+- `package.json` version `1.13.0` → `1.13.1`.
+
+---
+
 ## [1.13.0] — 2026-06-17
 
 ### Added — logo oficial de Rumbo (dentro y fuera de la app)
