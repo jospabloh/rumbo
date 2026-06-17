@@ -48,50 +48,78 @@
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "mechanic"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "mechanic"
+          }
         }
-      }
+      ]
     },
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "mechanic"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "mechanic"
+          }
         }
-      }
+      ]
     },
     "update": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "mechanic"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "mechanic"
+          }
         }
-      }
+      ]
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     }
   }
 }

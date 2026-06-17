@@ -97,38 +97,62 @@
         "saturday",
         "sunday"
       ],
-      "title": "Día de cobro (semanal)"
+      "title": "D\u00eda de cobro (semanal)"
     }
   },
   "required": [],
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "dispatcher",
-            "mechanic"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "dispatcher"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "mechanic"
+          }
         }
-      }
+      ]
     },
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher",
-                "mechanic"
-              ]
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "mechanic"
+              }
             }
-          }
+          ]
         },
         {
           "data.assigned_driver_id": "{{user.data.driver_profile_id}}"
@@ -137,27 +161,43 @@
     },
     "update": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin",
-            "dispatcher",
-            "mechanic"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "dispatcher"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "mechanic"
+          }
         }
-      }
+      ]
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     }
   }
 }

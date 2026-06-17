@@ -51,15 +51,23 @@
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
             }
-          }
+          ]
         },
         {
           "data.driver_id": "{{user.data.driver_profile_id}}"
@@ -70,15 +78,23 @@
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
             }
-          }
+          ]
         },
         {
           "data.driver_id": "{{user.data.driver_profile_id}}"
@@ -89,15 +105,23 @@
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": {
-              "$in": [
-                "owner",
-                "admin",
-                "dispatcher"
-              ]
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
             }
-          }
+          ]
         },
         {
           "created_by_id": "{{user.id}}"
@@ -106,14 +130,18 @@
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     }
   }
 }

@@ -16,7 +16,7 @@
     },
     "description": {
       "type": "string",
-      "title": "Descripción"
+      "title": "Descripci\u00f3n"
     },
     "active": {
       "type": "boolean",
@@ -36,39 +36,51 @@
   "rls": {
     "create": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     },
     "read": {
       "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "update": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "owner",
-            "admin"
-          ]
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
-      }
+      ]
     }
   }
 }

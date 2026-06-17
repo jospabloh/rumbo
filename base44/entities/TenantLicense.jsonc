@@ -91,7 +91,7 @@
     "last_payment_at": {
       "type": "string",
       "format": "date",
-      "title": "Último pago confirmado"
+      "title": "\u00daltimo pago confirmado"
     },
     "renews_at": {
       "type": "string",
@@ -108,7 +108,7 @@
     },
     "permissions_config": {
       "type": "object",
-      "title": "Configuración de permisos por rol"
+      "title": "Configuraci\u00f3n de permisos por rol"
     },
     "members": {
       "type": "array",
@@ -169,14 +169,18 @@
               "data.members.email": "{{user.email}}"
             },
             {
-              "user_condition": {
-                "role": {
-                  "$in": [
-                    "owner",
-                    "admin"
-                  ]
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
                 }
-              }
+              ]
             }
           ]
         }
