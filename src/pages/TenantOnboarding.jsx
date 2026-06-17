@@ -143,7 +143,7 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <img src="/rumbo-logo.svg" alt="Rumbo" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
+          <img src="/rumbo.png" alt="Rumbo" className="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover" />
           <h1 className="text-2xl font-bold text-foreground">Bienvenido a Rumbo</h1>
           <p className="text-muted-foreground mt-1">Configura tu organización para comenzar</p>
         </div>

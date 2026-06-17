@@ -46,7 +46,7 @@ const LogoMark = ({ logoUrl, size = 'md' }) => {
     return <img src={logoUrl} alt="logo" className={`${sz} rounded-lg object-cover`} onError={() => setImgError(true)} />;
   }
   // Logo oficial de Rumbo (fallback cuando el tenant no tiene logo propio).
-  return <img src="/rumbo-logo.svg" alt="Rumbo" className={`${sz} rounded-lg`} />;
+  return <img src="/rumbo.png" alt="Rumbo" className={`${sz} rounded-lg object-cover`} />;
 };
 
 // Nav items grouped
