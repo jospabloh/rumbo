@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rumbo — Planes y precios</title>
+<meta name="description" content="Rumbo: gestión de flotillas. Prueba 30 días gratis y elige el plan a la medida de tu flotilla." />
+
+<!--
+  ============================================================================
+  CÓMO PERSONALIZAR (busca la palabra REEMPLAZA)
+  1) LINKS DE PAGO: los botones "Contratar" apuntan a tu página de pago de
+     Acacia, pasando el plan como parámetro (?plan=starter / pro / flotilla).
+     Ajusta la ruta REEMPLAZA_URL_PAGO_ACACIA si tu página de cobro usa otra.
+  2) PRECIOS: ajusta los montos en cada tarjeta (.price). Son sugerencias.
+  3) CONTACTO de Flotilla: cambia REEMPLAZA_WHATSAPP (o usa también un link de Acacia).
+  4) LOGO: reemplaza el bloque .brand si tienes imagen de logo.
+  Es un solo archivo, sin dependencias. Súbelo tal cual a tu hosting.
+  ============================================================================
+-->
+
+<style>
+  :root{
+    --bg:#0f172a; --card:#111c33; --border:#22304d; --fg:#e8eefc;
+    --muted:#9fb0cd; --primary:#3b82f6; --primary-2:#2563eb; --accent:#22c55e;
+    --radius:16px; --max:1100px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%,#16244180,transparent),var(--bg);
+    color:var(--fg);line-height:1.55;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+  header{padding:28px 0 8px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
+  .brand .mark{width:34px;height:34px;border-radius:10px;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900}
+  .hero{text-align:center;padding:48px 0 8px}
+  .hero h1{font-size:clamp(28px,5vw,46px);line-height:1.1;letter-spacing:-.02em}
+  .hero p{color:var(--muted);max-width:620px;margin:14px auto 0;font-size:18px}
+  .trial{display:inline-flex;align-items:center;gap:8px;margin-top:22px;
+    background:#0c1f17;border:1px solid #1c3b2c;color:#7ff0b5;
+    padding:9px 16px;border-radius:999px;font-weight:600;font-size:14px}
+  .toggle{display:flex;justify-content:center;gap:8px;margin:26px 0 6px;color:var(--muted);font-size:14px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:34px 0 10px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr;max-width:430px;margin:0 auto}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:26px 22px;display:flex;flex-direction:column;position:relative}
+  .card.featured{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary),0 20px 50px -25px var(--primary)}
+  .tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+    background:var(--primary);color:#fff;font-size:12px;font-weight:700;
+    padding:5px 12px;border-radius:999px;letter-spacing:.02em}
+  .plan{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .price{font-size:38px;font-weight:800;margin:10px 0 2px;letter-spacing:-.02em}
+  .price small{font-size:15px;font-weight:600;color:var(--muted)}
+  .pricenote{color:var(--muted);font-size:13px;min-height:18px}
+  ul{list-style:none;margin:20px 0;display:flex;flex-direction:column;gap:11px;flex:1}
+  li{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:#d6e0f5}
+  li .ck{color:var(--accent);font-weight:900;flex-shrink:0}
+  .limits{font-weight:700;color:var(--fg)}
+  .btn{display:block;text-align:center;text-decoration:none;font-weight:700;
+    padding:13px 16px;border-radius:12px;transition:transform .05s ease,opacity .2s}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-2)}
+  .btn-outline{background:transparent;color:var(--fg);border:1px solid var(--border)}
+  .btn-outline:hover{border-color:var(--primary)}
+  .faq{padding:46px 0 10px;max-width:760px;margin:0 auto}
+  .faq h2{text-align:center;font-size:26px;margin-bottom:22px}
+  .qa{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+  .qa h3{font-size:16px;margin-bottom:4px}
+  .qa p{color:var(--muted);font-size:14px}
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:40px 0 50px}
+  footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand"><span class="mark">R</span> Rumbo</div>
+  </header>
+
+  <section class="hero">
+    <h1>Planes a la medida de tu flotilla</h1>
+    <p>Controla vehículos, conductores, rentas, mantenimiento, multas y más, todo en un solo lugar.</p>
+    <div class="trial">✓ Prueba 30 días gratis · sin tarjeta</div>
+    <div class="toggle">Precios en pesos mexicanos (MXN) · IVA no incluido · ahorra ~2 meses pagando anual</div>
+  </section>
+
+  <section class="grid">
+
+    <!-- ===================== STARTER ===================== -->
+    <div class="card">
+      <div class="plan">Starter</div>
+      <div class="price">$599 <small>/ mes</small></div>
+      <div class="pricenote">Para dueños que están empezando</div>
+      <ul>
+        <li><span class="ck">✓</span> <span class="limits">Hasta 15 vehículos y 20 conductores</span></li>
+        <li><span class="ck">✓</span> Vehículos, conductores y rentas</li>
+        <li><span class="ck">✓</span> Combustible y multas</li>
+        <li><span class="ck">✓</span> Alertas de vencimientos (licencias, seguros, etc.)</li>
+        <li><span class="ck">✓</span> Mensajería con tus conductores</li>
+        <li><span class="ck">✓</span> Tu logo y colores de marca</li>
+        <li><span class="ck">✓</span> Soporte por correo</li>
+      </ul>
+      <!-- El pago se maneja en la página de Acacia; pasamos el plan como parámetro -->
+      <a class="btn btn-outline" href="https://acaciaco.com.mx/rumbo/pago?plan=starter">Contratar Starter</a>
+    </div>
+
+    <!-- ===================== PRO (destacado) ===================== -->
+    <div class="card featured">
+      <div class="tag">Más popular</div>
+      <div class="plan">Pro</div>
+      <div class="price">$1,699 <small>/ mes</small></div>
+      <div class="pricenote">Para flotillas en crecimiento</div>
+      <ul>
+        <li><span class="ck">✓</span> <span class="limits">Hasta 50 vehículos y 75 conductores</span></li>
+        <li><span class="ck">✓</span> Todo lo de Starter, y además:</li>
+        <li><span class="ck">✓</span> Mantenimiento e inventario de refacciones</li>
+        <li><span class="ck">✓</span> Seguros y siniestros</li>
+        <li><span class="ck">✓</span> Financiero (costo por km) e importación CSV</li>
+        <li><span class="ck">✓</span> Ubicación y enlaces útiles</li>
+        <li><span class="ck">✓</span> Permisos granulares por rol</li>
+        <li><span class="ck">✓</span> Soporte prioritario</li>
+      </ul>
+      <!-- El pago se maneja en la página de Acacia; pasamos el plan como parámetro -->
+      <a class="btn btn-primary" href="https://acaciaco.com.mx/rumbo/pago?plan=pro">Contratar Pro</a>
+    </div>
+
+    <!-- ===================== FLOTILLA / ENTERPRISE ===================== -->
+    <div class="card">
+      <div class="plan">Flotilla</div>
+      <div class="price">A cotizar</div>
+      <div class="pricenote">Para operaciones grandes</div>
+      <ul>
+        <li><span class="ck">✓</span> <span class="limits">Vehículos y conductores ilimitados</span></li>
+        <li><span class="ck">✓</span> Todas las funciones de Pro</li>
+        <li><span class="ck">✓</span> Usuarios ilimitados</li>
+        <li><span class="ck">✓</span> Marca blanca (logo y colores)</li>
+        <li><span class="ck">✓</span> Onboarding asistido</li>
+        <li><span class="ck">✓</span> Soporte dedicado</li>
+      </ul>
+      <!-- Flotilla es a cotizar: lleva a la página de contacto/pago de Acacia -->
+      <a class="btn btn-outline" href="https://acaciaco.com.mx/rumbo/pago?plan=flotilla">Contactar ventas</a>
+    </div>
+
+  </section>
+
+  <section class="faq">
+    <h2>Preguntas frecuentes</h2>
+    <div class="qa">
+      <h3>¿Cómo funciona la prueba gratis?</h3>
+      <p>Al crear tu organización tienes 30 días con todas las funciones, sin tarjeta. Al terminar, eliges un plan; si no pagas, tu cuenta pasa a solo lectura unos días antes de desactivarse (no pierdes tus datos).</p>
+    </div>
+    <div class="qa">
+      <h3>¿Puedo cambiar de plan después?</h3>
+      <p>Sí. Puedes subir o bajar de plan cuando lo necesites; los límites de vehículos y conductores se ajustan al instante.</p>
+    </div>
+    <div class="qa">
+      <h3>¿Qué pasa si supero el límite de mi plan?</h3>
+      <p>La app te avisa al llegar al tope y te invita a mejorar tu plan para seguir agregando vehículos o conductores.</p>
+    </div>
+    <div class="qa">
+      <h3>¿Cómo pago?</h3>
+      <p>Con el botón de tu plan llegas al pago seguro. Una vez confirmado, activamos tu licencia.</p>
+    </div>
+  </section>
+
+  <footer>
+    © <span id="y"></span> Rumbo · <a href="https://acaciaco.com.mx/rumbo">acaciaco.com.mx/rumbo</a>
+  </footer>
+
+</div>
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+</body>
+</html>
