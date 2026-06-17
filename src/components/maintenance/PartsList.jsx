@@ -12,7 +12,7 @@ export default function PartsList({ vehicles }) {
   const { can } = useModulePerms();
   const [parts, setParts] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', brand: '', sku: '', unit_number: '', stock: 0, unit_cost: '', vehicle_id: '' });
+  const [form, setForm] = useState({ name: '', brand: '', sku: '', unit_number: '', stock: /** @type {string|number} */ (0), unit_cost: '', vehicle_id: '' });
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -27,7 +27,7 @@ export default function PartsList({ vehicles }) {
     await base44.entities.Part.create({
       ...form,
       tenant_id: tenantId,
-      stock: parseInt(form.stock),
+      stock: parseInt(String(form.stock)),
       unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
       vehicle_id: form.vehicle_id || null,
     });

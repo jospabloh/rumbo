@@ -18,7 +18,7 @@ const ROLE_CONFIG = {
   user:       { label: 'Usuario',    color: 'text-muted-foreground bg-secondary', icon: User },
 };
 
-function UserRow({ member, onRoleChange, onInvite, isCurrentUser }) {
+function UserRow({ member, onRoleChange, isCurrentUser }) {
   const [editing, setEditing] = useState(false);
   const [newRole, setNewRole] = useState(member.role || 'user');
   const conf = ROLE_CONFIG[member.role] || ROLE_CONFIG['user'];
@@ -80,7 +80,7 @@ function InviteForm({ tenant, onInvited }) {
     if (!email.trim()) return;
     setLoading(true);
     const cleanEmail = email.trim().toLowerCase();
-    await base44.users.inviteUser(cleanEmail, role);
+    await (/** @type {any} */ (base44)).users.inviteUser(cleanEmail, role);
     // Registrar al invitado en members[] del tenant: es lo que ata al usuario a este
     // tenant (RLS de TenantLicense por members.email) y permite el descubrimiento en
     // el primer login del invitado.

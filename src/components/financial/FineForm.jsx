@@ -28,7 +28,7 @@ export default function FineForm({ vehicles, drivers, onSave, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await onSave({ ...form, amount: parseFloat(form.amount) || 0, points: parseInt(form.points) || 0 });
+    await onSave({ ...form, amount: parseFloat(form.amount) || 0, points: parseInt(String(form.points)) || 0 });
     setSaving(false);
   };
 

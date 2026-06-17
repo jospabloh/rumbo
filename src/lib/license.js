@@ -28,7 +28,7 @@ export function getLicenseInfo(tenant) {
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const end = new Date(endStr); end.setHours(0, 0, 0, 0);
-  const daysLeft = Math.round((end - today) / 86400000);
+  const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000);
 
   if (daysLeft >= 0) {
     const soon = daysLeft <= 3

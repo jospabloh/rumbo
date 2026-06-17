@@ -54,7 +54,7 @@ export default function DriverTrips() {
       <div className="space-y-2">
         {trips.map(trip => {
           const duration = trip.started_at && trip.ended_at
-            ? Math.round((new Date(trip.ended_at) - new Date(trip.started_at)) / 60000)
+            ? Math.round((new Date(trip.ended_at).getTime() - new Date(trip.started_at).getTime()) / 60000)
             : null;
           return (
             <div key={trip.id} className="bg-card border border-border rounded-xl p-4">
