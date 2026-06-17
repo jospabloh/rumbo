@@ -62,9 +62,22 @@ Deno.serve(async (req) => {
       ? tenant.members.find((m) => (m.email || '').toLowerCase() === email)
       : null;
 
+    // Vincular el perfil con su registro Driver (si existe) para que las RLS de
+    // conductor (data.driver_id == {{user.data.driver_profile_id}}) funcionen.
+    // Server-authoritative: driver_profile_id es write:false, solo lo setea esta función.
+    let driverProfileId: string | null = null;
+    try {
+      const drivers = await svc.entities.Driver.filter({ profile_id: user.id });
+      const drv = Array.isArray(drivers)
+        ? (drivers.find((d) => d.tenant_id === tenant.id) || drivers[0] || null)
+        : null;
+      driverProfileId = drv?.id || null;
+    } catch (_e) { /* el usuario no tiene un registro Driver vinculado */ }
+
     // Persistir cambios en el perfil del usuario (service role, salta RLS de forma segura)
     const patch: Record<string, unknown> = {};
     if (user.data?.tenant_id !== tenant.id) patch.tenant_id = tenant.id;
+    if ((user.data?.driver_profile_id || null) !== driverProfileId) patch.driver_profile_id = driverProfileId;
     // El rol invitado solo se aplica en el primer enganche al tenant; después lo maneja el admin.
     if (!alreadyAssigned && member?.role && member.role !== user.role) patch.role = member.role;
     if (Object.keys(patch).length) {
