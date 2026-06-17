@@ -1,5 +1,6 @@
 import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
+import path from 'path'
 import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
@@ -16,5 +17,16 @@ export default defineConfig({
       visualEditAgent: true
     }),
     react(),
-  ]
+  ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  test: {
+    // jsdom provides window/document, needed because some lib modules transitively
+    // import the base44 client (which reads window.location at import time).
+    environment: 'jsdom',
+    globals: true,
+  },
 });

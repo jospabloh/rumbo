@@ -117,11 +117,12 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
         current_period_end: freeUntilStr,
         billing_cycle: 'monthly',
       });
-      // Asociar el tenant recién creado al perfil del usuario de inmediato, para que
-      // las reglas RLS (data.tenant_id == user.data.tenant_id) permitan crear registros
-      // sin depender del refresco posterior en TenantContext.
+      // Asociar el tenant recién creado al perfil del usuario. tenant_id es
+      // server-authoritative (write:false en RLS), así que la asignación la hace
+      // resolveTenant con service role: detecta al creador del TenantLicense y
+      // persiste su tenant_id. El cliente ya no puede escribir tenant_id directamente.
       try {
-        await base44.auth.updateMe({ tenant_id: tenant.id });
+        await base44.functions.invoke('resolveTenant', {});
       } catch (e) {
         console.error('No se pudo asociar el tenant al usuario tras el onboarding:', e);
       }

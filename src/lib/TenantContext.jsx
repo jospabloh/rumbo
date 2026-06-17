@@ -59,10 +59,9 @@ export function TenantProvider({ children }) {
             found = all.find(t => t.id === drivers[0].tenant_id) || null;
           }
         }
-        // Si encontramos por respaldo y aún no está en el perfil, persistir.
-        if (found?.id && user.data?.tenant_id !== found.id) {
-          try { await base44.auth.updateMe({ tenant_id: found.id }); } catch (e) { /* ignore */ }
-        }
+        // tenant_id es server-authoritative (write:false): solo resolveTenant (service
+        // role) lo persiste. Si la función ya corrió arriba, el binding queda hecho del
+        // lado servidor; el cliente no intenta escribir tenant_id (fallaría por RLS).
       }
 
       setTenant(found);

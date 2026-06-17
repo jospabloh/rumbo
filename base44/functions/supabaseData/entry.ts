@@ -5,7 +5,9 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'owner') return Response.json({ error: 'Forbidden: Owner access required' }, { status: 403 });
+    const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
+    if (!appOwnerEmail) return Response.json({ error: 'APP_OWNER_EMAIL no está configurado' }, { status: 403 });
+    if ((user.email || '').toLowerCase() !== appOwnerEmail) return Response.json({ error: 'Forbidden: app owner only' }, { status: 403 });
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('supabase');
     const authHeader = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };

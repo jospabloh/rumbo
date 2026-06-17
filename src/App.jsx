@@ -30,6 +30,8 @@ import Licenses from './pages/Licenses';
 import Catalogs from './pages/Catalogs';
 import UsefulLinks from './pages/UsefulLinks';
 import TestData from './pages/TestData';
+import RequireAppOwner from './components/RequireAppOwner';
+import ErrorBoundary from './components/ErrorBoundary';
 // Add page imports here
 
 const TenantGate = ({ children }) => {
@@ -104,14 +106,14 @@ const AuthenticatedApp = () => {
         <Route path="/driver/home" element={<DriverHome />} />
         <Route path="/driver/profile" element={<DriverProfile />} />
         <Route path="/driver/trips" element={<DriverTrips />} />
-        <Route path="/github" element={<GitHubPage />} />
-        <Route path="/supabase" element={<SupabasePage />} />
+        <Route path="/github" element={<RequireAppOwner><GitHubPage /></RequireAppOwner>} />
+        <Route path="/supabase" element={<RequireAppOwner><SupabasePage /></RequireAppOwner>} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/catalogs" element={<Catalogs />} />
         <Route path="/links" element={<UsefulLinks />} />
-        <Route path="/licenses" element={<Licenses />} />
-        <Route path="/test-data" element={<TestData />} />
+        <Route path="/licenses" element={<RequireAppOwner><Licenses /></RequireAppOwner>} />
+        <Route path="/test-data" element={<RequireAppOwner><TestData /></RequireAppOwner>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
@@ -127,7 +129,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <TenantProvider>
-            <AuthenticatedApp />
+            <ErrorBoundary>
+              <AuthenticatedApp />
+            </ErrorBoundary>
           </TenantProvider>
         </Router>
         <Toaster />
