@@ -116,7 +116,7 @@ function JoinTenant({ onBack, onJoined }) {
   );
 }
 
-function Choice({ icon: Icon, title, desc, badge, onClick }) {
+function Choice({ icon: Icon, title, desc, badge = null, onClick }) {
   return (
     <button
       type="button"
