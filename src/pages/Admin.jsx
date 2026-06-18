@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { isOwner, isAdminOrOwner } from '@/lib/permissions';
 import { useTenant } from '@/lib/TenantContext';
-import { Shield, Users, Building2, Mail, UserPlus, Crown, Navigation, Wrench, Car, User, CheckCircle2, RefreshCw, Edit2, Save, X, Palette, AlertTriangle, Trash2, ArrowRightLeft } from 'lucide-react';
+import { Shield, Users, Building2, Mail, UserPlus, Crown, Navigation, Wrench, Car, User, CheckCircle2, RefreshCw, Edit2, Save, X, Palette, AlertTriangle, Trash2, ArrowRightLeft, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -144,6 +144,67 @@ function TenantEditor({ license, onSaved }) {
     color_background: license?.color_background || '',
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [logoError, setLogoError] = useState('');
+
+  // Sugiere una paleta de 4 colores de marca analizando el logo con IA.
+  const suggestColors = async (fileUrl) => {
+    if (!fileUrl) return;
+    setExtracting(true);
+    setLogoError('');
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analiza este logo y extrae una paleta de 4 colores en hex que representen la marca:
+1. primary: el color más dominante/destacado del logo
+2. secondary: color de apoyo o secundario
+3. accent: color de acento o contraste
+4. background: color de fondo apropiado (oscuro si el logo es claro, viceversa)
+
+Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas texto adicional.`,
+        file_urls: [fileUrl],
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            primary: { type: 'string' },
+            secondary: { type: 'string' },
+            accent: { type: 'string' },
+            background: { type: 'string' },
+          }
+        }
+      });
+      const c = /** @type {{ primary?: string; secondary?: string; accent?: string; background?: string }} */ (result);
+      setForm(f => ({
+        ...f,
+        color_primary: c.primary || f.color_primary,
+        color_secondary: c.secondary || f.color_secondary,
+        color_accent: c.accent || f.color_accent,
+        color_background: c.background || f.color_background,
+      }));
+    } catch {
+      setLogoError('No se pudieron sugerir los colores. Ajústalos manualmente.');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  // Sube el logo (SVG/PNG/JPG) desde el dispositivo y dispara la sugerencia de colores.
+  const handleLogoFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setLogoError('');
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm(f => ({ ...f, logo_url: file_url }));
+      await suggestColors(file_url);
+    } catch {
+      setLogoError('No se pudo subir el logo. Intenta de nuevo.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -195,12 +256,53 @@ function TenantEditor({ license, onSaved }) {
           <label className="text-xs text-muted-foreground mb-1 block">Email del owner</label>
           <Input value={form.owner_email} onChange={e => setForm(f => ({ ...f, owner_email: e.target.value }))} className="bg-secondary border-border text-sm h-8" />
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">URL del logo</label>
-          <Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} className="bg-secondary border-border text-sm h-8" placeholder="https://..." />
+        <div className="sm:col-span-2">
+          <label className="text-xs text-muted-foreground mb-1 block">Logo</label>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className={`flex items-center gap-2 border-2 border-dashed border-border rounded-lg px-3 py-2 cursor-pointer hover:border-primary/50 transition-colors ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
+              {form.logo_url ? (
+                <img src={form.logo_url} alt="logo" className="h-8 object-contain" />
+              ) : (
+                <Upload className="w-4 h-4 text-muted-foreground" />
+              )}
+              <span className="text-xs text-muted-foreground">
+                {uploading ? 'Subiendo...' : form.logo_url ? 'Cambiar logo' : 'Subir logo (SVG, PNG o JPG)'}
+              </span>
+              <input
+                type="file"
+                accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg"
+                className="hidden"
+                onChange={handleLogoFile}
+                disabled={uploading}
+              />
+            </label>
+            {form.logo_url && (
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => suggestColors(form.logo_url)}
+                disabled={extracting || uploading}
+              >
+                {extracting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Palette className="w-3.5 h-3.5" />}
+                {extracting ? 'Sugiriendo...' : 'Sugerir colores del logo'}
+              </Button>
+            )}
+          </div>
+          <Input
+            value={form.logo_url}
+            onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
+            className="bg-secondary border-border text-xs h-7 mt-2"
+            placeholder="…o pega una URL: https://..."
+          />
+          {logoError && <p className="text-xs text-destructive mt-1">{logoError}</p>}
         </div>
         <div className="sm:col-span-2">
-          <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1"><Palette className="w-3 h-3" /> Colores de la marca (hex)</label>
+          <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
+            <Palette className="w-3 h-3" /> Colores de la marca (hex)
+            {extracting && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+          </label>
           <div className="grid grid-cols-4 gap-2">
             {[
               { key: 'color_primary', label: 'Principal' },
