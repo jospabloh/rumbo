@@ -7,7 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { TenantProvider, useTenant } from '@/lib/TenantContext';
-import TenantOnboarding from './pages/TenantOnboarding';
+import Onboarding from './pages/Onboarding';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Drivers from './pages/Drivers';
@@ -36,23 +36,30 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Add page imports here
 
 const TenantGate = ({ children }) => {
-  const { tenant, tenantId, loading } = useTenant();
+  const { tenantId, isAppOwner, loading, reload } = useTenant();
   const { isLoadingAuth } = useAuth();
   const [user, setUser] = useState(null);
+  const [userLoaded, setUserLoaded] = useState(false);
 
   useEffect(() => {
     import('@/api/base44Client').then(({ base44 }) => {
-      base44.auth.me().then(setUser).catch(() => {});
+      base44.auth.me().then(setUser).catch(() => {}).finally(() => setUserLoaded(true));
     });
   }, []);
 
-  if (loading || isLoadingAuth) return null;
+  // Esperar a tener tenant resuelto Y el perfil del usuario antes de decidir, para no
+  // mostrar la app vacía un instante ni parpadear el onboarding.
+  if (loading || isLoadingAuth || !userLoaded) return null;
 
-  // Solo admins/owners necesitan onboarding. Drivers y otros roles no.
-  const needsOnboarding = user && (user.role === 'admin' || user.role === 'owner') && !tenantId && !loading;
+  // Cualquier usuario autenticado que aún no pertenece a un tenant pasa primero por el
+  // onboarding: ahí elige crear su organización (prueba de 30 días) o unirse a una
+  // existente con un código. El owner de la app es la única excepción: gestiona licencias
+  // y puede no tener un tenant propio. Antes solo se atrapaba a admin/owner, así que un
+  // usuario nuevo con correo externo caía directo en una app vacía sin guía ni aviso.
+  const needsOnboarding = user && !tenantId && !isAppOwner;
 
   if (needsOnboarding) {
-    return <TenantOnboarding onComplete={() => window.location.reload()} />;
+    return <Onboarding user={user} onComplete={() => reload()} />;
   }
 
   return children;

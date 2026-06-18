@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { isOwner, isAdminOrOwner } from '@/lib/permissions';
 import { useTenant } from '@/lib/TenantContext';
-import { Shield, Users, Building2, Mail, UserPlus, Crown, Navigation, Wrench, Car, User, CheckCircle2, RefreshCw, Edit2, Save, X, Palette, AlertTriangle, Trash2, ArrowRightLeft, Upload, Loader2 } from 'lucide-react';
+import { Shield, Users, Building2, Mail, UserPlus, Crown, Navigation, Wrench, Car, User, CheckCircle2, RefreshCw, Edit2, Save, X, Palette, AlertTriangle, Trash2, ArrowRightLeft, Upload, Loader2, KeyRound, Copy, Check, Ban } from 'lucide-react';
+import { generateJoinCode } from '@/lib/joinCode';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,53 +19,112 @@ const ROLE_CONFIG = {
   user:       { label: 'Usuario',    color: 'text-muted-foreground bg-secondary', icon: User },
 };
 
-function UserRow({ member, onRoleChange, isCurrentUser }) {
+function UserRow({ member, onRoleChange, onSetName, onManage, isCurrentUser, canManage }) {
   const [editing, setEditing] = useState(false);
   const [newRole, setNewRole] = useState(member.role || 'user');
+  const [editingName, setEditingName] = useState(false);
+  const [name, setName] = useState(member.display_name || member.full_name || '');
+  const [busy, setBusy] = useState(false);
   const conf = ROLE_CONFIG[member.role] || ROLE_CONFIG['user'];
   const RoleIcon = conf.icon;
+  const shownName = member.display_name || member.full_name || '—';
+  const suspended = !!member.suspended;
 
-  const save = async () => {
+  const saveRole = async () => {
     await onRoleChange(member.id, newRole);
     setEditing(false);
   };
 
+  const saveName = async () => {
+    setBusy(true);
+    await onSetName(member.id, name.trim());
+    setBusy(false);
+    setEditingName(false);
+  };
+
+  const manage = async (action) => {
+    setBusy(true);
+    await onManage(member.id, action, shownName);
+    setBusy(false);
+  };
+
   return (
-    <li className="flex items-center gap-3 px-5 py-3 flex-wrap">
-      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
-        {member.full_name?.charAt(0) || '?'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {member.full_name || '—'}
-          {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">(tú)</span>}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-      </div>
-      {editing ? (
-        <div className="flex items-center gap-2">
-          <Select value={newRole} onValueChange={setNewRole}>
-            <SelectTrigger className="h-7 text-xs w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(ROLE_CONFIG).map(([key, v]) => (
-                <SelectItem key={key} value={key}>{v.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={save}><Save className="w-3.5 h-3.5 text-success" /></Button>
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditing(false)}><X className="w-3.5 h-3.5" /></Button>
+    <li className="px-5 py-3 space-y-2">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
+          {shownName.charAt(0) || '?'}
         </div>
-      ) : (
-        <button
-          onClick={() => !isCurrentUser && setEditing(true)}
-          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${conf.color} ${!isCurrentUser ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
-        >
-          <RoleIcon className="w-3 h-3" />
-          {conf.label}
-          {!isCurrentUser && <Edit2 className="w-2.5 h-2.5 opacity-50 ml-0.5" />}
-        </button>
+        <div className="flex-1 min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveName()}
+                placeholder="Nombre para la app"
+                className="h-8 text-sm bg-secondary border-border"
+                autoFocus
+              />
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={saveName} disabled={busy}><Save className="w-4 h-4 text-success" /></Button>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => { setName(member.display_name || member.full_name || ''); setEditingName(false); }}><X className="w-4 h-4" /></Button>
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+              {shownName}
+              {isCurrentUser && <span className="text-xs text-muted-foreground">(tú)</span>}
+              {suspended && <span className="text-[10px] font-bold uppercase text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">Suspendido</span>}
+              {canManage && (
+                <button onClick={() => setEditingName(true)} className="text-muted-foreground hover:text-foreground" aria-label="Editar nombre">
+                  <Edit2 className="w-3 h-3" />
+                </button>
+              )}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+        </div>
+        {editing ? (
+          <div className="flex items-center gap-2">
+            <Select value={newRole} onValueChange={setNewRole}>
+              <SelectTrigger className="h-8 text-xs w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(ROLE_CONFIG).map(([key, v]) => (
+                  <SelectItem key={key} value={key}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={saveRole}><Save className="w-4 h-4 text-success" /></Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setEditing(false)}><X className="w-4 h-4" /></Button>
+          </div>
+        ) : (
+          <button
+            onClick={() => !isCurrentUser && setEditing(true)}
+            className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${conf.color} ${!isCurrentUser ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
+          >
+            <RoleIcon className="w-3 h-3" />
+            {conf.label}
+            {!isCurrentUser && <Edit2 className="w-2.5 h-2.5 opacity-50 ml-0.5" />}
+          </button>
+        )}
+      </div>
+
+      {/* Acciones de gestión: solo para otros usuarios y si el actor puede gestionar. */}
+      {canManage && !isCurrentUser && (
+        <div className="flex items-center gap-2 pl-12">
+          {suspended ? (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => manage('reactivate')} disabled={busy}>
+              <CheckCircle2 className="w-3.5 h-3.5 text-success" /> Reactivar
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => manage('suspend')} disabled={busy}>
+              <Ban className="w-3.5 h-3.5 text-warning" /> Suspender
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 text-destructive hover:text-destructive" onClick={() => manage('remove')} disabled={busy}>
+            <Trash2 className="w-3.5 h-3.5" /> Quitar
+          </Button>
+        </div>
       )}
     </li>
   );
@@ -340,6 +400,69 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
   );
 }
 
+/**
+ * JoinCodeCard — muestra el código de unión del tenant para compartirlo con el equipo.
+ * Cualquiera con el código puede unirse como conductor (mínimo privilegio); por eso se
+ * permite regenerarlo (invalida el anterior) si se filtró.
+ */
+function JoinCodeCard({ tenant, onChanged }) {
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const code = tenant?.join_code || '';
+
+  const copy = async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* sin portapapeles: el usuario lo copia a mano */ }
+  };
+
+  const regenerate = async (confirmFirst) => {
+    if (!tenant?.id) return;
+    if (confirmFirst && !window.confirm('¿Generar un código nuevo? El código anterior dejará de funcionar.')) return;
+    setBusy(true);
+    try {
+      await base44.entities.TenantLicense.update(tenant.id, { join_code: generateJoinCode() });
+      onChanged();
+    } catch { /* noop */ }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <section className="bg-card border border-border rounded-xl p-5 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <KeyRound className="w-4 h-4 text-primary" />
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Código de unión</h2>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Comparte este código para que alguien se una a tu organización. Entrará como
+        <span className="text-foreground font-medium"> conductor</span> y luego puedes cambiar su rol arriba.
+      </p>
+      {code ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-[160px] bg-secondary border border-border rounded-xl px-4 py-3 font-mono text-lg tracking-wider text-foreground text-center select-all">
+            {code}
+          </div>
+          <Button variant="outline" className="h-12 w-12 p-0 shrink-0" onClick={copy} aria-label="Copiar código">
+            {copied ? <Check className="w-5 h-5 text-success" /> : <Copy className="w-5 h-5" />}
+          </Button>
+          <Button variant="outline" className="h-12 gap-2 shrink-0" onClick={() => regenerate(true)} disabled={busy}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            <span className="hidden sm:inline">Regenerar</span>
+          </Button>
+        </div>
+      ) : (
+        <Button className="gap-2" onClick={() => regenerate(false)} disabled={busy}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+          Generar código de unión
+        </Button>
+      )}
+    </section>
+  );
+}
+
 export default function Admin() {
   const { tenant, tenantId, reload: reloadTenant } = useTenant();
   const [user, setUser] = useState(null);
@@ -370,6 +493,27 @@ export default function Admin() {
   const handleRoleChange = async (userId, newRole) => {
     await base44.entities.User.update(userId, { role: newRole });
     load();
+  };
+
+  // El nombre para la app (display_name) lo puede editar el admin del tenant (RLS de
+  // entidad permite a owner/admin actualizar usuarios de su tenant).
+  const handleSetName = async (userId, displayName) => {
+    await base44.entities.User.update(userId, { display_name: displayName }).catch(() => {});
+    load();
+  };
+
+  // Suspender / reactivar / quitar pasa por la función de servidor (write_access,
+  // suspended y tenant_id son server-authoritative; el cliente no puede tocarlos).
+  const handleManage = async (userId, action, name) => {
+    if (action === 'remove' && !window.confirm(`¿Quitar a ${name} de la organización? Perderá el acceso, pero su cuenta no se elimina.`)) return;
+    try {
+      const res = await base44.functions.invoke('manageMember', { action, userId });
+      const data = res?.data || res;
+      if (data?.error) { alert(data.error); return; }
+      load();
+    } catch {
+      alert('No se pudo completar la acción. Intenta de nuevo.');
+    }
   };
 
   if (loading) return (
@@ -418,6 +562,9 @@ export default function Admin() {
         )}
       </section>
 
+      {/* Código de unión */}
+      {tenant && <JoinCodeCard tenant={tenant} onChanged={() => { reloadTenant(); }} />}
+
       {/* Users */}
       <section className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -436,6 +583,9 @@ export default function Admin() {
                 key={m.id}
                 member={m}
                 onRoleChange={handleRoleChange}
+                onSetName={handleSetName}
+                onManage={handleManage}
+                canManage={isAdminOrOwner(user?.role)}
                 isCurrentUser={m.id === user?.id}
               />
             ))}

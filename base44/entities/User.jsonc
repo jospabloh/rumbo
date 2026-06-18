@@ -2,6 +2,18 @@
   "name": "User",
   "type": "object",
   "properties": {
+    "display_name": {
+      "type": "string",
+      "description": "Nombre para mostrar en la app, asignable por el admin del tenant. Si está vacío se usa el full_name de la cuenta. Editable por el propio usuario o por owner/admin de su tenant (RLS de entidad)."
+    },
+    "suspended": {
+      "type": "boolean",
+      "default": false,
+      "description": "Acceso suspendido manualmente por un admin del tenant (independiente del estado de licencia). Server-authoritative: solo lo cambia la función manageMember con service role.",
+      "rls": {
+        "write": false
+      }
+    },
     "role": {
       "type": "string",
       "description": "Rol del usuario en el sistema",

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Upload, Palette, CheckCircle2, Loader2 } from 'lucide-react';
+import { Building2, Upload, Palette, CheckCircle2, Loader2, ArrowLeft, Gift, Copy, Check } from 'lucide-react';
 
 function hexToHsl(hex) {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -29,7 +29,7 @@ function hexToHsl(hex) {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-export default function TenantOnboarding({ onComplete }) {
+export default function TenantOnboarding({ onComplete, onBack }) {
   const [step, setStep] = useState(1); // 1: info, 2: logo+colors, 3: done
   const [form, setForm] = useState({ tenant_name: '', slogan: '' });
   const [logoFile, setLogoFile] = useState(null);
@@ -38,6 +38,18 @@ export default function TenantOnboarding({ onComplete }) {
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [createdTenant, setCreatedTenant] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    const code = createdTenant?.join_code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* clipboard no disponible: el usuario puede copiarlo a mano */ }
+  };
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
@@ -93,17 +105,16 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
     setSaving(true);
     setError('');
     try {
-      const user = await base44.auth.me();
       let logo_url = '';
       if (logoFile) {
         const res = await base44.integrations.Core.UploadFile({ file: logoFile });
         logo_url = res.file_url;
       }
-      // Primer mes gratis: la licencia queda vigente hasta hoy + 1 mes.
-      const freeUntil = new Date();
-      freeUntil.setMonth(freeUntil.getMonth() + 1);
-      const freeUntilStr = freeUntil.toISOString().slice(0, 10);
-      const tenant = await base44.entities.TenantLicense.create({
+      // La creación del tenant ocurre en el servidor (createTenant): genera el código de
+      // unión, marca la prueba de 30 días, crea la TenantLicense y eleva al usuario a owner
+      // de SU organización. Es necesario porque un usuario recién registrado entra con rol
+      // 'user' y la RLS no le dejaría crear el tenant ni cambiarse el rol desde el cliente.
+      const res = await base44.functions.invoke('createTenant', {
         tenant_name: form.tenant_name.trim(),
         slogan: form.slogan.trim(),
         logo_url,
@@ -111,26 +122,19 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
         color_secondary: colors.secondary,
         color_accent: colors.accent,
         color_background: colors.background,
-        plan: 'trial',
-        status: 'active',
-        owner_email: user.email,
-        trial_ends_at: freeUntilStr,
-        current_period_end: freeUntilStr,
-        billing_cycle: 'monthly',
       });
-      // Asociar el tenant recién creado al perfil del usuario. tenant_id es
-      // server-authoritative (write:false en RLS), así que la asignación la hace
-      // resolveTenant con service role: detecta al creador del TenantLicense y
-      // persiste su tenant_id. El cliente ya no puede escribir tenant_id directamente.
-      try {
-        await base44.functions.invoke('resolveTenant', {});
-      } catch (e) {
-        console.error('No se pudo asociar el tenant al usuario tras el onboarding:', e);
+      const data = res?.data || res;
+      if (data?.error || !data?.tenant) {
+        setError(data?.error || 'No se pudo crear la organización. Intenta de nuevo.');
+        setSaving(false);
+        return;
       }
+      setCreatedTenant(data.tenant);
       // Apply colors to CSS vars
       if (colors.primary) applyTenantColors(colors);
       setStep(3);
-      setTimeout(() => onComplete(tenant), 1500);
+      // No avanzamos solos: en el paso 3 mostramos el código de unión para que el
+      // admin pueda copiarlo/compartirlo antes de entrar a la app.
     } catch (e) {
       setError('Error al guardar. Intenta de nuevo.');
     } finally {
@@ -139,30 +143,71 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-lg">
+    <div className="w-full max-w-lg mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-7">
           <img src="/rumbo.png" alt="Rumbo" className="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover" />
-          <h1 className="text-2xl font-bold text-foreground">Bienvenido a Rumbo</h1>
-          <p className="text-muted-foreground mt-1">Configura tu organización para comenzar</p>
+          <h1 className="text-2xl font-bold text-foreground">Crea tu organización</h1>
+          <p className="text-muted-foreground mt-1">Configúrala en menos de un minuto</p>
         </div>
 
         {/* Steps indicator */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2].map(s => (
-            <div key={s} className={`h-1.5 w-12 rounded-full transition-all ${step >= s ? 'bg-primary' : 'bg-muted'}`} />
-          ))}
-        </div>
+        {step !== 3 && (
+          <div className="flex items-center justify-center gap-2 mb-7">
+            {[1, 2].map(s => (
+              <div key={s} className={`h-1.5 w-12 rounded-full transition-all ${step >= s ? 'bg-primary' : 'bg-muted'}`} />
+            ))}
+          </div>
+        )}
 
         {step === 3 ? (
-          <div className="text-center py-8">
+          <div className="bg-card border border-border rounded-2xl p-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">¡Listo!</h2>
-            <p className="text-muted-foreground">Tu organización ha sido configurada.</p>
+            <h2 className="text-xl font-bold mb-1">¡Tu organización está lista!</h2>
+            <p className="text-muted-foreground text-sm">
+              Tienes <span className="text-foreground font-medium">30 días gratis</span> con todas las funciones.
+            </p>
+
+            {/* Código de unión para invitar al equipo */}
+            {createdTenant?.join_code && (
+              <div className="mt-6 text-left">
+                <p className="text-xs text-muted-foreground mb-1.5">
+                  Comparte este código para que tu equipo se una:
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 font-mono text-lg tracking-wider text-foreground text-center select-all">
+                    {createdTenant.join_code}
+                  </div>
+                  <Button variant="outline" className="h-12 w-12 p-0 shrink-0" onClick={copyCode} aria-label="Copiar código">
+                    {copied ? <Check className="w-5 h-5 text-success" /> : <Copy className="w-5 h-5" />}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Lo encontrarás siempre en <span className="text-foreground font-medium">Administración</span>.
+                </p>
+              </div>
+            )}
+
+            <Button className="w-full h-12 text-base mt-6 gap-2" onClick={() => onComplete(createdTenant)}>
+              Entrar a mi organización
+              <CheckCircle2 className="w-5 h-5" />
+            </Button>
           </div>
         ) : step === 1 ? (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground -ml-1"
+              >
+                <ArrowLeft className="w-4 h-4" /> Volver
+              </button>
+            )}
+            <div className="flex items-start gap-2 text-sm bg-primary/10 text-primary rounded-xl px-3 py-2.5">
+              <Gift className="w-4 h-4 shrink-0 mt-0.5" />
+              <span><span className="font-semibold">30 días gratis</span>, sin tarjeta. Cancela cuando quieras.</span>
+            </div>
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="w-5 h-5 text-primary" />
               <h2 className="font-semibold text-lg">Información de tu organización</h2>
@@ -173,7 +218,7 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
                 placeholder="Ej. Flota Express MX"
                 value={form.tenant_name}
                 onChange={e => setForm(f => ({ ...f, tenant_name: e.target.value }))}
-                className="bg-secondary border-border"
+                className="bg-secondary border-border text-base h-12"
               />
             </div>
             <div>
@@ -182,12 +227,12 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
                 placeholder="Ej. Movilidad que conecta"
                 value={form.slogan}
                 onChange={e => setForm(f => ({ ...f, slogan: e.target.value }))}
-                className="bg-secondary border-border"
+                className="bg-secondary border-border text-base h-12"
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button
-              className="w-full"
+              className="w-full h-12 text-base"
               onClick={() => { if (!form.tenant_name.trim()) { setError('El nombre es requerido'); return; } setError(''); setStep(2); }}
             >
               Continuar
@@ -260,15 +305,14 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Atrás</Button>
-              <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
+              <Button variant="outline" className="flex-1 h-12 text-base" onClick={() => setStep(1)}>Atrás</Button>
+              <Button className="flex-1 h-12 text-base gap-2" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {saving ? 'Guardando...' : 'Finalizar'}
               </Button>
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }
