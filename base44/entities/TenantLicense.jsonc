@@ -102,6 +102,10 @@
       "type": "string",
       "title": "Email del owner"
     },
+    "join_code": {
+      "type": "string",
+      "title": "Código de unión del tenant"
+    },
     "notes": {
       "type": "string",
       "title": "Notas"

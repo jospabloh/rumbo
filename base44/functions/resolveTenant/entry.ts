@@ -107,8 +107,11 @@ Deno.serve(async (req) => {
     } catch (_e) { /* el usuario no tiene un registro Driver vinculado */ }
 
     // Bloqueo de escritura por licencia. El owner de la app nunca se autobloquea
-    // (gestiona las licencias), el resto depende del estado de su tenant.
-    const writeAccess = isAppOwner ? 'enabled' : computeWriteAccess(tenant);
+    // (gestiona las licencias), el resto depende del estado de su tenant. Si un admin lo
+    // suspendió manualmente (suspended=true), permanece bloqueado sin importar la licencia.
+    const writeAccess = isAppOwner
+      ? 'enabled'
+      : (user.data?.suspended ? 'blocked' : computeWriteAccess(tenant));
 
     // Persistir cambios en el perfil del usuario (service role, salta RLS de forma segura)
     const patch: Record<string, unknown> = {};

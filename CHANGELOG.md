@@ -4,6 +4,41 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [Unreleased] — onboarding de tenants y gestión de miembros
+
+### Added — onboarding guiado: crear o unirse a una organización
+
+- **Hub de onboarding** (`src/pages/Onboarding.jsx`): cualquier usuario autenticado que aún
+  no pertenece a un tenant pasa por una pantalla que lo guía a **crear su organización**
+  (prueba de 30 días, sin tarjeta) o **unirse a una existente con un código**. Antes, un
+  usuario que entraba con un correo externo caía directo en una app vacía, sin guía ni aviso.
+- **Código de unión único por tenant** (`join_code` en `TenantLicense`): se genera al crear
+  la organización y se muestra/copia/regenera desde **Administración**. Alfabeto sin
+  caracteres ambiguos (sin 0/O/1/I/L) para dictarlo y teclearlo sin errores en el teléfono.
+- **`createTenant`** (función de servidor): crea la organización y eleva al usuario a owner
+  de forma controlada. Necesario porque un usuario recién registrado entra con rol `user` y
+  la RLS no le permitiría crear el tenant ni cambiarse el rol desde el cliente.
+- **`joinTenant`** (función de servidor): valida el código con service role (resuelve el
+  huevo-gallina de RLS) y une al usuario con **privilegio mínimo** (`conductor`); el admin
+  lo promueve después. No se puede unir a un tenant cancelado/suspendido.
+
+### Added — gestión de miembros del tenant
+
+- **Suspender / reactivar / quitar** usuarios desde Administración, vía **`manageMember`**
+  (función de servidor): `write_access`, `suspended` y `tenant_id` son server-authoritative.
+  Protege al owner del tenant y al owner de la app; nadie puede actuar sobre sí mismo.
+- **Nombre para la app** (`display_name` en `User`): el admin asigna un nombre visible
+  asociado al correo; si está vacío se usa el `full_name` de la cuenta.
+- **Visibilidad del owner de la app**: la página de Licencias ahora muestra el código de
+  unión y los correos de los miembros de cada tenant.
+
+### Mobile
+
+- Onboarding y pantallas de unión rediseñados mobile-first: objetivos táctiles grandes
+  (h-12), inputs de 16px (evitan el zoom de iOS) y `safe-area` para el notch.
+
+---
+
 ## [1.13.1] — 2026-06-17
 
 ### Changed — se usa el logo PNG oficial (provisto por el cliente)

@@ -117,6 +117,16 @@ export default function Licenses() {
                       {Array.isArray(t.members) ? ` · ${t.members.length} miembro(s)` : ''}
                       {t.last_payment_at ? ` · último pago ${t.last_payment_at}` : ''}
                     </p>
+                    {t.join_code && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Código: <span className="font-mono text-foreground tracking-wider">{t.join_code}</span>
+                      </p>
+                    )}
+                    {Array.isArray(t.members) && t.members.length > 0 && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate" title={t.members.map(m => m.email).join(', ')}>
+                        {t.members.map(m => m.email).filter(Boolean).join(', ')}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-3 flex-wrap">
