@@ -24,6 +24,12 @@ All notable changes to Rumbo are documented here.
 - Sin cambios en la forma de los datos enviados al backend ni en la UI: misma
   estructura de payload, sólo se añade validación.
 
+### Docs
+
+- **Manual de usuario actualizado** (`USER_MANUAL.md`) a la versión 1.17.0: nueva
+  sección «Interface & Appearance» que documenta el selector de tema claro/oscuro
+  (1.16.0) y la validación de formularios en línea (1.17.0).
+
 ## [1.16.0] — 2026-06-19 — rediseño: tema claro/oscuro y estética "consola de operaciones"
 
 ### Added — tema claro + oscuro
