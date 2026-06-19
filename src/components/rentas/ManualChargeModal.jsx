@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ResponsiveModal from '@/components/ui/responsive-modal';
+import { FormError } from '@/components/ui/form-error';
 import { currentPeriod } from '@/components/rentas/rentUtils';
 
 export default function ManualChargeModal({ vehicles, tenantId, onClose, onSaved }) {
@@ -56,13 +57,7 @@ export default function ManualChargeModal({ vehicles, tenantId, onClose, onSaved
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-t-2xl lg:rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold">Cobro manual</h3>
-          <button onClick={onClose} className="text-muted-foreground"><X className="w-5 h-5" /></button>
-        </div>
+    <ResponsiveModal title="Cobro manual" onClose={onClose} maxWidth="sm">
         <div className="space-y-3">
           <div>
             <Label>Unidad</Label>
@@ -87,13 +82,12 @@ export default function ManualChargeModal({ vehicles, tenantId, onClose, onSaved
             <Label>Monto de la renta ($)</Label>
             <Input type="number" step="0.01" value={form.amount_due} onChange={e => setForm(f => ({ ...f, amount_due: e.target.value }))} className="mt-1 bg-background" />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          <FormError>{error}</FormError>
           <div className="flex gap-3 pt-1">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button onClick={save} disabled={saving} className="flex-1">{saving ? 'Guardando...' : 'Crear cobro'}</Button>
           </div>
         </div>
-      </div>
-    </div>
+    </ResponsiveModal>
   );
 }

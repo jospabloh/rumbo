@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Banknote, Plus, Search, Check, X, AlertCircle, CalendarPlus } from 'lucide-react';
+import { Banknote, Plus, Search, Check, AlertCircle, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import ResponsiveModal from '@/components/ui/responsive-modal';
+import { FormError } from '@/components/ui/form-error';
 import { useTenant } from '@/lib/TenantContext';
 import { useCatalog } from '@/lib/catalogs';
 import { useRentCharges, useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
@@ -256,13 +258,7 @@ export default function Rentas() {
 
       {/* Modal registrar pago */}
       {payCharge && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setPayCharge(null)} />
-          <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-t-2xl lg:rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">Registrar pago</h3>
-              <button onClick={() => setPayCharge(null)} className="text-muted-foreground"><X className="w-5 h-5" /></button>
-            </div>
+        <ResponsiveModal title="Registrar pago" onClose={() => setPayCharge(null)} maxWidth="sm">
             <p className="text-xs text-muted-foreground mb-3">
               {vehicleById(payCharge.vehicle_id)?.plate} · {driverById(payCharge.driver_id)?.full_name} · debe ${Math.max((payCharge.amount_due || 0) - (payCharge.amount_paid || 0), 0).toLocaleString()}
             </p>
@@ -284,14 +280,13 @@ export default function Rentas() {
                 <Label>Nota (opcional)</Label>
                 <Input value={payForm.note} onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} className="mt-1 bg-background" placeholder="Ej. abono, imprevisto..." />
               </div>
-              {payError && <p className="text-sm text-destructive">{payError}</p>}
+              <FormError>{payError}</FormError>
               <div className="flex gap-3 pt-1">
                 <Button variant="outline" onClick={() => setPayCharge(null)} className="flex-1">Cancelar</Button>
                 <Button onClick={submitPayment} disabled={paySaving} className="flex-1">{paySaving ? 'Guardando...' : 'Registrar'}</Button>
               </div>
             </div>
-          </div>
-        </div>
+        </ResponsiveModal>
       )}
 
       {/* Modal cobro manual */}

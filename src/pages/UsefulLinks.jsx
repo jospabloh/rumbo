@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { LinkIcon, ExternalLink, Plus, Trash2, Pencil, X } from 'lucide-react';
+import ResponsiveModal from '@/components/ui/responsive-modal';
+import { FormError } from '@/components/ui/form-error';
+import { LinkIcon, ExternalLink, Plus, Trash2, Pencil } from 'lucide-react';
 import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
 const normalizeUrl = (u) => {
@@ -100,13 +102,7 @@ export default function UsefulLinks() {
       )}
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setEditing(null)} />
-          <div className="relative z-10 w-full max-w-md bg-card border border-border rounded-t-2xl lg:rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">{editing === 'new' ? 'Nuevo enlace' : 'Editar enlace'}</h3>
-              <button onClick={() => setEditing(null)} className="text-muted-foreground"><X className="w-5 h-5" /></button>
-            </div>
+        <ResponsiveModal title={editing === 'new' ? 'Nuevo enlace' : 'Editar enlace'} onClose={() => setEditing(null)} maxWidth="md">
             <div className="space-y-3">
               <div>
                 <Label>Nombre *</Label>
@@ -120,14 +116,13 @@ export default function UsefulLinks() {
                 <Label>Descripción (opcional)</Label>
                 <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-1 bg-background" placeholder="Usuario/empresa, notas..." />
               </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              <FormError>{error}</FormError>
               <div className="flex gap-3 pt-1">
                 <Button variant="outline" onClick={() => setEditing(null)} className="flex-1">Cancelar</Button>
                 <Button onClick={save} disabled={saving} className="flex-1">{saving ? 'Guardando...' : 'Guardar'}</Button>
               </div>
             </div>
-          </div>
-        </div>
+        </ResponsiveModal>
       )}
     </div>
   );
