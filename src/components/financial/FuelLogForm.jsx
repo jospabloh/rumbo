@@ -1,25 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FormError } from '@/components/ui/form-error';
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/lib/imageUtils';
+import { fuelLogSchema } from '@/lib/schemas';
 
 export default function FuelLogForm({ vehicles, drivers, onSave, onClose }) {
-  const [form, setForm] = useState({ vehicle_id: '', driver_id: '', liters: '', price_per_liter: '', total_cost: '', odometer: '', receipt_photo_url: '', logged_at: '' });
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const set = (k, v) => setForm(f => {
-    const next = { ...f, [k]: v };
-    if (k === 'liters' || k === 'price_per_liter') {
-      const liters = parseFloat(k === 'liters' ? v : f.liters) || 0;
-      const price = parseFloat(k === 'price_per_liter' ? v : f.price_per_liter) || 0;
-      next.total_cost = (liters * price).toFixed(2);
-    }
-    return next;
+  const { register, control, handleSubmit, watch, setValue, setError, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(fuelLogSchema),
+    defaultValues: { vehicle_id: '', driver_id: '', liters: '', price_per_liter: '', total_cost: '', odometer: '', receipt_photo_url: '', logged_at: '' },
   });
+  const liters = watch('liters');
+  const pricePerLiter = watch('price_per_liter');
+  const receiptUrl = watch('receipt_photo_url');
+
+  // Total = litros × precio. Recalcula al cambiar cualquiera de los dos; el campo
+  // sigue siendo editable a mano (no se toca si no cambian litros/precio).
+  useEffect(() => {
+    const l = parseFloat(liters) || 0;
+    const p = parseFloat(pricePerLiter) || 0;
+    setValue('total_cost', l && p ? (l * p).toFixed(2) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liters, pricePerLiter]);
 
   const handlePhoto = async (e) => {
     const file = e.target.files[0];
@@ -27,15 +36,23 @@ export default function FuelLogForm({ vehicles, drivers, onSave, onClose }) {
     setUploading(true);
     const compressed = await compressImage(file);
     const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    set('receipt_photo_url', file_url);
+    setValue('receipt_photo_url', file_url);
     setUploading(false);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    await onSave({ ...form, liters: parseFloat(form.liters), price_per_liter: parseFloat(form.price_per_liter) || 0, total_cost: parseFloat(form.total_cost) || 0, odometer: parseInt(form.odometer) || 0, logged_at: form.logged_at || new Date().toISOString() });
-    setSaving(false);
+  const onValid = async (data) => {
+    try {
+      await onSave({
+        ...data,
+        liters: data.liters ?? 0,
+        price_per_liter: data.price_per_liter ?? 0,
+        total_cost: data.total_cost ?? 0,
+        odometer: data.odometer ?? 0,
+        logged_at: data.logged_at || new Date().toISOString(),
+      });
+    } catch (err) {
+      setError('root', { message: err?.message || 'No se pudo registrar el combustible. Inténtalo de nuevo.' });
+    }
   };
 
   return (
@@ -46,49 +63,64 @@ export default function FuelLogForm({ vehicles, drivers, onSave, onClose }) {
           <h2 className="font-bold text-lg">Registrar combustible</h2>
           <button onClick={onClose} className="text-muted-foreground"><X className="w-5 h-5" /></button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit(onValid)} className="space-y-3">
           <div>
             <Label>Vehículo *</Label>
-            <Select value={form.vehicle_id} onValueChange={v => set('vehicle_id', v)}>
-              <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-              <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate}</SelectItem>)}</SelectContent>
-            </Select>
+            <Controller
+              name="vehicle_id"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+            />
+            <FormError className="mt-1">{errors.vehicle_id?.message}</FormError>
           </div>
           <div>
             <Label>Conductor</Label>
-            <Select value={form.driver_id} onValueChange={v => set('driver_id', v)}>
-              <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-              <SelectContent>{drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>)}</SelectContent>
-            </Select>
+            <Controller
+              name="driver_id"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>{drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Litros</Label>
-              <Input type="number" step="0.01" value={form.liters} onChange={e => set('liters', e.target.value)} className="mt-1 bg-background" />
+              <Input type="number" step="0.01" {...register('liters')} className="mt-1 bg-background" />
+              <FormError className="mt-1">{errors.liters?.message}</FormError>
             </div>
             <div>
               <Label>Precio/litro</Label>
-              <Input type="number" step="0.01" value={form.price_per_liter} onChange={e => set('price_per_liter', e.target.value)} className="mt-1 bg-background" />
+              <Input type="number" step="0.01" {...register('price_per_liter')} className="mt-1 bg-background" />
             </div>
             <div>
               <Label>Total ($)</Label>
-              <Input type="number" step="0.01" value={form.total_cost} onChange={e => set('total_cost', e.target.value)} className="mt-1 bg-background" />
+              <Input type="number" step="0.01" {...register('total_cost')} className="mt-1 bg-background" />
             </div>
             <div>
               <Label>Odómetro</Label>
-              <Input type="number" value={form.odometer} onChange={e => set('odometer', e.target.value)} className="mt-1 bg-background" />
+              <Input type="number" {...register('odometer')} className="mt-1 bg-background" />
             </div>
           </div>
           <div>
             <Label>Foto de recibo</Label>
             <label className="mt-1 flex items-center gap-2 cursor-pointer bg-background border border-input rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
-              <Upload className="w-4 h-4" />{uploading ? 'Subiendo...' : form.receipt_photo_url ? 'Ver recibo ✓' : 'Subir foto'}
+              <Upload className="w-4 h-4" />{uploading ? 'Subiendo...' : receiptUrl ? 'Ver recibo ✓' : 'Subir foto'}
               <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} disabled={uploading} />
             </label>
           </div>
+          <FormError className="bg-destructive/10 rounded-lg px-3 py-2">{errors.root?.message}</FormError>
           <div className="flex gap-3">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-            <Button type="submit" disabled={saving || uploading || !form.vehicle_id} className="flex-1">{saving ? 'Guardando...' : 'Registrar'}</Button>
+            <Button type="submit" disabled={isSubmitting || uploading} className="flex-1">{isSubmitting ? 'Guardando...' : 'Registrar'}</Button>
           </div>
         </form>
       </div>

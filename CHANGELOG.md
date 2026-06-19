@@ -4,6 +4,26 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.17.0] — 2026-06-19 — forms: react-hook-form + zod con validación en cliente
+
+### Changed — los 7 formularios de entidad ahora usan react-hook-form + zod
+
+- **Validación en cliente con errores en línea.** Antes los formularios sólo
+  tenían `required` de HTML y botones deshabilitados; ahora cada campo valida
+  contra un esquema zod y muestra el error debajo del campo (placa o unidad
+  obligatoria, conductor/vehículo obligatorio, monto > 0, calificación 0–5,
+  año 1900–2100, etc.).
+- **Esquemas centralizados y probados** en `src/lib/schemas.js` (uno por
+  formulario), con **15 pruebas unitarias** nuevas que cubren campos
+  obligatorios, rangos y coerción de números.
+- Formularios convertidos: Vehículo, Conductor, Multa, Combustible, Reclamo de
+  seguro, Mantenimiento y Nuevo canal.
+- Los errores del servidor al guardar se muestran con `setError('root')`; el
+  estado de envío usa `formState.isSubmitting`. Las cargas de archivos
+  (fotos/documentos) siguen igual y guardan la URL con `setValue`.
+- Sin cambios en la forma de los datos enviados al backend ni en la UI: misma
+  estructura de payload, sólo se añade validación.
+
 ## [1.16.0] — 2026-06-19 — rediseño: tema claro/oscuro y estética "consola de operaciones"
 
 ### Added — tema claro + oscuro
