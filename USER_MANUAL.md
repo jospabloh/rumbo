@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.0.2 | Updated 2026-06-15**
+**Version 1.17.0 | Updated 2026-06-19**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -60,6 +60,28 @@ Each non-admin role ships with sensible defaults, which the **admin can grant or
 7. Users with that role will see the updated access on their next login or page refresh.
 
 **Note:** The Admin and Owner roles always have full access and are not configurable — their tabs display every permission as enabled.
+
+---
+
+## Interface & Appearance
+
+### Light and dark themes
+
+Rumbo supports both a **dark** and a **light** theme. The app opens in dark mode by default.
+
+- Use the **theme toggle** at the bottom of the left sidebar (above **Salir**) to switch between light and dark.
+- Your choice is remembered on the same browser for next time.
+- **White-label branding always wins:** if your tenant has configured brand colors (Admin → Tenant information), those colors are applied on top of whichever theme is active.
+
+### Data entry and validation
+
+Forms across the app (vehicles, drivers, fines, fuel logs, insurance claims, maintenance, and message channels) validate your input **as you submit**, showing a message directly beneath any field that needs attention. For example:
+
+- A vehicle requires either a plate **or** a unit number.
+- A driver requires a full name; the rating must be between 0 and 5.
+- A fine requires a driver, a vehicle, and an amount greater than zero.
+
+If saving fails on the server (for example, a connection problem), the error is shown at the bottom of the form so you can retry without losing what you typed.
 
 ---
 
