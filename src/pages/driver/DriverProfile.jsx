@@ -1,26 +1,16 @@
-import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Star, Phone, FileText, Calendar, Shield } from 'lucide-react';
+import { PageLoader } from '@/components/ui/spinner';
+import { useMe, useCurrentDriver, useEntityList } from '@/hooks/useEntities';
 
 const docTypeLabel = { license: 'Licencia', medical: 'Cert. médico', background: 'Antecedentes', other: 'Otro' };
 
 export default function DriverProfile() {
-  const [driver, setDriver] = useState(null);
-  const [docs, setDocs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { isLoading: meLoading } = useMe();
+  const { data: driver, isLoading: driverLoading } = useCurrentDriver();
+  const { data: docs = [] } = useEntityList('DriverDocument', { filter: { driver_id: driver?.id }, enabled: !!driver });
+  const loading = meLoading || driverLoading;
 
-  useEffect(() => {
-    base44.auth.me().then(async (u) => {
-      const drivers = await base44.entities.Driver.list();
-      const dr = drivers.find(d => d.profile_id === u.id);
-      if (dr) {
-        setDriver(dr);
-        base44.entities.DriverDocument.filter({ driver_id: dr.id }).then(setDocs);
-      }
-    }).finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="flex justify-center items-center h-full"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <PageLoader />;
 
   if (!driver) return (
     <div className="flex flex-col items-center justify-center h-full p-6 text-center">

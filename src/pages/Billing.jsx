@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { isAdminOrOwner } from '@/lib/permissions';
 import { vehicleLimit, driverLimit } from '@/lib/plans';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/ui/spinner';
 import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users, Crown, Shield, Navigation, Wrench, Car, User } from 'lucide-react';
+import { useMe, useRawList } from '@/hooks/useEntities';
 
 const ROLE_CONFIG = {
   owner:      { label: 'Owner',       icon: Crown,      color: 'text-warning bg-warning/10' },
@@ -36,43 +36,22 @@ const PLAN_FEATURES = {
 };
 
 export default function Billing() {
-  const [user, setUser] = useState(null);
-  const [license, setLicense] = useState(null);
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [accessDenied, setAccessDenied] = useState(false);
+  const { data: user, isLoading: meLoading } = useMe();
+  const allowed = isAdminOrOwner(user?.role);
+  const licenseQ = useRawList('TenantLicense', { sort: '-created_date', limit: 1, enabled: allowed });
+  const vehiclesQ = useRawList('Vehicle', { enabled: allowed });
+  const driversQ = useRawList('Driver', { enabled: allowed });
+  const membersQ = useRawList('User', { enabled: allowed });
 
-  useEffect(() => {
-    base44.auth.me().then(u => {
-      setUser(u);
-      if (!isAdminOrOwner(u?.role)) {
-        setAccessDenied(true);
-        setLoading(false);
-        return;
-      }
-      Promise.all([
-        base44.entities.TenantLicense.list('-created_date', 1),
-        base44.entities.Vehicle.list(),
-        base44.entities.Driver.list(),
-        base44.entities.User.list(),
-      ]).then(([lic, v, d, users]) => {
-        setLicense(lic[0] || null);
-        setVehicles(v);
-        setDrivers(d);
-        setMembers(users);
-        setLoading(false);
-      });
-    }).catch(() => setLoading(false));
-  }, []);
+  const license = licenseQ.data?.[0] || null;
+  const vehicles = vehiclesQ.data ?? [];
+  const drivers = driversQ.data ?? [];
+  const members = membersQ.data ?? [];
+  const loading = meLoading || (allowed && (licenseQ.isLoading || vehiclesQ.isLoading || driversQ.isLoading || membersQ.isLoading));
+  const accessDenied = !meLoading && !allowed;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoader className="h-64" />;
   }
 
   if (accessDenied) {

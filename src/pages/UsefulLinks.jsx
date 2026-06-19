@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { isAdminOrOwner } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { LinkIcon, ExternalLink, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
 const normalizeUrl = (u) => {
   const t = (u || '').trim();
@@ -16,21 +18,17 @@ const normalizeUrl = (u) => {
 export default function UsefulLinks() {
   const { tenantId, userRole, readOnly } = useTenant();
   const canManage = isAdminOrOwner(userRole) && !readOnly;
-  const [links, setLinks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading } = useEntityList('UsefulLink', { enabled: !!tenantId });
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('UsefulLink');
+  const links = useMemo(
+    () => (data ?? []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.label || '').localeCompare(b.label || '')),
+    [data],
+  );
   const [editing, setEditing] = useState(null); // link object or 'new'
   const [form, setForm] = useState({ label: '', url: '', description: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  const load = () => {
-    if (!tenantId) { setLinks([]); setLoading(false); return; }
-    setLoading(true);
-    base44.entities.UsefulLink.filter({ tenant_id: tenantId })
-      .then(rows => setLinks(rows.slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.label || '').localeCompare(b.label || ''))))
-      .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, [tenantId]);
 
   const openNew = () => { setForm({ label: '', url: '', description: '' }); setEditing('new'); setError(''); };
   const openEdit = (l) => { setForm({ label: l.label || '', url: l.url || '', description: l.description || '' }); setEditing(l); setError(''); };
@@ -47,7 +45,7 @@ export default function UsefulLinks() {
         await base44.entities.UsefulLink.update(editing.id, payload);
       }
       setEditing(null);
-      load();
+      refresh();
     } catch (e) {
       setError('No se pudo guardar. Inténtalo de nuevo.');
     } finally {
@@ -57,7 +55,7 @@ export default function UsefulLinks() {
 
   const remove = async (l) => {
     await base44.entities.UsefulLink.delete(l.id).catch(() => {});
-    load();
+    refresh();
   };
 
   const visible = links.filter(l => l.active || canManage);
@@ -75,7 +73,7 @@ export default function UsefulLinks() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : visible.length === 0 ? (
         <p className="text-center text-muted-foreground py-10 text-sm">
           {canManage ? 'Aún no hay enlaces. Agrega el primero con el botón de arriba.' : 'Tu organización aún no ha configurado enlaces.'}

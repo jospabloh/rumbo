@@ -3,34 +3,31 @@ import { base44 } from '@/api/base44Client';
 import { Send, Mic, MicOff, Plus, Hash, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PageLoader } from '@/components/ui/spinner';
 import NewChannelForm from '@/components/messages/NewChannelForm';
 import { useTenant } from '@/lib/TenantContext';
+import { useMe, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
 export default function Messages() {
   const { tenantId } = useTenant();
-  const [channels, setChannels] = useState([]);
+  const { data: user, isLoading: meLoading } = useMe();
+  const { data: channels = [], isLoading: channelsLoading } = useEntityList('Channel');
+  const invalidate = useInvalidateEntity();
   const [messages, setMessages] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [newMessage, setNewMessage] = useState('');
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [showNewChannel, setShowNewChannel] = useState(false);
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const messagesEndRef = useRef(null);
   const lastSeenRef = useRef(null);
+  const loading = meLoading || channelsLoading;
 
+  // Auto-select the first channel once channels load.
   useEffect(() => {
-    base44.auth.me().then(u => {
-      setUser(u);
-      const q = tenantId ? { tenant_id: tenantId } : {};
-      base44.entities.Channel.filter(q).then(c => {
-        setChannels(c);
-        if (c.length > 0) setSelectedChannel(c[0]);
-      }).finally(() => setLoading(false));
-    });
-  }, [tenantId]);
+    if (!selectedChannel && channels.length > 0) setSelectedChannel(channels[0]);
+  }, [channels, selectedChannel]);
 
   useEffect(() => {
     if (!selectedChannel) return;
@@ -122,13 +119,13 @@ export default function Messages() {
 
   const handleCreateChannel = async (data) => {
     const ch = await base44.entities.Channel.create(data);
-    setChannels(c => [...c, ch]);
+    invalidate('Channel');
     setSelectedChannel(ch);
     setShowNewChannel(false);
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+    return <PageLoader />;
   }
 
   return (

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { MapPin, Clock, CheckCircle2, Plus, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/ui/spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useMe, useVehicles, useDrivers, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -22,39 +24,26 @@ const statusConfig = {
 };
 
 export default function Location() {
-  const [requests, setRequests] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
+  const { data: user, isLoading: meLoading } = useMe();
+  const { data: vehicles = [], isLoading: vLoading } = useVehicles();
+  const { data: drivers = [], isLoading: dLoading } = useDrivers();
+  const requestsQ = useEntityList('LocationRequest', { sort: '-requested_at', limit: 20 });
+  const requests = requestsQ.data ?? [];
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('LocationRequest');
   const [selectedVehicle, setSelectedVehicle] = useState('');
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [driverRequest, setDriverRequest] = useState(null);
   const [sharing, setSharing] = useState(false);
 
-  const load = () => {
-    Promise.all([
-      base44.entities.LocationRequest.list('-requested_at', 20),
-      base44.entities.Vehicle.list(),
-      base44.entities.Driver.list(),
-      base44.auth.me(),
-    ]).then(([r, v, d, u]) => {
-      setRequests(r);
-      setVehicles(v);
-      setDrivers(d);
-      setUser(u);
-      // For drivers: find pending request for them
-      if (u?.role === 'driver') {
-        const dr = d.find(x => x.profile_id === u.id);
-        if (dr) {
-          const pending = r.find(x => x.driver_id === dr.id && x.status === 'pending');
-          setDriverRequest(pending || null);
-        }
-      }
-    }).finally(() => setLoading(false));
-  };
+  const loading = meLoading || vLoading || dLoading || requestsQ.isLoading;
 
-  useEffect(() => { load(); }, []);
+  // For drivers: the pending request addressed to them (derived from cached data).
+  const driverRequest = useMemo(() => {
+    if (user?.role !== 'driver') return null;
+    const dr = drivers.find(x => x.profile_id === user.id);
+    if (!dr) return null;
+    return requests.find(x => x.driver_id === dr.id && x.status === 'pending') || null;
+  }, [user, drivers, requests]);
 
   // Check URL param for pre-selected vehicle
   useEffect(() => {
@@ -75,7 +64,7 @@ export default function Location() {
       requested_at: new Date().toISOString(),
     });
     setSelectedVehicle('');
-    load();
+    refresh();
     setCreating(false);
   };
 
@@ -91,8 +80,7 @@ export default function Location() {
           responded_at: new Date().toISOString(),
         });
         setSharing(false);
-        setDriverRequest(null);
-        load();
+        refresh();
       },
       () => { setSharing(false); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -103,7 +91,7 @@ export default function Location() {
   const fulfilledRequests = requests.filter(r => r.status === 'fulfilled' && r.lat && r.lng);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+    return <PageLoader />;
   }
 
   return (

@@ -1,34 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Truck, Bell, Star, MapPin } from 'lucide-react';
 import AlertBadge from '@/components/dashboard/AlertBadge';
+import { PageLoader } from '@/components/ui/spinner';
+import { useMe, useCurrentDriver, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
 export default function DriverHome() {
-  const [user, setUser] = useState(null);
-  const [driver, setDriver] = useState(null);
-  const [vehicle, setVehicle] = useState(null);
-  const [alerts, setAlerts] = useState([]);
-  const [locationRequest, setLocationRequest] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { data: user, isLoading: meLoading } = useMe();
+  const { data: driver, isLoading: driverLoading } = useCurrentDriver();
+  const enabled = !!driver;
+  const { data: vehicles = [] } = useEntityList('Vehicle', { filter: { assigned_driver_id: driver?.id }, enabled });
+  const { data: alerts = [] } = useEntityList('Alert', { filter: { driver_id: driver?.id, resolved: false }, enabled });
+  const { data: locReqs = [] } = useEntityList('LocationRequest', { filter: { driver_id: driver?.id, status: 'pending' }, enabled });
+  const invalidate = useInvalidateEntity();
   const [sharing, setSharing] = useState(false);
 
-  useEffect(() => {
-    base44.auth.me().then(async (u) => {
-      setUser(u);
-      const drivers = await base44.entities.Driver.list();
-      const dr = drivers.find(d => d.profile_id === u.id);
-      if (dr) {
-        setDriver(dr);
-        const vehicles = await base44.entities.Vehicle.filter({ assigned_driver_id: dr.id });
-        if (vehicles[0]) setVehicle(vehicles[0]);
-        const myAlerts = await base44.entities.Alert.filter({ driver_id: dr.id, resolved: false });
-        setAlerts(myAlerts);
-        // Check for pending location request
-        const requests = await base44.entities.LocationRequest.filter({ driver_id: dr.id, status: 'pending' });
-        setLocationRequest(requests[0] || null);
-      }
-    }).finally(() => setLoading(false));
-  }, []);
+  const vehicle = vehicles[0] || null;
+  const locationRequest = locReqs[0] || null;
+  const loading = meLoading || driverLoading;
 
   const handleShareLocation = () => {
     if (!locationRequest) return;
@@ -41,7 +30,7 @@ export default function DriverHome() {
           status: 'fulfilled',
           responded_at: new Date().toISOString(),
         });
-        setLocationRequest(null);
+        invalidate('LocationRequest');
         setSharing(false);
       },
       () => setSharing(false),
@@ -49,7 +38,7 @@ export default function DriverHome() {
     );
   };
 
-  if (loading) return <div className="flex justify-center items-center h-full"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <PageLoader />;
 
   return (
     <div className="p-4 space-y-4">
