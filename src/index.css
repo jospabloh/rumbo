@@ -52,6 +52,26 @@
     @apply bg-background text-foreground font-inter antialiased;
   }
 
+  /* Visible keyboard-focus for every interactive element, including the custom
+     nav items and card buttons that don't use the shadcn focus-visible classes.
+     Mouse clicks don't trigger :focus-visible, so this is keyboard-only. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Respect users who ask for less motion: neutralize the spinner/pulse loops
+     and transitions instead of spinning indefinitely. */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
