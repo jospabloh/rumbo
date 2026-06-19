@@ -107,7 +107,7 @@ export default function Vehicles() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm">{v.plate || (v.unit_number ? `#${v.unit_number}` : 'Sin identificar')}</p>
+                    <p className="font-bold text-sm font-mono tracking-tight">{v.plate || (v.unit_number ? `#${v.unit_number}` : 'Sin identificar')}</p>
                     {v.plate && v.unit_number && <span className="text-xs text-muted-foreground">#{v.unit_number}</span>}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[v.status]}`}>{statusLabel[v.status]}</span>
                   </div>

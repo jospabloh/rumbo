@@ -82,7 +82,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${v.status === 'active' ? 'bg-success' : v.status === 'maintenance' ? 'bg-warning' : 'bg-muted-foreground'}`} />
                     <div>
-                      <p className="text-sm font-medium">{v.plate}</p>
+                      <p className="text-sm font-medium font-mono tracking-tight">{v.plate}</p>
                       <p className="text-xs text-muted-foreground">{v.make} {v.model} · {driver?.full_name || 'Sin asignar'}</p>
                     </div>
                   </div>

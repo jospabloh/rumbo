@@ -4,6 +4,29 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.16.0] — 2026-06-19 — rediseño: tema claro/oscuro y estética "consola de operaciones"
+
+### Added — tema claro + oscuro
+
+- **Selector de tema claro/oscuro** (next-themes, ya en dependencias). El tema oscuro se
+  mantiene idéntico al original y sigue siendo el predeterminado; se añade un tema **claro**
+  completo. El selector está en el pie de la barra lateral.
+- Las variables de color son semánticas, así que ambos temas funcionan en toda la app sin
+  tocar componentes. **El branding white-label sigue mandando**: los colores del tenant
+  (`applyTenantColors`) se aplican por encima de cualquier tema.
+
+### Changed — estética "consola de operaciones" (data-forward)
+
+- **Tipografía de datos en monoespaciada** (IBM Plex Mono con cifras tabulares): los KPIs del
+  dashboard, las placas/unidades, los montos ($) de Rentas/Financiero/Licencia y los códigos
+  se renderizan en mono para que los números se alineen y los identificadores se lean como
+  datos. Es el elemento distintivo del rediseño.
+- Radios de borde más nítidos (`--radius` 0.5rem → 0.375rem) para un acabado más técnico.
+
+### Accessibility (de 1.15.x)
+
+- Foco de teclado visible global (`:focus-visible`) y soporte de `prefers-reduced-motion`.
+
 ## [1.15.0] — 2026-06-19 — refactor: capa de datos completa y componentización
 
 Refactor interno (sin cambios de comportamiento para el usuario). Continúa la migración

@@ -48,11 +48,11 @@ export default function Financial() {
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-card border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold">${totalFines.toFixed(0)}</p>
+          <p className="text-lg font-bold font-mono tracking-tight">${totalFines.toFixed(0)}</p>
           <p className="text-xs text-muted-foreground">{unpaidFines} multas pend.</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold">{claims.filter(c => c.status === 'open').length}</p>
+          <p className="text-lg font-bold font-mono tracking-tight">{claims.filter(c => c.status === 'open').length}</p>
           <p className="text-xs text-muted-foreground">Reclamos abiertos</p>
         </div>
       </div>
