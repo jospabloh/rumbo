@@ -1,33 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
 import PartsList from '@/components/maintenance/PartsList';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
+import { useEntityList, useVehicles, useInvalidateEntity } from '@/hooks/useEntities';
 
 export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const { tenantId, readOnly } = useTenant();
   const { can } = useModulePerms();
-  const [records, setRecords] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: records = [], isLoading: loading } = useEntityList('Maintenance', { sort: '-performed_at' });
+  const { data: vehicles = [] } = useVehicles();
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('Maintenance');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
   const [tab, setTab] = useState(defaultTab);
-
-  const load = () => {
-    const q = tenantId ? { tenant_id: tenantId } : {};
-    Promise.all([
-      base44.entities.Maintenance.filter(q, '-performed_at'),
-      base44.entities.Vehicle.filter(q),
-    ]).then(([m, v]) => { setRecords(m); setVehicles(v); }).finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, []);
 
   const filtered = records.filter(r => {
     const v = vehicles.find(x => x.id === r.vehicle_id);
@@ -45,12 +38,12 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
     }
     setShowForm(false);
     setEditRecord(null);
-    load();
+    refresh();
   };
 
   const handleDelete = async (id) => {
     await base44.entities.Maintenance.delete(id);
-    load();
+    refresh();
   };
 
   return (
@@ -87,7 +80,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            <div className="flex justify-center py-10"><Spinner /></div>
           ) : (
             <div className="space-y-2">
               {filtered.map(r => {

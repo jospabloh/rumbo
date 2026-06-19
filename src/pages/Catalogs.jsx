@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { CATALOG_CATEGORIES, defaultsFor } from '@/lib/catalogs';
@@ -6,23 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { List, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
 export default function Catalogs() {
   const { tenantId, readOnly } = useTenant();
   const [category, setCategory] = useState(CATALOG_CATEGORIES[0].key);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [newLabel, setNewLabel] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
-    if (!tenantId) { setItems([]); setLoading(false); return; }
-    setLoading(true);
-    base44.entities.Catalog.filter({ tenant_id: tenantId, category })
-      .then(rows => setItems(rows.slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))))
-      .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, [tenantId, category]);
+  const { data, isLoading: loading } = useEntityList('Catalog', { filter: { category }, enabled: !!tenantId });
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('Catalog');
+  const items = useMemo(
+    () => (data ?? []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+    [data],
+  );
 
   const add = async () => {
     const label = newLabel.trim();
@@ -37,17 +36,17 @@ export default function Catalogs() {
     }).catch(() => {});
     setNewLabel('');
     setSaving(false);
-    load();
+    refresh();
   };
 
   const toggle = async (item) => {
     await base44.entities.Catalog.update(item.id, { active: !item.active }).catch(() => {});
-    load();
+    refresh();
   };
 
   const remove = async (item) => {
     await base44.entities.Catalog.delete(item.id).catch(() => {});
-    load();
+    refresh();
   };
 
   const cat = CATALOG_CATEGORIES.find(c => c.key === category);
@@ -84,7 +83,7 @@ export default function Catalogs() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : usingDefaults ? (
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-sm text-muted-foreground mb-2">Este tenant aún no tiene valores propios. La app usa estos predeterminados:</p>

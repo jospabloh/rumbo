@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, AlertTriangle, Shield, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import FineForm from '@/components/financial/FineForm';
 import InsuranceClaimForm from '@/components/financial/InsuranceClaimForm';
 import CostPerKm from '@/components/financial/CostPerKm';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
+import { useEntityList, useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
 
 const tabs = [
   { id: 'fines', label: 'Multas', icon: AlertTriangle },
@@ -18,26 +20,15 @@ export default function Financial() {
   const { tenantId, readOnly } = useTenant();
   const { can } = useModulePerms();
   const [tab, setTab] = useState('fines');
-  const [fines, setFines] = useState([]);
-  const [claims, setClaims] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const load = () => {
-    const q = tenantId ? { tenant_id: tenantId } : {};
-    Promise.all([
-      base44.entities.Fine.filter(q, '-issued_at'),
-      base44.entities.InsuranceClaim.filter(q, '-created_date'),
-      base44.entities.Vehicle.filter(q),
-      base44.entities.Driver.filter(q),
-    ]).then(([fi, c, v, d]) => {
-      setFines(fi); setClaims(c); setVehicles(v); setDrivers(d);
-    }).finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, [tenantId]);
+  const finesQ = useEntityList('Fine', { sort: '-issued_at' });
+  const claimsQ = useEntityList('InsuranceClaim', { sort: '-created_date' });
+  const { data: vehicles = [] } = useVehicles();
+  const { data: drivers = [] } = useDrivers();
+  const invalidate = useInvalidateEntity();
+  const fines = finesQ.data ?? [];
+  const claims = claimsQ.data ?? [];
+  const loading = finesQ.isLoading || claimsQ.isLoading;
 
   const totalFines = fines.reduce((s, f) => s + (f.amount || 0), 0);
   const unpaidFines = fines.filter(f => !f.paid).length;
@@ -77,7 +68,7 @@ export default function Financial() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : tab === 'fines' ? (
         <div className="space-y-2">
           {fines.map(f => {
@@ -129,8 +120,8 @@ export default function Financial() {
         <CostPerKm vehicles={vehicles} />
       )}
 
-      {showForm && tab === 'fines' && <FineForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.Fine.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
-      {showForm && tab === 'insurance' && <InsuranceClaimForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.InsuranceClaim.create({ ...d, tenant_id: tenantId }); setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+      {showForm && tab === 'fines' && <FineForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.Fine.create({ ...d, tenant_id: tenantId }); setShowForm(false); invalidate('Fine'); }} onClose={() => setShowForm(false)} />}
+      {showForm && tab === 'insurance' && <InsuranceClaimForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.InsuranceClaim.create({ ...d, tenant_id: tenantId }); setShowForm(false); invalidate('InsuranceClaim'); }} onClose={() => setShowForm(false)} />}
     </div>
   );
 }

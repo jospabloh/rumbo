@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useTenant } from '@/lib/TenantContext';
+import { Spinner } from '@/components/ui/spinner';
+import { useAlerts, useInvalidateEntity } from '@/hooks/useEntities';
 
 const severityConfig = {
   critical: { icon: AlertTriangle, cls: 'text-destructive bg-destructive/10 border-destructive/20', label: 'Crítica' },
@@ -10,34 +11,28 @@ const severityConfig = {
   info: { icon: Info, cls: 'text-primary bg-primary/10 border-primary/20', label: 'Info' },
 };
 
+const SEVERITY_ORDER = { critical: 0, warning: 1, info: 2 };
+
 export default function Alerts() {
-  const { tenantId } = useTenant();
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading } = useAlerts({ filter: { resolved: false } });
+  const invalidate = useInvalidateEntity();
   const [generating, setGenerating] = useState(false);
   const [filter, setFilter] = useState('all');
 
-  const load = () => {
-    const q = tenantId ? { resolved: false, tenant_id: tenantId } : { resolved: false };
-    base44.entities.Alert.filter(q).then(a => {
-      setAlerts(a.sort((x, y) => {
-        const order = { critical: 0, warning: 1, info: 2 };
-        return (order[x.severity] || 2) - (order[y.severity] || 2);
-      }));
-    }).finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, []);
+  const alerts = useMemo(
+    () => (data ?? []).slice().sort((x, y) => (SEVERITY_ORDER[x.severity] ?? 2) - (SEVERITY_ORDER[y.severity] ?? 2)),
+    [data],
+  );
 
   const handleResolve = async (id) => {
     await base44.entities.Alert.update(id, { resolved: true });
-    setAlerts(a => a.filter(x => x.id !== id));
+    invalidate('Alert');
   };
 
   const handleGenerate = async () => {
     setGenerating(true);
     await base44.functions.invoke('generateAlerts', {});
-    load();
+    invalidate('Alert');
     setGenerating(false);
   };
 
@@ -71,7 +66,7 @@ export default function Alerts() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : (
         <div className="space-y-2">
           {filtered.map(alert => {
