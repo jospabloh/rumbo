@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
 import { SUPPORT_URL } from '@/lib/license';
+import ThemeToggle from '@/components/ThemeToggle';
 
 function LicenseBanner({ info }) {
   if (!info || !info.message || info.state === 'disabled') return null;
@@ -218,6 +219,7 @@ export default function Layout() {
             <p className="text-xs text-muted-foreground capitalize">{user?.role || ''}</p>
           </div>
         </div>
+        <ThemeToggle />
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-sidebar-accent w-full transition-all"

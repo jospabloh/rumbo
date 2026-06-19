@@ -180,15 +180,15 @@ export default function Rentas() {
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-card border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-success">${collectedToday.toLocaleString()}</p>
+          <p className="text-lg font-bold font-mono tracking-tight text-success">${collectedToday.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground">Cobrado hoy</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-destructive">${totalDue.toLocaleString()}</p>
+          <p className="text-lg font-bold font-mono tracking-tight text-destructive">${totalDue.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground">Por cobrar</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold">{debtors.length}</p>
+          <p className="text-lg font-bold font-mono tracking-tight">{debtors.length}</p>
           <p className="text-xs text-muted-foreground">Choferes con adeudo</p>
         </div>
       </div>
@@ -238,7 +238,7 @@ export default function Rentas() {
                 <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><Banknote className="w-4 h-4" /></div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold truncate">{v?.plate || 'Unidad'}{v?.unit_number ? ` · #${v.unit_number}` : ''}</p>
+                    <p className="text-sm font-semibold truncate font-mono tracking-tight">{v?.plate || 'Unidad'}{v?.unit_number ? ` · #${v.unit_number}` : ''}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${meta.cls}`}>{meta.label}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{d?.full_name || '—'} · {c.period_type === 'daily' ? 'Día' : 'Semana'} {c.period_start}{c.period_end && c.period_end !== c.period_start ? ` → ${c.period_end}` : ''}</p>
