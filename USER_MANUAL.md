@@ -37,7 +37,7 @@ Admins have full access to every module within their tenant, including:
 
 ### Member Default Permissions
 
-Non-admin roles start with minimum access. The **admin must explicitly grant access** to each module and action.
+Each non-admin role ships with sensible defaults, which the **admin can grant or revoke** per module and action.
 
 **Dispatcher defaults:** Can view and operate vehicles, drivers, trips, fuel, fines, insurance, alerts, and messages. Cannot access financial reports or parts inventory.
 
@@ -45,7 +45,7 @@ Non-admin roles start with minimum access. The **admin must explicitly grant acc
 
 **Driver defaults:** Can view own vehicle and driver record, log trips and fuel, view own fines/insurance alerts and messages. No access to financial analysis or location tracking.
 
-New features or modules added to the system default to minimal access for non-admin roles. Admins must grant access explicitly.
+**New permissions default to view-only.** When a new module or action is added to the system, every non-admin role receives it in **read-only (Ver) mode** — visible but with no create/edit/delete/pause — until the admin grants more. This means new capabilities surface for the team automatically without ever silently granting write access.
 
 ---
 
@@ -53,12 +53,13 @@ New features or modules added to the system default to minimal access for non-ad
 
 1. Go to **Admin** in the left sidebar.
 2. Scroll to the **Permisos por Rol** section.
-3. Select the role to configure (Dispatcher, Mechanic, or Driver).
-4. Toggle each module/action permission on or off.
-5. Click **Guardar cambios** — permissions are saved to your tenant configuration.
-6. Users with that role will see the updated access on their next login or page refresh.
+3. The **Admin** tab is shown first with every permission enabled (locked, not configurable) so you can see the full set at a glance.
+4. Select a configurable role (Dispatcher, Mechanic, or Driver).
+5. Toggle each module/action permission on or off.
+6. Click **Guardar cambios** — permissions are saved to your tenant configuration.
+7. Users with that role will see the updated access on their next login or page refresh.
 
-**Note:** The Admin role always has full access and is not configurable.
+**Note:** The Admin and Owner roles always have full access and are not configurable — their tabs display every permission as enabled.
 
 ---
 

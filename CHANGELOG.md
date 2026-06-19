@@ -4,7 +4,30 @@ All notable changes to Rumbo are documented here.
 
 ---
 
-## [Unreleased] — onboarding de tenants y gestión de miembros
+## [1.14.0] — 2026-06-19 — capa de datos, permisos y onboarding
+
+### Changed — migración a React Query y capa de datos por tenant
+
+- **Capa de datos centralizada** (`src/hooks/useEntities.js`): las páginas ya no obtienen
+  datos con `useState + useEffect + Promise.all` ni un flag `loading` manual. Se introduce
+  una capa sobre el SDK de Base44 basada en React Query (`useEntityList` +
+  `useVehicles/useDrivers/useAlerts/useMessages/useRentCharges` y `useInvalidateEntity`),
+  con caché, deduplicación de peticiones y refetch declarativo tras cada cambio. React Query
+  ya estaba montado en `App.jsx` pero sin usarse. Migradas en esta versión: **Dashboard,
+  Vehículos, Conductores, Mantenimiento, Financiero, Alertas y Catálogos**.
+- **Spinner compartido** (`src/components/ui/spinner.jsx`): un único componente
+  `Spinner` / `PageLoader` reemplaza ~20 copias del mismo markup repartidas por las páginas.
+
+### Changed — permisos por rol
+
+- **Admin y Owner siempre con acceso total y visible**: el panel *Permisos por Rol* ahora
+  muestra una pestaña **Admin** (y Owner) con **todos los permisos activados**, bloqueada y
+  no configurable, para ver el conjunto completo de un vistazo en lugar de solo un aviso.
+- **Permisos nuevos por defecto en "Ver"**: cuando se agrega un módulo o acción nuevo al
+  sistema, los roles no-admin lo reciben en **solo lectura** (`view: true`, escritura
+  desactivada) en vez de quedar sin acceso. Implementado en `moduleCan` / `defaultPerm` con
+  `NEW_PERMISSION_DEFAULT`, sin alterar los defaults explícitos ya existentes (verificado por
+  los 296 tests unitarios).
 
 ### Added — onboarding guiado: crear o unirse a una organización
 

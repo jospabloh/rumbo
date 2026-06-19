@@ -60,12 +60,34 @@ export const DEFAULT_PERMISSIONS = {
   },
 };
 
+/**
+ * Fallback for a module that has no explicit entry in DEFAULT_PERMISSIONS yet
+ * (i.e. a permission added after a tenant's config was last saved). New
+ * permissions default to read-only — `view` granted, every write action off —
+ * so a new module shows up but never silently grants write access.
+ */
+export const NEW_PERMISSION_DEFAULT = { view: true, create: false, edit: false, delete: false, pause: false };
+
+/**
+ * Default permission for a (role, module, action), before any tenant config.
+ * - owner/admin: always true (full access).
+ * - known module: the explicit value from DEFAULT_PERMISSIONS.
+ * - unknown/new module: NEW_PERMISSION_DEFAULT (view-only).
+ */
+export function defaultPerm(role, module, action) {
+  if (role === 'owner' || role === 'admin') return true;
+  const roleDefaults = DEFAULT_PERMISSIONS[role];
+  if (!roleDefaults) return false;
+  const moduleDefaults = roleDefaults[module] ?? NEW_PERMISSION_DEFAULT;
+  return !!moduleDefaults[action];
+}
+
 export function moduleCan(config, role, module, action) {
   if (!role) return false;
   if (role === 'owner' || role === 'admin') return true;
   const fromConfig = config?.[role]?.[module]?.[action];
   if (typeof fromConfig === 'boolean') return fromConfig;
-  return !!DEFAULT_PERMISSIONS[role]?.[module]?.[action];
+  return defaultPerm(role, module, action);
 }
 
 /**

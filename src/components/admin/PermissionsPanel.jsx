@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { Shield, Eye, Plus, Pencil, Trash2, RefreshCw, PauseCircle, Check, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DEFAULT_PERMISSIONS } from '@/lib/modulePerms';
+import { DEFAULT_PERMISSIONS, NEW_PERMISSION_DEFAULT } from '@/lib/modulePerms';
 
 const MODULES = [
   { key: 'vehicles',     label: 'Vehículos' },
@@ -21,14 +21,20 @@ const MODULES = [
   { key: 'reports',      label: 'Reportes / Importar' },
 ];
 
-// Editable roles only — admin is always all-true and not configurable
-const ROLES_FOR_PERMS = ['dispatcher', 'mechanic', 'driver'];
+// Roles shown as tabs. Admin is displayed (all-true) but locked / not editable;
+// the rest are configurable.
+const DISPLAY_ROLES = ['admin', 'dispatcher', 'mechanic', 'driver'];
+const LOCKED_ROLES = ['admin', 'owner'];
 
 const ROLE_LABELS = {
+  admin:      'Admin',
   dispatcher: 'Dispatcher',
   mechanic:   'Mecánico',
   driver:     'Conductor',
 };
+
+// Admin/owner have full access to every module and action.
+const ALL_TRUE = { view: true, create: true, edit: true, delete: true, pause: true };
 
 const ACTIONS = [
   { key: 'view',   label: 'Ver',      icon: Eye },
@@ -38,19 +44,15 @@ const ACTIONS = [
   { key: 'pause',  label: 'Pausar',   icon: PauseCircle },
 ];
 
-const DEFAULT_MODULE_PERMS = {
-  dispatcher: { view: true,  create: true,  edit: true,  delete: false, pause: false },
-  mechanic:   { view: true,  create: false, edit: true,  delete: false, pause: false },
-  driver:     { view: true,  create: false, edit: false, delete: false, pause: false },
-};
-
-function PermCell({ value, onChange }) {
+function PermCell({ value, locked, onChange }) {
   return (
     <button
-      onClick={() => onChange(!value)}
+      disabled={locked}
+      onClick={() => !locked && onChange(!value)}
+      title={locked ? 'Acceso completo — no configurable' : undefined}
       className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
-        value ? 'bg-success/20 text-success hover:bg-success/30' : 'bg-secondary text-muted-foreground/30 hover:bg-secondary/80'
-      }`}
+        value ? 'bg-success/20 text-success' : 'bg-secondary text-muted-foreground/30'
+      } ${locked ? 'cursor-not-allowed' : value ? 'hover:bg-success/30' : 'hover:bg-secondary/80'}`}
     >
       {value ? <Check className="w-3.5 h-3.5" /> : <X className="w-3 h-3" />}
     </button>
@@ -59,7 +61,8 @@ function PermCell({ value, onChange }) {
 
 export default function PermissionsPanel() {
   const { tenant, tenantId } = useTenant();
-  const [activeRole, setActiveRole] = useState('dispatcher');
+  const [activeRole, setActiveRole] = useState('admin');
+  const isLocked = LOCKED_ROLES.includes(activeRole);
   const [perms, setPerms] = useState(DEFAULT_PERMISSIONS);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -80,11 +83,14 @@ export default function PermissionsPanel() {
   }, [tenant?.id]);
 
   const getModulePerms = (role, moduleKey) => {
+    if (LOCKED_ROLES.includes(role)) return ALL_TRUE;
     if (perms[role]?.[moduleKey]) return perms[role][moduleKey];
-    return DEFAULT_MODULE_PERMS[role] || { view: false, create: false, edit: false, delete: false, pause: false };
+    // A module with no saved entry yet (newly added permission) defaults to view-only.
+    return NEW_PERMISSION_DEFAULT;
   };
 
   const toggle = (module, action) => {
+    if (isLocked) return;
     setPerms(p => ({
       ...p,
       [activeRole]: {
@@ -128,10 +134,10 @@ export default function PermissionsPanel() {
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Permisos por Rol</h2>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground h-7" onClick={resetRole}>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground h-7" onClick={resetRole} disabled={isLocked}>
             <RefreshCw className="w-3 h-3" /> Restablecer
           </Button>
-          <Button size="sm" className="gap-1.5 text-xs h-7" onClick={savePerms} disabled={saving}>
+          <Button size="sm" className="gap-1.5 text-xs h-7" onClick={savePerms} disabled={saving || isLocked}>
             {saved ? <Check className="w-3 h-3" /> : null}
             {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar cambios'}
           </Button>
@@ -144,30 +150,33 @@ export default function PermissionsPanel() {
         </div>
       )}
 
-      {/* Admin all-true banner */}
-      <div className="flex items-center gap-2 px-5 py-2.5 bg-primary/5 border-b border-border">
-        <Lock className="w-3.5 h-3.5 text-primary" />
-        <p className="text-xs text-primary font-medium">
-          Admin — Acceso completo a todos los módulos (no configurable)
-        </p>
-      </div>
-
-      {/* Role tabs — only editable non-admin roles */}
+      {/* Role tabs — Admin (locked, all-true) plus the configurable roles */}
       <div className="flex border-b border-border bg-secondary/20">
-        {ROLES_FOR_PERMS.map(r => (
+        {DISPLAY_ROLES.map(r => (
           <button
             key={r}
             onClick={() => setActiveRole(r)}
-            className={`flex-1 py-2.5 text-xs font-medium transition-colors border-b-2 ${
+            className={`flex-1 py-2.5 text-xs font-medium transition-colors border-b-2 flex items-center justify-center gap-1 ${
               activeRole === r
                 ? 'border-primary text-primary bg-primary/5'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
+            {LOCKED_ROLES.includes(r) && <Lock className="w-3 h-3" />}
             {ROLE_LABELS[r]}
           </button>
         ))}
       </div>
+
+      {/* Locked-role banner */}
+      {isLocked && (
+        <div className="flex items-center gap-2 px-5 py-2.5 bg-primary/5 border-b border-border">
+          <Lock className="w-3.5 h-3.5 text-primary" />
+          <p className="text-xs text-primary font-medium">
+            {ROLE_LABELS[activeRole]} — Acceso completo a todos los módulos (no configurable)
+          </p>
+        </div>
+      )}
 
       {/* Permissions table */}
       <div className="overflow-x-auto">
@@ -194,6 +203,7 @@ export default function PermissionsPanel() {
                     <div className="flex justify-center">
                       <PermCell
                         value={getModulePerms(activeRole, mod.key)[a.key]}
+                        locked={isLocked}
                         onChange={() => toggle(mod.key, a.key)}
                       />
                     </div>
@@ -207,10 +217,10 @@ export default function PermissionsPanel() {
 
       <div className="px-4 py-3 border-t border-border bg-secondary/10 space-y-2">
         <p className="text-xs text-muted-foreground">
-          Los permisos se aplican al rol seleccionado dentro de este tenant y se guardan en tu configuración. El rol <span className="text-foreground font-medium">Admin</span> siempre tiene acceso completo y no es configurable.
+          Los permisos se aplican al rol seleccionado dentro de este tenant y se guardan en tu configuración. Los roles <span className="text-foreground font-medium">Admin</span> y <span className="text-foreground font-medium">Owner</span> siempre tienen acceso completo y no son configurables.
         </p>
         <p className="text-xs text-muted-foreground">
-          Los roles <span className="text-foreground font-medium">Dispatcher, Mecánico y Conductor</span> inician con acceso mínimo. El admin debe habilitar cada permiso explícitamente.
+          Cualquier permiso nuevo se habilita en modo <span className="text-foreground font-medium">solo lectura (Ver)</span> según el rol; el admin puede ampliarlo cuando lo necesite.
         </p>
       </div>
     </section>
