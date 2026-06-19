@@ -4,6 +4,7 @@ import { Crown, Building2, RefreshCw, Edit2, Save, ChevronDown, ChevronUp } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { PLAN_LIMITS } from '@/lib/plans';
 
 const PLANS = ['trial', 'starter', 'pro', 'enterprise'];
@@ -155,7 +156,7 @@ export default function SuperAdminPanel() {
 
       <div className="p-4 space-y-2">
         {loading ? (
-          <div className="flex justify-center py-8"><div className="w-5 h-5 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
+          <div className="flex justify-center py-8"><Spinner className="w-5 h-5 border-4" /></div>
         ) : tenants.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">No hay tenants registrados.</p>
         ) : (

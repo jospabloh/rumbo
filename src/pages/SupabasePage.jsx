@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Database, Table, ChevronRight, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 function invoke(action, params = {}) {
   return base44.functions.invoke('supabaseData', { action, ...params }).then(r => r.data);
@@ -39,7 +40,7 @@ export default function SupabasePage() {
     setLoadingRows(false);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-full p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center items-center h-full p-8"><Spinner /></div>;
 
   return (
     <div className="p-4 lg:p-6 max-w-5xl">
@@ -81,7 +82,7 @@ export default function SupabasePage() {
           </div>
 
           {loadingRows ? (
-            <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            <div className="flex justify-center py-8"><Spinner /></div>
           ) : (
             <>
               {rows.length > 0 ? (
