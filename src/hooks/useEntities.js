@@ -56,3 +56,44 @@ export const useDrivers = (opts) => useEntityList('Driver', { sort: '-created_da
 export const useAlerts = (opts) => useEntityList('Alert', opts);
 export const useMessages = (opts) => useEntityList('Message', opts);
 export const useRentCharges = (opts) => useEntityList('RentCharge', opts);
+
+/**
+ * Un-scoped list read for an entity (`entity.list(sort, limit)`), for the few
+ * places that intentionally don't filter by `tenant_id` (e.g. `TenantLicense`,
+ * whose id *is* the tenant, or `User`). Tenant isolation still comes from RLS.
+ *
+ * @param {string} entity
+ * @param {{ sort?: string, limit?: number, enabled?: boolean }} [opts]
+ */
+export function useRawList(entity, { sort, limit, enabled = true } = {}) {
+  return useQuery({
+    queryKey: ['entity', entity, 'list', sort ?? null, limit ?? null],
+    queryFn: () => base44.entities[entity].list(sort, limit),
+    enabled,
+  });
+}
+
+/** The signed-in user profile (`auth.me`), cached and shared across the app. */
+export function useMe() {
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: () => base44.auth.me(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * The Driver record linked to the signed-in user — resolves the
+ * user → driver lookup that every /driver/* page repeats.
+ */
+export function useCurrentDriver() {
+  const { data: user } = useMe();
+  return useQuery({
+    queryKey: ['currentDriver', user?.id ?? null],
+    queryFn: async () => {
+      const drivers = await base44.entities.Driver.list();
+      return drivers.find((d) => d.profile_id === user.id) ?? null;
+    },
+    enabled: !!user?.id,
+  });
+}

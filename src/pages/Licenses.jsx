@@ -5,6 +5,7 @@ import { getLicenseInfo } from '@/lib/license';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { Shield, Search, CheckCircle2, RefreshCw } from 'lucide-react';
 
 const stateMeta = {
@@ -95,7 +96,7 @@ export default function Licenses() {
       {error && <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2 mb-4">{error}</p>}
 
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : (
         <div className="space-y-3">
           {filtered.map(t => {

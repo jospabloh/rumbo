@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { isAdminOrOwner } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LinkIcon, ExternalLink, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import ResponsiveModal from '@/components/ui/responsive-modal';
+import { FormError } from '@/components/ui/form-error';
+import { LinkIcon, ExternalLink, Plus, Trash2, Pencil } from 'lucide-react';
+import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
 const normalizeUrl = (u) => {
   const t = (u || '').trim();
@@ -16,21 +20,17 @@ const normalizeUrl = (u) => {
 export default function UsefulLinks() {
   const { tenantId, userRole, readOnly } = useTenant();
   const canManage = isAdminOrOwner(userRole) && !readOnly;
-  const [links, setLinks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading } = useEntityList('UsefulLink', { enabled: !!tenantId });
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('UsefulLink');
+  const links = useMemo(
+    () => (data ?? []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.label || '').localeCompare(b.label || '')),
+    [data],
+  );
   const [editing, setEditing] = useState(null); // link object or 'new'
   const [form, setForm] = useState({ label: '', url: '', description: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  const load = () => {
-    if (!tenantId) { setLinks([]); setLoading(false); return; }
-    setLoading(true);
-    base44.entities.UsefulLink.filter({ tenant_id: tenantId })
-      .then(rows => setLinks(rows.slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.label || '').localeCompare(b.label || ''))))
-      .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, [tenantId]);
 
   const openNew = () => { setForm({ label: '', url: '', description: '' }); setEditing('new'); setError(''); };
   const openEdit = (l) => { setForm({ label: l.label || '', url: l.url || '', description: l.description || '' }); setEditing(l); setError(''); };
@@ -47,7 +47,7 @@ export default function UsefulLinks() {
         await base44.entities.UsefulLink.update(editing.id, payload);
       }
       setEditing(null);
-      load();
+      refresh();
     } catch (e) {
       setError('No se pudo guardar. Inténtalo de nuevo.');
     } finally {
@@ -57,7 +57,7 @@ export default function UsefulLinks() {
 
   const remove = async (l) => {
     await base44.entities.UsefulLink.delete(l.id).catch(() => {});
-    load();
+    refresh();
   };
 
   const visible = links.filter(l => l.active || canManage);
@@ -75,7 +75,7 @@ export default function UsefulLinks() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : visible.length === 0 ? (
         <p className="text-center text-muted-foreground py-10 text-sm">
           {canManage ? 'Aún no hay enlaces. Agrega el primero con el botón de arriba.' : 'Tu organización aún no ha configurado enlaces.'}
@@ -102,13 +102,7 @@ export default function UsefulLinks() {
       )}
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setEditing(null)} />
-          <div className="relative z-10 w-full max-w-md bg-card border border-border rounded-t-2xl lg:rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">{editing === 'new' ? 'Nuevo enlace' : 'Editar enlace'}</h3>
-              <button onClick={() => setEditing(null)} className="text-muted-foreground"><X className="w-5 h-5" /></button>
-            </div>
+        <ResponsiveModal title={editing === 'new' ? 'Nuevo enlace' : 'Editar enlace'} onClose={() => setEditing(null)} maxWidth="md">
             <div className="space-y-3">
               <div>
                 <Label>Nombre *</Label>
@@ -122,14 +116,13 @@ export default function UsefulLinks() {
                 <Label>Descripción (opcional)</Label>
                 <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-1 bg-background" placeholder="Usuario/empresa, notas..." />
               </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              <FormError>{error}</FormError>
               <div className="flex gap-3 pt-1">
                 <Button variant="outline" onClick={() => setEditing(null)} className="flex-1">Cancelar</Button>
                 <Button onClick={save} disabled={saving} className="flex-1">{saving ? 'Guardando...' : 'Guardar'}</Button>
               </div>
             </div>
-          </div>
-        </div>
+        </ResponsiveModal>
       )}
     </div>
   );

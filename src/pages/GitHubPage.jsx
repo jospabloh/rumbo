@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { GitCommit, Github, FileText, AlertCircle, GitPullRequest, Plus, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 
 function invoke(action, params = {}) {
   return base44.functions.invoke('githubRepos', { action, ...params }).then(r => r.data);
@@ -55,7 +56,7 @@ export default function GitHubPage() {
     setSaving(false);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-full p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center items-center h-full p-8"><Spinner /></div>;
 
   return (
     <div className="p-4 lg:p-6 max-w-4xl">
@@ -133,7 +134,7 @@ export default function GitHubPage() {
 
           {/* Items list */}
           <div className="space-y-2">
-            {items.length === 0 && <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}
+            {items.length === 0 && <div className="flex justify-center py-6"><Spinner className="w-5 h-5" /></div>}
             {view === 'commits' && items.map(c => (
               <div key={c.sha} className="bg-card border border-border rounded-xl p-3">
                 <p className="text-sm font-medium truncate">{c.commit?.message?.split('\n')[0]}</p>

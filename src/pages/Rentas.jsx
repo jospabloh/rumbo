@@ -1,56 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, startOfWeek, endOfWeek, parseISO } from 'date-fns';
-import { Banknote, Plus, Search, Check, X, AlertCircle, CalendarPlus } from 'lucide-react';
+import { Banknote, Plus, Search, Check, AlertCircle, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import ResponsiveModal from '@/components/ui/responsive-modal';
+import { FormError } from '@/components/ui/form-error';
 import { useTenant } from '@/lib/TenantContext';
 import { useCatalog } from '@/lib/catalogs';
-
-const todayStr = () => format(new Date(), 'yyyy-MM-dd');
-
-const dayNum = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
-
-// Periodo actual: para semanal la semana arranca en el día de cobro de la unidad
-// (rentDay); para diaria es el día de hoy.
-function currentPeriod(freq, rentDay) {
-  const now = new Date();
-  if (freq === 'daily') {
-    const d = format(now, 'yyyy-MM-dd');
-    return { period_start: d, period_end: d };
-  }
-  const weekStartsOn = dayNum[rentDay] ?? 1;
-  return {
-    period_start: format(startOfWeek(now, { weekStartsOn }), 'yyyy-MM-dd'),
-    period_end: format(endOfWeek(now, { weekStartsOn }), 'yyyy-MM-dd'),
-  };
-}
-
-function statusOf(c) {
-  const due = c.amount_due || 0;
-  const paid = c.amount_paid || 0;
-  if (paid >= due && due > 0) return 'paid';
-  if (paid > 0) return 'partial';
-  return 'pending';
-}
-const isOverdue = (c) => statusOf(c) !== 'paid' && c.period_end && c.period_end < todayStr();
-
-const statusMeta = {
-  paid: { label: 'Pagado', cls: 'bg-success/10 text-success' },
-  partial: { label: 'Parcial', cls: 'bg-warning/10 text-warning' },
-  pending: { label: 'Pendiente', cls: 'bg-muted text-muted-foreground' },
-  overdue: { label: 'Vencido', cls: 'bg-destructive/10 text-destructive' },
-};
+import { useRentCharges, useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
+import { todayStr, currentPeriod, statusOf, isOverdue, statusMeta } from '@/components/rentas/rentUtils';
+import ManualChargeModal from '@/components/rentas/ManualChargeModal';
+import IngresosView from '@/components/rentas/IngresosView';
+import ReferralsView from '@/components/rentas/ReferralsView';
 
 export default function Rentas() {
   const { tenantId, readOnly } = useTenant();
   const paymentMethods = useCatalog('payment_method');
-  const [charges, setCharges] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: charges = [], isLoading: loading } = useRentCharges({ sort: '-period_start', limit: 300 });
+  const { data: vehicles = [] } = useVehicles();
+  const { data: drivers = [] } = useDrivers();
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('RentCharge');
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -67,16 +41,6 @@ export default function Rentas() {
 
   // Vista: cobros (ledger) o ingresos (reporte de pagos)
   const [view, setView] = useState('cobros');
-
-  const load = () => {
-    const q = tenantId ? { tenant_id: tenantId } : {};
-    Promise.all([
-      base44.entities.RentCharge.filter(q, '-period_start', 300),
-      base44.entities.Vehicle.filter(q),
-      base44.entities.Driver.filter(q),
-    ]).then(([c, v, d]) => { setCharges(c); setVehicles(v); setDrivers(d); }).finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, [tenantId]);
 
   const vehicleById = (id) => vehicles.find(v => v.id === id);
   const driverById = (id) => drivers.find(d => d.id === id);
@@ -136,7 +100,7 @@ export default function Rentas() {
         created++;
       }
       setBanner(`${created} cobro(s) generado(s)${skipped ? `, ${skipped} ya existían` : ''}.`);
-      load();
+      refresh();
     } catch (e) {
       setBanner('No se pudieron generar los cobros. Inténtalo de nuevo.');
     } finally {
@@ -162,7 +126,7 @@ export default function Rentas() {
       const status = amount_paid >= (c.amount_due || 0) ? 'paid' : 'partial';
       await base44.entities.RentCharge.update(c.id, { payments, amount_paid, status });
       setPayCharge(null);
-      load();
+      refresh();
     } catch (e) {
       setPayError('No se pudo registrar el pago. Inténtalo de nuevo.');
     } finally {
@@ -208,7 +172,7 @@ export default function Rentas() {
       {view === 'ingresos' ? (
         <IngresosView charges={charges} vehicleById={vehicleById} driverById={driverById} debtors={debtors} loading={loading} />
       ) : view === 'referidos' ? (
-        <ReferralsView drivers={drivers} charges={charges} loading={loading} readOnly={readOnly} onApplied={load} />
+        <ReferralsView drivers={drivers} charges={charges} loading={loading} readOnly={readOnly} onApplied={() => invalidate('RentCharge', 'Driver')} />
       ) : (
       <>
       {banner && <p className="text-sm bg-primary/10 text-primary rounded-lg px-3 py-2 mb-4">{banner}</p>}
@@ -260,7 +224,7 @@ export default function Rentas() {
 
       {/* Lista de cobros */}
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : (
         <div className="space-y-2">
           {filtered.map(c => {
@@ -294,13 +258,7 @@ export default function Rentas() {
 
       {/* Modal registrar pago */}
       {payCharge && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setPayCharge(null)} />
-          <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-t-2xl lg:rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">Registrar pago</h3>
-              <button onClick={() => setPayCharge(null)} className="text-muted-foreground"><X className="w-5 h-5" /></button>
-            </div>
+        <ResponsiveModal title="Registrar pago" onClose={() => setPayCharge(null)} maxWidth="sm">
             <p className="text-xs text-muted-foreground mb-3">
               {vehicleById(payCharge.vehicle_id)?.plate} · {driverById(payCharge.driver_id)?.full_name} · debe ${Math.max((payCharge.amount_due || 0) - (payCharge.amount_paid || 0), 0).toLocaleString()}
             </p>
@@ -322,14 +280,13 @@ export default function Rentas() {
                 <Label>Nota (opcional)</Label>
                 <Input value={payForm.note} onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} className="mt-1 bg-background" placeholder="Ej. abono, imprevisto..." />
               </div>
-              {payError && <p className="text-sm text-destructive">{payError}</p>}
+              <FormError>{payError}</FormError>
               <div className="flex gap-3 pt-1">
                 <Button variant="outline" onClick={() => setPayCharge(null)} className="flex-1">Cancelar</Button>
                 <Button onClick={submitPayment} disabled={paySaving} className="flex-1">{paySaving ? 'Guardando...' : 'Registrar'}</Button>
               </div>
             </div>
-          </div>
-        </div>
+        </ResponsiveModal>
       )}
 
       {/* Modal cobro manual */}
@@ -338,297 +295,8 @@ export default function Rentas() {
           vehicles={vehicles}
           tenantId={tenantId}
           onClose={() => setShowCharge(false)}
-          onSaved={() => { setShowCharge(false); load(); }}
+          onSaved={() => { setShowCharge(false); refresh(); }}
         />
-      )}
-    </div>
-  );
-}
-
-function ManualChargeModal({ vehicles, tenantId, onClose, onSaved }) {
-  const { period_start, period_end } = currentPeriod('weekly');
-  const [form, setForm] = useState({ vehicle_id: '', period_type: 'weekly', period_start, period_end, amount_due: '' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const onVehicle = (id) => {
-    const v = vehicles.find(x => x.id === id);
-    const freq = v?.rent_frequency || 'weekly';
-    const per = currentPeriod(freq, v?.rent_day);
-    setForm(f => ({
-      ...f,
-      vehicle_id: id,
-      period_type: freq,
-      period_start: per.period_start,
-      period_end: per.period_end,
-      amount_due: v?.rent_amount ? String(v.rent_amount) : f.amount_due,
-    }));
-  };
-
-  const save = async () => {
-    const v = vehicles.find(x => x.id === form.vehicle_id);
-    if (!v) { setError('Selecciona una unidad.'); return; }
-    const amount = parseFloat(form.amount_due);
-    if (!amount || amount <= 0) { setError('Ingresa el monto de la renta.'); return; }
-    if (!tenantId) { setError('Tu organización aún se está configurando.'); return; }
-    setSaving(true);
-    setError('');
-    try {
-      await base44.entities.RentCharge.create({
-        tenant_id: tenantId,
-        vehicle_id: v.id,
-        driver_id: v.assigned_driver_id || null,
-        period_type: form.period_type,
-        period_start: form.period_start,
-        period_end: form.period_end,
-        amount_due: amount,
-        amount_paid: 0,
-        status: 'pending',
-        payments: [],
-      });
-      onSaved();
-    } catch (e) {
-      setError('No se pudo crear el cobro. Inténtalo de nuevo.');
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm bg-card border border-border rounded-t-2xl lg:rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold">Cobro manual</h3>
-          <button onClick={onClose} className="text-muted-foreground"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <Label>Unidad</Label>
-            <Select value={form.vehicle_id} onValueChange={onVehicle}>
-              <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Selecciona unidad" /></SelectTrigger>
-              <SelectContent>
-                {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate}{v.unit_number ? ` · #${v.unit_number}` : ''}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Inicio</Label>
-              <Input type="date" value={form.period_start} onChange={e => setForm(f => ({ ...f, period_start: e.target.value }))} className="mt-1 bg-background" />
-            </div>
-            <div>
-              <Label>Fin</Label>
-              <Input type="date" value={form.period_end} onChange={e => setForm(f => ({ ...f, period_end: e.target.value }))} className="mt-1 bg-background" />
-            </div>
-          </div>
-          <div>
-            <Label>Monto de la renta ($)</Label>
-            <Input type="number" step="0.01" value={form.amount_due} onChange={e => setForm(f => ({ ...f, amount_due: e.target.value }))} className="mt-1 bg-background" />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex gap-3 pt-1">
-            <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-            <Button onClick={save} disabled={saving} className="flex-1">{saving ? 'Guardando...' : 'Crear cobro'}</Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Reporte de ingresos: por día (quién pagó) y por semana (total + adeudos)
-function IngresosView({ charges, vehicleById, driverById, debtors, loading }) {
-  const [mode, setMode] = useState('day');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-
-  const allPayments = [];
-  for (const c of charges) {
-    for (const p of (c.payments || [])) {
-      allPayments.push({ ...p, driver_id: c.driver_id, vehicle_id: c.vehicle_id });
-    }
-  }
-
-  const base = parseISO(date);
-  const weekStart = format(startOfWeek(base, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-  const weekEnd = format(endOfWeek(base, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-  const inRange = (at) => mode === 'day' ? at === date : (at >= weekStart && at <= weekEnd);
-
-  const payments = allPayments.filter(p => p.paid_at && inRange(p.paid_at));
-  const total = payments.reduce((s, p) => s + (p.amount || 0), 0);
-
-  const byDriver = {};
-  for (const p of payments) byDriver[p.driver_id] = (byDriver[p.driver_id] || 0) + (p.amount || 0);
-  const driverRows = Object.entries(byDriver)
-    .map(([id, amt]) => ({ driver: driverById(id), amt }))
-    .filter(x => x.driver).sort((a, b) => b.amt - a.amt);
-
-  if (loading) return <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
-          {[['day', 'Día'], ['week', 'Semana']].map(([id, label]) => (
-            <button key={id} onClick={() => setMode(id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md ${mode === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>{label}</button>
-          ))}
-        </div>
-        <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-card border-border h-9 w-auto" />
-      </div>
-
-      <div className="bg-card border border-border rounded-xl p-4 mb-4 text-center">
-        <p className="text-2xl font-bold text-success">${total.toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground">{mode === 'day' ? `Cobrado el ${date}` : `Cobrado ${weekStart} → ${weekEnd}`} · {payments.length} pago(s)</p>
-      </div>
-
-      {mode === 'day' ? (
-        <div className="space-y-2">
-          {payments.map((p, i) => {
-            const v = vehicleById(p.vehicle_id);
-            const d = driverById(p.driver_id);
-            return (
-              <div key={i} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{d?.full_name || '—'}</p>
-                  <p className="text-xs text-muted-foreground">{v?.plate || (v?.unit_number ? `#${v.unit_number}` : 'Unidad')} · {p.method || 'pago'}{p.note ? ` · ${p.note}` : ''}</p>
-                </div>
-                <p className="text-sm font-bold text-success">${Number(p.amount || 0).toLocaleString()}</p>
-              </div>
-            );
-          })}
-          {payments.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">Sin pagos ese día.</p>}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <h3 className="font-semibold text-sm mb-3">Ingreso por conductor</h3>
-            <div className="space-y-1.5">
-              {driverRows.map(({ driver, amt }) => (
-                <div key={driver.id} className="flex items-center justify-between text-sm">
-                  <span className="truncate">{driver.full_name}</span>
-                  <span className="font-bold text-success shrink-0">${amt.toLocaleString()}</span>
-                </div>
-              ))}
-              {driverRows.length === 0 && <p className="text-sm text-muted-foreground">Sin pagos esta semana.</p>}
-            </div>
-          </div>
-          {debtors.length > 0 && (
-            <div className="bg-card border border-border rounded-xl p-4">
-              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-destructive" />Quedaron debiendo</h3>
-              <div className="space-y-1.5">
-                {debtors.map(({ driver, bal }) => (
-                  <div key={driver.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate">{driver.full_name}</span>
-                    <span className="font-bold text-destructive shrink-0">${bal.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Bono por referido: el referidor gana $1,000 (descontado de su renta) cuando su
-// referido cumple 4 pagos semanales puntuales (pagados a más tardar el día de cobro).
-const BONUS_AMOUNT = 1000;
-const ON_TIME_TARGET = 4;
-
-function weeklyOnTimeCount(charges, driverId) {
-  return charges
-    .filter(c => c.driver_id === driverId && c.period_type === 'weekly' && (c.amount_due || 0) > 0 && (c.amount_paid || 0) >= (c.amount_due || 0))
-    .filter(c => {
-      const last = (c.payments || []).reduce((m, p) => (p.paid_at && p.paid_at > m ? p.paid_at : m), '');
-      return last && c.period_end && last <= c.period_end;
-    }).length;
-}
-
-function ReferralsView({ drivers, charges, loading, readOnly, onApplied }) {
-  const [busyId, setBusyId] = useState(null);
-  const [error, setError] = useState('');
-  const byId = (id) => drivers.find(d => d.id === id);
-
-  const referred = drivers.filter(d => d.referred_by_driver_id);
-  const groups = {};
-  for (const d of referred) {
-    (groups[d.referred_by_driver_id] = groups[d.referred_by_driver_id] || []).push(d);
-  }
-  const rows = Object.entries(groups)
-    .map(([refId, list]) => ({ referrer: byId(refId), list }))
-    .filter(r => r.referrer);
-
-  const applyBonus = async (referrer, referredDriver) => {
-    setBusyId(referredDriver.id);
-    setError('');
-    try {
-      const open = charges
-        .filter(c => c.driver_id === referrer.id && (c.amount_paid || 0) < (c.amount_due || 0))
-        .sort((a, b) => (a.period_start < b.period_start ? 1 : -1))[0];
-      if (!open) {
-        setError(`${referrer.full_name} no tiene un cobro abierto para aplicar el bono. Genera su cobro primero.`);
-        setBusyId(null);
-        return;
-      }
-      const newDue = Math.max(0, (open.amount_due || 0) - BONUS_AMOUNT);
-      const paid = open.amount_paid || 0;
-      const status = newDue === 0 || paid >= newDue ? 'paid' : paid > 0 ? 'partial' : 'pending';
-      await base44.entities.RentCharge.update(open.id, {
-        amount_due: newDue,
-        status,
-        notes: `${open.notes ? open.notes + ' · ' : ''}Bono referido (-$${BONUS_AMOUNT}) por ${referredDriver.full_name}`,
-      });
-      await base44.entities.Driver.update(referredDriver.id, { referral_bonus_paid: true });
-      onApplied();
-    } catch (e) {
-      setError('No se pudo aplicar el bono.');
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  if (loading) return <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-
-  return (
-    <div>
-      <p className="text-sm text-muted-foreground mb-4">
-        El conductor que refiere gana un bono de ${BONUS_AMOUNT.toLocaleString()} (descontado de su renta) cuando su referido cumple {ON_TIME_TARGET} pagos semanales puntuales.
-      </p>
-      {error && <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2 mb-4">{error}</p>}
-      {rows.length === 0 ? (
-        <p className="text-center text-muted-foreground py-10 text-sm">Aún no hay conductores referidos. Asígnalo en el formulario del conductor ("Referido por").</p>
-      ) : (
-        <div className="space-y-3">
-          {rows.map(({ referrer, list }) => (
-            <div key={referrer.id} className="bg-card border border-border rounded-xl p-4">
-              <p className="text-sm font-semibold mb-2">Refiere: {referrer.full_name}</p>
-              <div className="space-y-2">
-                {list.map(rd => {
-                  const onTime = weeklyOnTimeCount(charges, rd.id);
-                  const eligible = onTime >= ON_TIME_TARGET && !rd.referral_bonus_paid;
-                  return (
-                    <div key={rd.id} className="flex items-center gap-3 text-sm border-t border-border pt-2 first:border-0 first:pt-0">
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate">{rd.full_name}</p>
-                        <p className="text-xs text-muted-foreground">Pagos puntuales: {Math.min(onTime, ON_TIME_TARGET)}/{ON_TIME_TARGET}</p>
-                      </div>
-                      {rd.referral_bonus_paid ? (
-                        <span className="text-xs text-success font-medium shrink-0">Bono aplicado ✓</span>
-                      ) : eligible && !readOnly ? (
-                        <Button size="sm" disabled={busyId === rd.id} onClick={() => applyBonus(referrer, rd)} className="h-8 shrink-0">
-                          {busyId === rd.id ? '...' : `Aplicar bono $${BONUS_AMOUNT.toLocaleString()}`}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground shrink-0">{eligible ? 'Listo' : 'En progreso'}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
       )}
     </div>
   );

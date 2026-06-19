@@ -1,32 +1,21 @@
-import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Truck, Clock, DollarSign, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
+import { PageLoader } from '@/components/ui/spinner';
+import { useMe, useCurrentDriver, useEntityList } from '@/hooks/useEntities';
 
 const platformLabel = { uber: 'Uber', didi: 'DiDi', particular: 'Particular' };
 const platformCls = { uber: 'bg-primary/10 text-primary', didi: 'bg-warning/10 text-warning', particular: 'bg-success/10 text-success' };
 
 export default function DriverTrips() {
-  const [trips, setTrips] = useState([]);
-  const [driver, setDriver] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    base44.auth.me().then(async (u) => {
-      const drivers = await base44.entities.Driver.list();
-      const dr = drivers.find(d => d.profile_id === u.id);
-      if (dr) {
-        setDriver(dr);
-        const t = await base44.entities.Trip.filter({ driver_id: dr.id }, '-started_at', 50);
-        setTrips(t);
-      }
-    }).finally(() => setLoading(false));
-  }, []);
+  const { isLoading: meLoading } = useMe();
+  const { data: driver, isLoading: driverLoading } = useCurrentDriver();
+  const { data: trips = [] } = useEntityList('Trip', { filter: { driver_id: driver?.id }, sort: '-started_at', limit: 50, enabled: !!driver });
+  const loading = meLoading || driverLoading;
 
   const totalEarnings = trips.reduce((s, t) => s + (t.earnings || 0), 0);
   const totalKm = trips.reduce((s, t) => s + (t.distance_km || 0), 0);
 
-  if (loading) return <div className="flex justify-center items-center h-full"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <PageLoader />;
 
   return (
     <div className="p-4 space-y-4">
