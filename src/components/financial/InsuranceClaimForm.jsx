@@ -1,21 +1,28 @@
-import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FormError } from '@/components/ui/form-error';
+import { insuranceClaimSchema } from '@/lib/schemas';
 
 export default function InsuranceClaimForm({ vehicles, drivers, onSave, onClose }) {
-  const [form, setForm] = useState({ vehicle_id: '', driver_id: '', description: '', claim_amount: '', status: 'open', incident_at: '' });
-  const [saving, setSaving] = useState(false);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const { register, control, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
+    // Cast sidesteps the RHF/zod-coerce typing mismatch (empty-string numeric
+    // input is coerced to a number on submit); field/error types stay intact.
+    resolver: /** @type {any} */ (zodResolver(insuranceClaimSchema)),
+    defaultValues: { vehicle_id: '', driver_id: '', description: '', claim_amount: '', status: 'open', incident_at: '' },
+  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    await onSave({ ...form, claim_amount: form.claim_amount ? parseFloat(form.claim_amount) : null });
-    setSaving(false);
+  const onValid = async (data) => {
+    try {
+      await onSave({ ...data, claim_amount: data.claim_amount ?? null });
+    } catch (err) {
+      setError('root', { message: err?.message || 'No se pudo guardar el reclamo. Inténtalo de nuevo.' });
+    }
   };
 
   return (
@@ -26,50 +33,71 @@ export default function InsuranceClaimForm({ vehicles, drivers, onSave, onClose 
           <h2 className="font-bold text-lg">Reclamo de seguro</h2>
           <button onClick={onClose} className="text-muted-foreground"><X className="w-5 h-5" /></button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit(onValid)} className="space-y-3">
           <div>
             <Label>Vehículo *</Label>
-            <Select value={form.vehicle_id} onValueChange={v => set('vehicle_id', v)}>
-              <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-              <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate}</SelectItem>)}</SelectContent>
-            </Select>
+            <Controller
+              name="vehicle_id"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+            />
+            <FormError className="mt-1">{errors.vehicle_id?.message}</FormError>
           </div>
           <div>
             <Label>Conductor</Label>
-            <Select value={form.driver_id} onValueChange={v => set('driver_id', v)}>
-              <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-              <SelectContent>{drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>)}</SelectContent>
-            </Select>
+            <Controller
+              name="driver_id"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>{drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+            />
           </div>
           <div>
             <Label>Descripción</Label>
-            <Textarea value={form.description} onChange={e => set('description', e.target.value)} className="mt-1 bg-background" rows={3} />
+            <Textarea {...register('description')} className="mt-1 bg-background" rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Monto del reclamo</Label>
-              <Input type="number" step="0.01" value={form.claim_amount} onChange={e => set('claim_amount', e.target.value)} className="mt-1 bg-background" />
+              <Input type="number" step="0.01" {...register('claim_amount')} className="mt-1 bg-background" />
+              <FormError className="mt-1">{errors.claim_amount?.message}</FormError>
             </div>
             <div>
               <Label>Estado</Label>
-              <Select value={form.status} onValueChange={v => set('status', v)}>
-                <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Abierto</SelectItem>
-                  <SelectItem value="approved">Aprobado</SelectItem>
-                  <SelectItem value="denied">Negado</SelectItem>
-                  <SelectItem value="closed">Cerrado</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="open">Abierto</SelectItem>
+                      <SelectItem value="approved">Aprobado</SelectItem>
+                      <SelectItem value="denied">Negado</SelectItem>
+                      <SelectItem value="closed">Cerrado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
             <div>
               <Label>Fecha del incidente</Label>
-              <Input type="date" value={form.incident_at} onChange={e => set('incident_at', e.target.value)} className="mt-1 bg-background" />
+              <Input type="date" {...register('incident_at')} className="mt-1 bg-background" />
             </div>
           </div>
+          <FormError className="bg-destructive/10 rounded-lg px-3 py-2">{errors.root?.message}</FormError>
           <div className="flex gap-3">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-            <Button type="submit" disabled={saving || !form.vehicle_id} className="flex-1">{saving ? 'Guardando...' : 'Registrar'}</Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">{isSubmitting ? 'Guardando...' : 'Registrar'}</Button>
           </div>
         </form>
       </div>
