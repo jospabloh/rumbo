@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, Star, Phone, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import DriverForm from '@/components/drivers/DriverForm';
 import DriverDetail from '@/components/drivers/DriverDetail';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { driverLimit, PLAN_LABELS } from '@/lib/plans';
+import { useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
 
 const statusLabel = { active: 'Activo', suspended: 'Suspendido', inactive: 'Inactivo' };
 const statusColor = {
@@ -20,19 +22,13 @@ export default function Drivers() {
   const { tenantId, readOnly, tenant } = useTenant();
   const { can } = useModulePerms();
   const limit = driverLimit(tenant);
-  const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: drivers = [], isLoading: loading } = useDrivers();
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('Driver');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [editDriver, setEditDriver] = useState(null);
-
-  const load = () => {
-    const query = tenantId ? { tenant_id: tenantId } : {};
-    base44.entities.Driver.filter(query, '-created_date').then(setDrivers).finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, [tenantId]);
 
   const filtered = drivers.filter(d =>
     d.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -52,13 +48,13 @@ export default function Drivers() {
     }
     setShowForm(false);
     setEditDriver(null);
-    load();
+    refresh();
   };
 
   const handleDelete = async (id) => {
     await base44.entities.Driver.delete(id);
     setSelectedDriver(null);
-    load();
+    refresh();
   };
 
   if (selectedDriver) {
@@ -68,7 +64,7 @@ export default function Drivers() {
         onBack={() => setSelectedDriver(null)}
         onEdit={(d) => { setEditDriver(d); setShowForm(true); setSelectedDriver(null); }}
         onDelete={handleDelete}
-        onRefresh={load}
+        onRefresh={refresh}
       />
     );
   }
@@ -99,7 +95,7 @@ export default function Drivers() {
 
       {loading ? (
         <div className="flex justify-center py-10">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <Spinner />
         </div>
       ) : (
         <div className="space-y-2">

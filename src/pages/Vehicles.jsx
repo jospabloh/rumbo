@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, ChevronRight, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import VehicleForm from '@/components/vehicles/VehicleForm';
 import VehicleDetail from '@/components/vehicles/VehicleDetail';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { vehicleLimit, PLAN_LABELS } from '@/lib/plans';
+import { useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
 
 const statusLabel = { active: 'Activo', maintenance: 'Mantenimiento', inactive: 'Inactivo' };
 const statusColor = {
@@ -20,23 +22,14 @@ export default function Vehicles() {
   const { tenantId, readOnly, tenant } = useTenant();
   const { can } = useModulePerms();
   const limit = vehicleLimit(tenant);
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: vehicles = [], isLoading: loading } = useVehicles();
+  const { data: drivers = [] } = useDrivers();
+  const invalidate = useInvalidateEntity();
+  const refresh = () => invalidate('Vehicle', 'Driver');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editVehicle, setEditVehicle] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
-
-  const load = () => {
-    const q = tenantId ? { tenant_id: tenantId } : {};
-    Promise.all([
-      base44.entities.Vehicle.filter(q),
-      base44.entities.Driver.filter(q),
-    ]).then(([v, d]) => { setVehicles(v); setDrivers(d); }).finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, [tenantId]);
 
   const filtered = vehicles.filter(v =>
     v.plate?.toLowerCase().includes(search.toLowerCase()) ||
@@ -57,13 +50,13 @@ export default function Vehicles() {
     }
     setShowForm(false);
     setEditVehicle(null);
-    load();
+    refresh();
   };
 
   const handleDelete = async (id) => {
     await base44.entities.Vehicle.delete(id);
     setSelectedVehicle(null);
-    load();
+    refresh();
   };
 
   if (selectedVehicle) {
@@ -76,7 +69,7 @@ export default function Vehicles() {
         onBack={() => setSelectedVehicle(null)}
         onEdit={(veh) => { setEditVehicle(veh); setShowForm(true); setSelectedVehicle(null); }}
         onDelete={handleDelete}
-        onRefresh={load}
+        onRefresh={refresh}
       />
     );
   }
@@ -101,7 +94,7 @@ export default function Vehicles() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-10"><Spinner /></div>
       ) : (
         <div className="space-y-2">
           {filtered.map(v => {

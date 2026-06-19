@@ -1,37 +1,24 @@
-import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Banknote, Gauge } from 'lucide-react';
 import { format } from 'date-fns';
 import StatCard from '@/components/dashboard/StatCard';
 import AlertBadge from '@/components/dashboard/AlertBadge';
-import { useTenant } from '@/lib/TenantContext';
+import { PageLoader } from '@/components/ui/spinner';
+import { useVehicles, useDrivers, useAlerts, useMessages, useRentCharges } from '@/hooks/useEntities';
 
 export default function Dashboard() {
-  const { tenantId } = useTenant();
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [rentCharges, setRentCharges] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const vehiclesQ = useVehicles();
+  const driversQ = useDrivers();
+  const alertsQ = useAlerts({ filter: { resolved: false } });
+  const messagesQ = useMessages({ filter: { read: false } });
+  const rentChargesQ = useRentCharges({ sort: '-period_start', limit: 300 });
 
-  useEffect(() => {
-    const q = tenantId ? { tenant_id: tenantId } : {};
-    Promise.all([
-      base44.entities.Vehicle.filter(q),
-      base44.entities.Driver.filter(q),
-      base44.entities.Alert.filter({ ...q, resolved: false }),
-      base44.entities.Message.filter({ read: false, tenant_id: tenantId }),
-      base44.entities.RentCharge.filter(q, '-period_start', 300),
-    ]).then(([v, d, a, m, r]) => {
-      setVehicles(v);
-      setDrivers(d);
-      setAlerts(a);
-      setMessages(m);
-      setRentCharges(r);
-    }).finally(() => setLoading(false));
-  }, [tenantId]);
+  const vehicles = vehiclesQ.data ?? [];
+  const drivers = driversQ.data ?? [];
+  const alerts = alertsQ.data ?? [];
+  const messages = messagesQ.data ?? [];
+  const rentCharges = rentChargesQ.data ?? [];
+  const loading = vehiclesQ.isLoading || driversQ.isLoading || alertsQ.isLoading || messagesQ.isLoading || rentChargesQ.isLoading;
 
   const activeVehicles = vehicles.filter(v => v.status === 'active').length;
   const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length;
@@ -47,11 +34,7 @@ export default function Dashboard() {
   const availability = totalVehicles > 0 ? Math.round((activeVehicles / totalVehicles) * 100) : 0;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
