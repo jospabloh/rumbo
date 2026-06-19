@@ -4,6 +4,34 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.15.0] — 2026-06-19 — refactor: capa de datos completa y componentización
+
+Refactor interno (sin cambios de comportamiento para el usuario). Continúa la migración
+iniciada en 1.14.0.
+
+### Changed — todas las páginas sobre la capa de datos React Query
+
+- Migradas el resto de las páginas fuera del patrón manual `useState + useEffect`:
+  **Mantenimiento, Financiero, Alertas, Catálogos, Ubicación, Enlaces útiles, Mensajes,
+  Licencia (Billing) y las páginas del conductor** (Inicio/Perfil/Viajes).
+- Nuevos hooks compartidos en `src/hooks/useEntities.js`: `useMe()` (perfil en caché),
+  `useCurrentDriver()` (resuelve la búsqueda usuario→conductor que repetían las 3 páginas
+  del conductor) y `useRawList()` (lecturas sin scope de tenant: `TenantLicense`, `User`).
+- El refetch manual `load()` se reemplaza por invalidación de caché en toda la app.
+
+### Changed — componentización de los archivos monolíticos
+
+- **`Rentas.jsx` 635 → 308 líneas**: extraídos `src/components/rentas/` (rentUtils,
+  ManualChargeModal, IngresosView, ReferralsView).
+- **`Admin.jsx` 728 → 173 líneas**: extraídos `src/components/admin/` (roleConfig, UserRow,
+  InviteForm, TenantEditor, JoinCodeCard, DangerZone).
+
+### Added — primitivos de UI compartidos
+
+- `ResponsiveModal` (hoja inferior en móvil / diálogo centrado en escritorio) y `FormError`,
+  reemplazando markup duplicado en los modales. Un único `Spinner`/`PageLoader` reemplaza
+  ~20 copias del spinner.
+
 ## [1.14.0] — 2026-06-19 — capa de datos, permisos y onboarding
 
 ### Changed — migración a React Query y capa de datos por tenant
