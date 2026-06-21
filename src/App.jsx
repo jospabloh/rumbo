@@ -33,6 +33,7 @@ import Licenses from './pages/Licenses';
 import Catalogs from './pages/Catalogs';
 import UsefulLinks from './pages/UsefulLinks';
 import TestData from './pages/TestData';
+import Help from './pages/Help';
 import Landing from './pages/Landing';
 import RequireAppOwner from './components/RequireAppOwner';
 import RequireAccess from './components/RequireAccess';
@@ -120,6 +121,7 @@ const AuthenticatedApp = () => {
         <Route path="/location" element={<RequireAccess page="location"><Location /></RequireAccess>} />
         <Route path="/messages" element={<RequireAccess page="messages"><Messages /></RequireAccess>} />
         <Route path="/links" element={<RequireAccess page="links"><UsefulLinks /></RequireAccess>} />
+        <Route path="/help" element={<RequireAccess page="help"><Help /></RequireAccess>} />
         <Route path="/import" element={<RequireAccess page="import"><Import /></RequireAccess>} />
         <Route path="/driver/home" element={<RequireAccess roles={['driver']}><DriverHome /></RequireAccess>} />
         <Route path="/driver/profile" element={<RequireAccess roles={['driver']}><DriverProfile /></RequireAccess>} />

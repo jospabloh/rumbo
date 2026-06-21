@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, ChevronRight, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,17 @@ export default function Vehicles() {
   const [showForm, setShowForm] = useState(false);
   const [editVehicle, setEditVehicle] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Atajo desde el dashboard (/vehicles?new=1): abre el formulario de alta.
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      if (!readOnly && can('vehicles', 'create')) { setEditVehicle(null); setShowForm(true); }
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = vehicles.filter(v =>
     v.plate?.toLowerCase().includes(search.toLowerCase()) ||

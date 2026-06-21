@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Edit2, Save, Palette, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import PalettePresets from '@/components/admin/PalettePresets';
 
 export default function TenantEditor({ license, onSaved }) {
   const [editing, setEditing] = useState(false);
@@ -177,6 +178,15 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
             <Palette className="w-3 h-3" /> Colores de la marca (hex)
             {extracting && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
           </label>
+          <div className="mb-3">
+            <PalettePresets onSelect={(p) => setForm(f => ({
+              ...f,
+              color_primary: p.primary,
+              color_secondary: p.secondary,
+              color_accent: p.accent,
+              color_background: p.background,
+            }))} />
+          </div>
           <div className="grid grid-cols-4 gap-2">
             {[
               { key: 'color_primary', label: 'Principal' },

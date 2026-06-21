@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.18.0 | Updated 2026-06-21**
+**Version 1.19.0 | Updated 2026-06-21**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -91,6 +91,20 @@ Press **⌘K** (Mac) or **Ctrl+K** (Windows/Linux) — or click **Buscar…** at
 
 Lists (drivers, vehicles, alerts, and more) show lightweight placeholders while data loads, so the page feels instant and doesn't jump when results arrive. When a list is genuinely empty, Rumbo distinguishes between "nothing here yet" (with a shortcut to add the first record) and "no results for your search."
 
+### Navigation: active section and "stay where you were"
+
+- The left menu clearly highlights the section you're in (accent bar + bold label).
+- Rumbo **remembers your last section** and returns you to it when you reload or reopen the app, instead of always resetting to the home screen.
+
+### Brand colors
+
+In **Admin → Tenant information** (and during onboarding) you can brand the app to your organization three ways:
+1. **Upload your logo** and let the AI suggest a 4-color palette from it.
+2. Pick one of the **premium preset palettes** with a single click.
+3. Enter hex colors manually.
+
+White-label brand colors are applied on top of whichever theme (light/dark) is active.
+
 ---
 
 ## Modules
@@ -107,6 +121,8 @@ The main overview page showing:
 - **Revenue trend:** a 7-day chart of collected rent income.
 - Vehicle fleet table with assigned drivers.
 - Recent alerts panel.
+
+**Actionable cards & quick actions:** every KPI card links to its section (clicking "Vehículos activos" opens the vehicle catalog, etc.). Quick-action buttons at the top open the relevant **create form directly** (add vehicle, add driver, log maintenance), respecting your permissions.
 
 **Accessible to:** Owner, Admin, Dispatcher. Roles without dashboard access (e.g. Mechanic) are taken to their first available section instead.
 
@@ -219,6 +235,20 @@ Bulk import data via CSV files.
 - Review import results before confirming.
 
 **Accessible to:** Owner, Admin.
+
+---
+
+### Help (Ayuda)
+
+The in-app help center.
+
+- Concise per-module guide (accordion), keyboard shortcuts, and tips.
+- **Open a support ticket** (or email support) directly from the page.
+- Shows the current app version.
+
+Also reachable from **Ayuda y soporte** at the bottom of the sidebar.
+
+**Accessible to:** all roles, including Drivers.
 
 ---
 
