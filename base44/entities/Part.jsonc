@@ -28,6 +28,12 @@
       "minimum": 0,
       "default": 0
     },
+    "min_stock": {
+      "type": "number",
+      "title": "Stock mínimo",
+      "minimum": 0,
+      "default": 0
+    },
     "unit_cost": {
       "type": "number",
       "title": "Costo unitario"

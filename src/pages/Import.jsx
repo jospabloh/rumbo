@@ -1,27 +1,14 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Upload, Download, CheckCircle2, FileText } from 'lucide-react';
+import { Upload, Download, CheckCircle2, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { useTenant } from '@/lib/TenantContext';
-
-const DRIVER_COLUMNS = ['nombre', 'licencia', 'vencimiento_licencia', 'telefono', 'fecha_contratacion'];
-const VEHICLE_COLUMNS = ['no_unidad', 'placa', 'marca', 'modelo', 'año', 'vin', 'conductor_asignado'];
-
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  return lines.slice(1).map(line => {
-    const values = line.split(',').map(v => v.trim());
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = values[i] || ''; });
-    return obj;
-  });
-}
+import { useInvalidateEntity } from '@/hooks/useEntities';
+import { parseCSV, partitionRows, IMPORT_COLUMNS } from '@/lib/csv';
 
 function downloadCSV(columns, filename) {
-  const header = columns.join(',');
-  const example = columns.map(() => '...').join(',');
-  const csv = `${header}\n${example}`;
+  const csv = `${columns.join(',')}\n${columns.map(() => '...').join(',')}`;
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -33,87 +20,84 @@ function downloadCSV(columns, filename) {
 
 export default function Import() {
   const { tenantId, readOnly } = useTenant();
+  const invalidate = useInvalidateEntity();
   const [importType, setImportType] = useState('drivers');
-  const [preview, setPreview] = useState(null);
-  const [errors, setErrors] = useState([]);
+  const [parsed, setParsed] = useState(null); // { valid, invalid }
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(null); // { imported, failed: [{line, reason}] }
   const [importError, setImportError] = useState('');
+
+  const columns = IMPORT_COLUMNS[importType];
+
+  const reset = () => { setParsed(null); setResult(null); setImportError(''); };
 
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const rows = parseCSV(ev.target.result);
-      const columns = importType === 'drivers' ? DRIVER_COLUMNS : VEHICLE_COLUMNS;
-      const errs = [];
-      rows.forEach((row, i) => {
-        columns.slice(0, 1).forEach(col => {
-          if (!row[col]) errs.push(`Fila ${i + 2}: campo "${col}" vacío`);
-        });
-      });
-      setErrors(errs);
-      setPreview(rows);
+      const { rows } = parseCSV(String(ev.target.result));
+      setParsed(partitionRows(importType, rows));
       setResult(null);
+      setImportError('');
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
+  const buildPayload = (row) => importType === 'drivers'
+    ? {
+        tenant_id: tenantId,
+        full_name: row['nombre'],
+        license_no: row['licencia'] || null,
+        license_expiry: row['vencimiento_licencia'] || null,
+        phone: row['telefono'] || null,
+        hire_date: row['fecha_contratacion'] || null,
+        status: 'active',
+      }
+    : {
+        tenant_id: tenantId,
+        unit_number: row['no_unidad'] || null,
+        plate: row['placa']?.toUpperCase() || null,
+        make: row['marca'] || null,
+        model: row['modelo'] || null,
+        year: row['año'] ? parseInt(row['año']) : null,
+        vin: row['vin'] || null,
+        status: 'active',
+      };
+
   const handleImport = async () => {
-    if (!preview || errors.length > 0) return;
+    if (!parsed || parsed.valid.length === 0) return;
     if (readOnly) { setImportError('Licencia en modo solo lectura: renueva tu pago para importar.'); return; }
     if (!tenantId) { setImportError('Tu organización aún se está configurando. Espera unos segundos e inténtalo de nuevo.'); return; }
     setImporting(true);
     setImportError('');
-    let count = 0;
-    try {
-      for (const row of preview) {
-        if (importType === 'drivers') {
-          await base44.entities.Driver.create({
-            tenant_id: tenantId,
-            full_name: row['nombre'],
-            license_no: row['licencia'],
-            license_expiry: row['vencimiento_licencia'] || null,
-            phone: row['telefono'] || null,
-            hire_date: row['fecha_contratacion'] || null,
-            status: 'active',
-          });
-        } else {
-          await base44.entities.Vehicle.create({
-            tenant_id: tenantId,
-            unit_number: row['no_unidad'] || null,
-            plate: row['placa']?.toUpperCase() || null,
-            make: row['marca'],
-            model: row['modelo'],
-            year: row['año'] ? parseInt(row['año']) : null,
-            vin: row['vin'],
-            status: 'active',
-          });
-        }
-        count++;
+    const entity = importType === 'drivers' ? base44.entities.Driver : base44.entities.Vehicle;
+    const failed = [];
+    let imported = 0;
+    // Importación fila por fila: una fila mala no detiene a las demás (éxito parcial).
+    for (let i = 0; i < parsed.valid.length; i++) {
+      try {
+        await entity.create(buildPayload(parsed.valid[i]));
+        imported++;
+      } catch (e) {
+        failed.push({ line: i + 1, reason: e?.message || 'error al guardar' });
       }
-      setResult({ count });
-      setPreview(null);
-    } catch (e) {
-      setImportError(`Se importaron ${count} de ${preview.length}. ${e?.message || 'Ocurrió un error; revisa los datos e inténtalo de nuevo.'}`);
-    } finally {
-      setImporting(false);
     }
+    invalidate(importType === 'drivers' ? 'Driver' : 'Vehicle');
+    setResult({ imported, failed, skipped: parsed.invalid.length });
+    setParsed(null);
+    setImporting(false);
   };
 
   return (
     <div className="p-4 lg:p-6 max-w-2xl">
-      <div className="mb-5">
-        <h1 className="text-xl font-bold">Importar datos</h1>
-        <p className="text-sm text-muted-foreground">Importa conductores o vehículos desde un archivo CSV</p>
-      </div>
+      <PageHeader title="Importar datos" subtitle="Importa conductores o vehículos desde un archivo CSV" />
 
       {/* Type selector */}
       <div className="flex gap-1 bg-muted rounded-lg p-1 mb-5 w-fit">
         {['drivers', 'vehicles'].map(t => (
-          <button key={t} onClick={() => { setImportType(t); setPreview(null); setErrors([]); setResult(null); }}
+          <button key={t} onClick={() => { setImportType(t); reset(); }}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${importType === t ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
             {t === 'drivers' ? 'Conductores' : 'Vehículos'}
           </button>
@@ -122,21 +106,19 @@ export default function Import() {
 
       {/* Download template */}
       <div className="bg-card border border-border rounded-xl p-4 mb-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="font-semibold text-sm">Plantilla CSV — {importType === 'drivers' ? 'Conductores' : 'Vehículos'}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Columnas: {(importType === 'drivers' ? DRIVER_COLUMNS : VEHICLE_COLUMNS).join(', ')}
-            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Columnas: {columns.join(', ')}</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => downloadCSV(importType === 'drivers' ? DRIVER_COLUMNS : VEHICLE_COLUMNS, `plantilla_${importType}.csv`)} className="gap-2 shrink-0">
+          <Button size="sm" variant="outline" onClick={() => downloadCSV(columns, `plantilla_${importType}.csv`)} className="gap-2 shrink-0">
             <Download className="w-4 h-4" />Descargar
           </Button>
         </div>
       </div>
 
       {/* Upload area */}
-      {!preview && !result && (
+      {!parsed && !result && (
         <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/50 transition-colors">
           <Upload className="w-8 h-8 text-muted-foreground mb-2" />
           <p className="text-sm font-medium">Sube tu archivo CSV</p>
@@ -146,45 +128,55 @@ export default function Import() {
       )}
 
       {/* Preview */}
-      {preview && (
+      {parsed && (
         <div className="bg-card border border-border rounded-xl overflow-hidden mb-4">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">{preview.length} registros</span>
+              <span className="text-sm font-semibold">{parsed.valid.length} válidos</span>
+              {parsed.invalid.length > 0 && (
+                <span className="text-sm text-warning">· {parsed.invalid.length} con problemas</span>
+              )}
             </div>
-            <button onClick={() => { setPreview(null); setErrors([]); }} className="text-xs text-muted-foreground hover:text-foreground">Cancelar</button>
+            <button onClick={reset} className="text-xs text-muted-foreground hover:text-foreground">Cancelar</button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-muted">
-                  {(importType === 'drivers' ? DRIVER_COLUMNS : VEHICLE_COLUMNS).map(c => (
-                    <th key={c} className="px-3 py-2 text-left font-medium text-muted-foreground">{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {preview.slice(0, 5).map((row, i) => (
-                  <tr key={i} className="border-t border-border">
-                    {(importType === 'drivers' ? DRIVER_COLUMNS : VEHICLE_COLUMNS).map(c => (
-                      <td key={c} className="px-3 py-2">{row[c] || '—'}</td>
-                    ))}
+
+          {/* Vista previa de filas válidas */}
+          {parsed.valid.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-muted">
+                    {columns.map(c => <th key={c} className="px-3 py-2 text-left font-medium text-muted-foreground">{c}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {preview.length > 5 && <p className="text-xs text-muted-foreground px-3 py-2">+{preview.length - 5} más...</p>}
-          </div>
-          {errors.length > 0 && (
-            <div className="px-4 py-3 border-t border-destructive/20 bg-destructive/5">
-              {errors.map((e, i) => <p key={i} className="text-xs text-destructive">{e}</p>)}
+                </thead>
+                <tbody>
+                  {parsed.valid.slice(0, 5).map((row, i) => (
+                    <tr key={i} className="border-t border-border">
+                      {columns.map(c => <td key={c} className="px-3 py-2">{row[c] || '—'}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {parsed.valid.length > 5 && <p className="text-xs text-muted-foreground px-3 py-2">+{parsed.valid.length - 5} más...</p>}
             </div>
           )}
+
+          {/* Problemas por fila */}
+          {parsed.invalid.length > 0 && (
+            <div className="px-4 py-3 border-t border-warning/20 bg-warning/5 space-y-0.5 max-h-40 overflow-y-auto">
+              <p className="text-xs font-medium text-warning flex items-center gap-1 mb-1"><AlertTriangle className="w-3.5 h-3.5" />Estas filas se omitirán:</p>
+              {parsed.invalid.slice(0, 20).map((e, i) => (
+                <p key={i} className="text-xs text-muted-foreground">Fila {e.line}: {e.errors.join(', ')}</p>
+              ))}
+              {parsed.invalid.length > 20 && <p className="text-xs text-muted-foreground">+{parsed.invalid.length - 20} más…</p>}
+            </div>
+          )}
+
           <div className="px-4 py-3 border-t border-border">
             {importError && <p className="text-xs text-destructive mb-2">{importError}</p>}
-            <Button onClick={handleImport} disabled={importing || errors.length > 0 || readOnly} className="w-full">
-              {importing ? 'Importando...' : readOnly ? 'Solo lectura' : `Confirmar importación de ${preview.length} registros`}
+            <Button onClick={handleImport} disabled={importing || parsed.valid.length === 0 || readOnly} className="w-full">
+              {importing ? 'Importando...' : readOnly ? 'Solo lectura' : `Importar ${parsed.valid.length} registro${parsed.valid.length === 1 ? '' : 's'} válido${parsed.valid.length === 1 ? '' : 's'}`}
             </Button>
           </div>
         </div>
@@ -192,10 +184,26 @@ export default function Import() {
 
       {/* Result */}
       {result && (
-        <div className="bg-success/10 border border-success/30 rounded-xl p-5 text-center">
-          <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
-          <p className="font-semibold">{result.count} registros importados</p>
-          <Button size="sm" variant="outline" onClick={() => setResult(null)} className="mt-3">Importar más</Button>
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="text-center">
+            <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
+            <p className="font-semibold">{result.imported} registro{result.imported === 1 ? '' : 's'} importado{result.imported === 1 ? '' : 's'}</p>
+            {(result.skipped > 0 || result.failed.length > 0) && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {result.skipped > 0 && `${result.skipped} omitido${result.skipped === 1 ? '' : 's'} por validación`}
+                {result.skipped > 0 && result.failed.length > 0 && ' · '}
+                {result.failed.length > 0 && `${result.failed.length} fallaron al guardar`}
+              </p>
+            )}
+          </div>
+          {result.failed.length > 0 && (
+            <div className="mt-3 border-t border-border pt-3 space-y-0.5 max-h-40 overflow-y-auto">
+              {result.failed.map((f, i) => (
+                <p key={i} className="text-xs text-destructive">Registro {f.line}: {f.reason}</p>
+              ))}
+            </div>
+          )}
+          <Button size="sm" variant="outline" onClick={reset} className="mt-4 w-full">Importar más</Button>
         </div>
       )}
     </div>

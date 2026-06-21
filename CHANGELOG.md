@@ -4,6 +4,77 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.21.0] — 2026-06-21 — importador CSV robusto, refacciones con stock mínimo y portal del conductor
+
+### Changed — importador CSV de verdad robusto
+
+- **Parser nuevo** (`src/lib/csv.js`) que maneja campos entre comillas con comas y
+  saltos de línea, comillas escapadas (`""`), CRLF y BOM. El anterior hacía
+  `split(',')` y se rompía con cualquiera de esos casos.
+- **Validación por fila + éxito parcial:** antes de importar, las filas se separan
+  en válidas (con vista previa) y con problemas (listadas con su número de línea y
+  motivo). La importación va fila por fila: si una falla al guardar, las demás
+  continúan, y el resumen reporta importadas / omitidas / fallidas con su motivo.
+  Antes era todo-o-nada y se detenía en el primer error.
+
+### Added — inventario de refacciones con stock mínimo
+
+- Nuevo campo **`min_stock`** en la entidad `Part`. La lista marca **stock bajo**
+  (≤ mínimo) y **agotado** (0), con un resumen arriba, y ahora permite **editar**
+  una refacción (no sólo crear).
+- **Alertas automáticas de stock bajo**: `generateAlerts` crea una alerta
+  (warning ≤ mínimo, critical si 0) por cada refacción bajo su umbral; se agregó el
+  tipo `part` a la entidad `Alert`.
+- `PartsList` migrado a la capa de datos (React Query) en vez de `useState`/
+  `useEffect` manual, con `EmptyState`/`ListSkeleton`.
+
+### Added — portal del conductor más completo
+
+- **Registro de viajes** desde la app del conductor (plataforma, fecha, ingresos,
+  distancia) para su vehículo asignado, con totales.
+- **Edición de perfil**: el conductor puede actualizar su propio teléfono y ver su
+  **vehículo asignado**. Los demás datos siguen a cargo del administrador.
+
+### Tests
+
+- **+13 pruebas** (357 en total): parser de CSV (comillas/CRLF/BOM/líneas vacías),
+  validación y partición por fila, y lógica de stock bajo de refacciones.
+
+## [1.20.0] — 2026-06-21 — soporte real: tickets, bandeja del owner y notificación por correo
+
+La sección de Ayuda de 1.19.0 sólo enlazaba a un sitio externo. Esta versión
+implementa un sistema de soporte de verdad, de punta a punta.
+
+### Added — sistema de tickets de soporte
+
+- **Nueva entidad `SupportTicket`** (`base44/entities/SupportTicket.jsonc`) con RLS:
+  el owner/admin del tenant ve los tickets de su organización y cada usuario ve los
+  suyos; el panel cross-tenant del owner de la app corre con service role.
+- **Alta de tickets en la app** (`submitTicket`): desde el Centro de ayuda
+  cualquier usuario abre un ticket (asunto, categoría, prioridad, descripción) con
+  validación. Se crea del lado servidor —funciona incluso con la licencia en
+  solo-lectura, que es cuando más se necesita soporte— y **notifica por correo** al
+  equipo (`SUPPORT_EMAIL` o `APP_OWNER_EMAIL`).
+- **«Mis solicitudes»** en el Centro de ayuda: el usuario ve sus tickets con
+  estatus y el hilo de respuestas del soporte.
+- **Bandeja de soporte del owner de la app** (`/tickets`, protegida por
+  `RequireAppOwner`): lista todos los tickets de todas las organizaciones
+  (`ticketsAdmin`, service role), con filtros por estatus, cambio de estatus
+  (abierto → en proceso → resuelto → cerrado) y **respuesta que se envía por
+  correo al solicitante**. Aparece en el grupo «Plataforma» junto a Licencias.
+
+### Changed
+
+- El botón «Abrir ticket de soporte» del Centro de ayuda ahora abre el formulario
+  in-app real (antes sólo abría un enlace externo / `mailto`).
+- `PLATFORM_NAV` pasa a ser una lista (Licencias + Soporte), reutilizada por la
+  barra lateral y la paleta de comandos del owner de la app.
+
+### Tests
+
+- **+8 pruebas** (344 en total): catálogos de soporte, `labelFor`, `statusColor` y
+  `validateTicket` (asunto/descripción obligatorios y longitudes mínimas).
+
 ## [1.19.0] — 2026-06-21 — UX: navegación con permanencia, ayuda/soporte, paletas premium y tarjetas accionables
 
 Ronda de experiencia de usuario a partir de feedback directo: el menú ahora marca

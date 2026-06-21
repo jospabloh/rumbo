@@ -27,11 +27,11 @@ describe('accessibleNavItems', () => {
     expect(pages).toEqual(['help', 'links', 'maintenance', 'vehicles']);
   });
 
-  it('appends the platform (licenses) item only for the app owner', () => {
+  it('appends the platform items only for the app owner', () => {
     const withOwner = accessibleNavItems('owner', { isAppOwner: true });
-    expect(withOwner).toContainEqual(PLATFORM_NAV);
+    for (const item of PLATFORM_NAV) expect(withOwner).toContainEqual(item);
     const without = accessibleNavItems('owner', { isAppOwner: false });
-    expect(without).not.toContainEqual(PLATFORM_NAV);
+    for (const item of PLATFORM_NAV) expect(without).not.toContainEqual(item);
   });
 
   it('returns nothing for an unknown role', () => {

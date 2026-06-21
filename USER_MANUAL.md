@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.19.0 | Updated 2026-06-21**
+**Version 1.21.0 | Updated 2026-06-21**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -165,7 +165,7 @@ Track maintenance records and parts.
 - View pending and completed maintenance records.
 - Automatic alerts when maintenance is due within 14 days.
 
-**Parts inventory:** Track parts by name, SKU, stock count, and unit cost.
+**Parts inventory:** Track parts by name, brand, SKU, stock count, and unit cost. Set a **minimum stock** per part to get a **low-stock badge** in the list and an automatic **alert** (warning when at/below the minimum, critical when out of stock) the next time alerts are generated. Edit a part by tapping its name; adjust stock with the +/− buttons.
 
 **Accessible to:** Owner, Admin, Mechanic.
 
@@ -231,24 +231,32 @@ On-demand location sharing — no continuous tracking.
 
 Bulk import data via CSV files.
 
-- Upload vehicle or driver data in CSV format.
-- Review import results before confirming.
+- Upload vehicle or driver data in CSV format. The parser handles quoted fields (commas/line breaks inside quotes), escaped quotes, CRLF and BOM.
+- **Per-row validation:** before importing, Rumbo splits your file into **valid rows** (previewed) and **rows with problems** (listed with their line number and reason, e.g. "missing name", "missing plate or unit"). Only valid rows are imported.
+- **Partial success:** rows are imported one by one — if a single row fails to save, the rest still import, and the result summarizes how many were imported, skipped, or failed (with reasons).
 
 **Accessible to:** Owner, Admin.
 
 ---
 
-### Help (Ayuda)
+### Help & Support (Ayuda)
 
 The in-app help center.
 
 - Concise per-module guide (accordion), keyboard shortcuts, and tips.
-- **Open a support ticket** (or email support) directly from the page.
+- **Open a real support ticket** directly from the page (subject, category, priority, description). The ticket is created in Rumbo and the support team is notified by email. Tickets can be opened even when the license is read-only.
+- **Mis solicitudes:** see your own tickets with their status (Abierto, En proceso, Resuelto, Cerrado) and the support team's replies.
 - Shows the current app version.
 
 Also reachable from **Ayuda y soporte** at the bottom of the sidebar.
 
 **Accessible to:** all roles, including Drivers.
+
+#### Support inbox (app owner)
+
+The app owner has a **Soporte** dashboard (`/tickets`, under the Plataforma group) that lists support tickets across all organizations. From there they can filter by status, change a ticket's status, and reply — replies are emailed to the person who opened the ticket.
+
+Support email recipient is configured via the `SUPPORT_EMAIL` (or `APP_OWNER_EMAIL`) environment variable.
 
 ---
 
@@ -298,8 +306,8 @@ Contact sales to upgrade your plan.
 Drivers access a separate simplified interface at `/driver/*`.
 
 - **Home:** Overview of today's trips, earnings, and rating.
-- **Trips:** Log and view trip history.
-- **Profile:** View and update personal information.
+- **Trips:** View trip history with totals (trips, earnings, km) and **log a new trip** (platform, date, earnings, distance) for the assigned vehicle.
+- **Profile:** View personal information and assigned vehicle, and **edit your own phone number**. Other fields (license, documents) are managed by an administrator.
 - **Messages:** Receive and respond to messages from dispatchers.
 
 Drivers receive location requests in the app and can respond with a single one-time location share.
