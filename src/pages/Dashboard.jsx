@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Banknote, Gauge } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import StatCard from '@/components/dashboard/StatCard';
 import AlertBadge from '@/components/dashboard/AlertBadge';
+import RevenueTrend from '@/components/dashboard/RevenueTrend';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageLoader } from '@/components/ui/spinner';
 import { useVehicles, useDrivers, useAlerts, useMessages, useRentCharges } from '@/hooks/useEntities';
 
@@ -39,10 +43,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 lg:p-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE, d 'de' MMMM yyyy")}</p>
-      </div>
+      <PageHeader title="Dashboard" subtitle={format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })} className="mb-0" />
 
       {/* Critical alerts banner */}
       {criticalAlerts.length > 0 && (
@@ -69,6 +70,9 @@ export default function Dashboard() {
         <StatCard icon={Gauge} label="Disponibilidad" value={`${availability}%`} sub="unidades operando" color="blue" />
         <StatCard icon={TrendingUp} label="Flota total" value={totalVehicles} sub="vehículos" color="gray" />
       </div>
+
+      {/* Revenue trend */}
+      <RevenueTrend charges={rentCharges} />
 
       {/* Fleet status */}
       <div className="grid lg:grid-cols-2 gap-4">
@@ -97,6 +101,9 @@ export default function Dashboard() {
               );
             })}
             {vehicles.length > 6 && <p className="text-xs text-muted-foreground text-center pt-1">+{vehicles.length - 6} más</p>}
+            {vehicles.length === 0 && (
+              <EmptyState icon={Truck} title="Sin vehículos" description="Agrega unidades para ver el estado de tu flotilla." className="py-8" />
+            )}
           </div>
         </div>
 
@@ -110,7 +117,7 @@ export default function Dashboard() {
               <AlertBadge key={alert.id} alert={alert} />
             ))}
             {alerts.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">Sin alertas activas</p>
+              <EmptyState icon={AlertTriangle} title="Sin alertas activas" description="Tu flotilla está al día." className="py-8" />
             )}
           </div>
         </div>

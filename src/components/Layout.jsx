@@ -4,14 +4,15 @@ import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { applyTenantColors } from '@/pages/TenantOnboarding';
 import {
-  LayoutDashboard, Users, Truck, Wrench, DollarSign,
-  MapPin, MessageSquare, Bell, LogOut, Menu, X,
-  FileText, CreditCard, Shield, Banknote, List, Link2
+  LogOut, Menu, X, Bell, Shield, Search,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
 import { SUPPORT_URL } from '@/lib/license';
+import { NAV_GROUPS, DRIVER_NAV, PLATFORM_NAV } from '@/lib/nav';
+import { useMe, useAlerts, useMessages } from '@/hooks/useEntities';
 import ThemeToggle from '@/components/ThemeToggle';
+import CommandPalette from '@/components/CommandPalette';
 
 function LicenseBanner({ info }) {
   if (!info || !info.message || info.state === 'disabled') return null;
@@ -50,46 +51,6 @@ const LogoMark = ({ logoUrl, size = 'md' }) => {
   return <img src="/rumbo.png" alt="Rumbo" className={`${sz} rounded-lg object-cover`} />;
 };
 
-// Nav items grouped
-const NAV_GROUPS = [
-  {
-    label: null, // sin etiqueta para el grupo principal
-    items: [
-      { path: '/',        icon: LayoutDashboard, label: 'Dashboard',     page: 'dashboard' },
-      { path: '/alerts',  icon: Bell,            label: 'Alertas',       page: 'alerts' },
-      { path: '/messages',icon: MessageSquare,   label: 'Mensajes',      page: 'messages' },
-      { path: '/location',icon: MapPin,          label: 'Ubicación',     page: 'location' },
-      { path: '/links',   icon: Link2,           label: 'Enlaces útiles',page: 'links' },
-    ],
-  },
-  {
-    label: 'Catálogos',
-    items: [
-      { path: '/drivers',     icon: Users,     label: 'Conductores',  page: 'drivers' },
-      { path: '/vehicles',    icon: Truck,     label: 'Vehículos',    page: 'vehicles' },
-      { path: '/maintenance', icon: Wrench,    label: 'Taller',       page: 'maintenance' },
-    ],
-  },
-  {
-    label: 'Gestión',
-    items: [
-      { path: '/rentas',    icon: Banknote,   label: 'Rentas',     page: 'rentas' },
-      { path: '/financial', icon: DollarSign, label: 'Financiero', page: 'financial' },
-      { path: '/import',    icon: FileText,   label: 'Importar',   page: 'import' },
-      { path: '/billing',   icon: CreditCard, label: 'Licencia',   page: 'billing' },
-      { path: '/catalogs',  icon: List,       label: 'Catálogos',  page: 'catalogs' },
-      { path: '/admin',     icon: Shield,     label: 'Admin',      page: 'admin' },
-    ],
-  },
-];
-
-const driverNav = [
-  { path: '/driver/home',    icon: LayoutDashboard, label: 'Inicio' },
-  { path: '/driver/messages',icon: MessageSquare,   label: 'Mensajes' },
-  { path: '/driver/trips',   icon: Truck,           label: 'Viajes' },
-  { path: '/driver/profile', icon: Users,           label: 'Perfil' },
-];
-
 function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onClick }) {
   return (
     <Link
@@ -114,14 +75,9 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
 export default function Layout() {
   const location = useLocation();
   const { tenant, tenantId, licenseInfo, isAppOwner } = useTenant();
-  const [user, setUser] = useState(null);
+  const { data: user } = useMe();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [alertCount, setAlertCount] = useState(0);
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   // Apply tenant colors when tenant loads
   useEffect(() => {
@@ -135,18 +91,15 @@ export default function Layout() {
     }
   }, [tenant]);
 
-  useEffect(() => {
-    if (!user || !tenantId) return;
-    const role = user.role;
-    if (role === 'owner' || role === 'admin' || role === 'dispatcher') {
-      base44.entities.Alert.filter({ resolved: false, tenant_id: tenantId }).then(alerts => {
-        setAlertCount(alerts.filter(a => a.severity === 'critical').length);
-      }).catch(() => {});
-      base44.entities.Message.filter({ read: false, tenant_id: tenantId }).then(msgs => {
-        setUnreadCount(msgs.length);
-      }).catch(() => {});
-    }
-  }, [user, tenantId]);
+  // Contadores de la barra lateral sobre la misma capa de datos cacheada que el
+  // dashboard (mismo queryKey ⇒ una sola petición compartida), en vez del fetch
+  // manual con useEffect que se repetía en cada montaje.
+  const staff = ['owner', 'admin', 'dispatcher'].includes(user?.role);
+  const countsEnabled = staff && !!tenantId;
+  const { data: openAlerts = [] } = useAlerts({ filter: { resolved: false }, enabled: countsEnabled });
+  const { data: unreadMsgs = [] } = useMessages({ filter: { read: false }, enabled: countsEnabled });
+  const alertCount = openAlerts.filter(a => a.severity === 'critical').length;
+  const unreadCount = unreadMsgs.length;
 
   const isDriverRole = checkIsDriver(user?.role);
   const handleLogout = () => base44.auth.logout();
@@ -159,7 +112,7 @@ export default function Layout() {
 
   // El owner de la app ve la sección Licencias (gestión de todas las tenants).
   const navGroups = isAppOwner
-    ? [...filteredGroups, { label: 'Plataforma', items: [{ path: '/licenses', icon: Shield, label: 'Licencias', page: 'licenses' }] }]
+    ? [...filteredGroups, { label: 'Plataforma', items: [PLATFORM_NAV] }]
     : filteredGroups;
 
   const SidebarContent = ({ onLinkClick }) => (
@@ -178,19 +131,28 @@ export default function Layout() {
       {/* Nav */}
       <nav className="flex-1 py-3 px-3 overflow-y-auto space-y-4">
         {isDriverRole ? (
-          driverNav.map(({ path, icon: Icon, label }) => (
+          DRIVER_NAV.map(({ path, icon: Icon, label }) => (
             <NavItem key={path} path={path} icon={Icon} label={label}
               active={location.pathname === path} onClick={onLinkClick}
               alertCount={0} unreadCount={0} />
           ))
         ) : (
-          navGroups.map((group, gi) => (
+          <>
+          <button
+            onClick={() => { onLinkClick?.(); setCmdOpen(true); }}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent transition-all"
+          >
+            <Search className="w-4 h-4 shrink-0" />
+            <span>Buscar…</span>
+            <kbd className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded border border-sidebar-border bg-sidebar text-muted-foreground">⌘K</kbd>
+          </button>
+          {navGroups.map((group, gi) => (
             <div key={gi}>
               {group.label && (
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-1">{group.label}</p>
               )}
               <div className="space-y-0.5">
-                {group.items.map(({ path, icon, label, page }) => (
+                {group.items.map(({ path, icon, label }) => (
                   <NavItem
                     key={path}
                     path={path}
@@ -204,7 +166,8 @@ export default function Layout() {
                 ))}
               </div>
             </div>
-          ))
+          ))}
+          </>
         )}
       </nav>
 
@@ -288,7 +251,7 @@ export default function Layout() {
         {/* Mobile bottom nav — driver only */}
         {isDriverRole && (
           <nav className="lg:hidden flex border-t border-border bg-card shrink-0">
-            {driverNav.map(({ path, icon: Icon, label }) => {
+            {DRIVER_NAV.map(({ path, icon: Icon, label }) => {
               const active = location.pathname === path;
               return (
                 <Link key={path} to={path}
@@ -301,6 +264,11 @@ export default function Layout() {
           </nav>
         )}
       </div>
+
+      {/* Paleta de comandos (⌘K) — solo staff */}
+      {!isDriverRole && (
+        <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} role={user?.role} isAppOwner={isAppOwner} />
+      )}
     </div>
   );
 }

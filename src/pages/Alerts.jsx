@@ -2,7 +2,9 @@ import { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/list-skeleton';
 import { useAlerts, useInvalidateEntity } from '@/hooks/useEntities';
 
 const severityConfig = {
@@ -40,16 +42,16 @@ export default function Alerts() {
 
   return (
     <div className="p-4 lg:p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold">Alertas</h1>
-          <p className="text-sm text-muted-foreground">{alerts.length} activas</p>
-        </div>
-        <Button size="sm" variant="outline" onClick={handleGenerate} disabled={generating} className="gap-2">
-          <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-          {generating ? 'Generando...' : 'Verificar ahora'}
-        </Button>
-      </div>
+      <PageHeader
+        title="Alertas"
+        subtitle={`${alerts.length} activas`}
+        action={(
+          <Button size="sm" variant="outline" onClick={handleGenerate} disabled={generating} className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+            {generating ? 'Generando...' : 'Verificar ahora'}
+          </Button>
+        )}
+      />
 
       {/* Filter tabs */}
       <div className="flex gap-1 bg-muted rounded-lg p-1 mb-4">
@@ -66,7 +68,7 @@ export default function Alerts() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><Spinner /></div>
+        <ListSkeleton />
       ) : (
         <div className="space-y-2">
           {filtered.map(alert => {
@@ -95,10 +97,11 @@ export default function Alerts() {
             );
           })}
           {filtered.length === 0 && (
-            <div className="text-center py-12">
-              <CheckCircle2 className="w-10 h-10 text-success mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Sin alertas activas</p>
-            </div>
+            <EmptyState
+              icon={CheckCircle2}
+              title="Todo en orden"
+              description={filter === 'all' ? 'No hay alertas activas en tu flotilla.' : 'No hay alertas de esta categoría.'}
+            />
           )}
         </div>
       )}
