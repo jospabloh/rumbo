@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.22.0 | Updated 2026-06-21**
+**Version 1.23.0 | Updated 2026-06-21**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -243,7 +243,7 @@ Bulk import data via CSV files.
 
 The in-app help center.
 
-- Concise per-module guide (accordion), keyboard shortcuts, and tips.
+- **Full step-by-step user manual** (searchable, accordion per module) covering every process in the app, plus keyboard shortcuts and tips.
 - **Open a real support ticket** directly from the page (subject, category, priority, description). Before escalating, Rumbo **suggests a manual section** that may solve your problem. If you still need help, the case is **escalated to the support team by email** and you receive an email confirming we'll respond **within 48 business hours**. Tickets can be opened even when the license is read-only.
 - **Mis solicitudes:** see your own tickets with their status (Abierto, En proceso, Resuelto, Cerrado) and the support team's replies.
 - Shows the current app version.

@@ -1,27 +1,13 @@
 import { useState } from 'react';
-import { LifeBuoy, Command, Truck, Users, Wrench, Banknote, DollarSign, Bell, MessageSquare, MapPin, Shield, FileText, MessageCircle } from 'lucide-react';
+import { LifeBuoy, Command, MessageCircle, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import TicketForm from '@/components/support/TicketForm';
+import ManualGuide from '@/components/help/ManualGuide';
 import { APP_VERSION } from '@/lib/version';
 import { useEntityList } from '@/hooks/useEntities';
 import { TICKET_STATUSES, TICKET_CATEGORIES, labelFor, statusColor } from '@/lib/support';
-
-// Guía concisa por módulo (en español, igual que el resto de la app).
-const GUIDE = [
-  { icon: Users, title: 'Conductores', body: 'Da de alta a tu equipo con licencia, contacto y foto. Búscalos por nombre o licencia, edita su estatus y vincula su cuenta para que usen la App del Conductor.' },
-  { icon: Truck, title: 'Vehículos', body: 'Administra la flotilla: placa/unidad, marca, modelo, odómetro y conductor asignado. El estatus (activo, mantenimiento, inactivo) alimenta el dashboard.' },
-  { icon: Wrench, title: 'Taller', body: 'Registra mantenimientos (preventivo/correctivo) con costo y próxima fecha de servicio, y controla el inventario de refacciones. Genera alertas cuando un servicio está por vencer.' },
-  { icon: Banknote, title: 'Rentas', body: 'Genera cobros por periodo, registra pagos y da seguimiento a ingresos y referidos. El dashboard muestra lo cobrado del día y la tendencia de 7 días.' },
-  { icon: DollarSign, title: 'Financiero', body: 'Combustible, multas y reclamos de seguro en un solo lugar, más el cálculo de costo por kilómetro por vehículo.' },
-  { icon: Bell, title: 'Alertas', body: 'Avisos automáticos por documentos, seguros, verificaciones o mantenimientos próximos a vencer. Fíltralas por severidad y márcalas como resueltas.' },
-  { icon: MessageSquare, title: 'Mensajes', body: 'Canales de difusión y directos con tus conductores, con notas de voz y confirmaciones de lectura en tiempo real.' },
-  { icon: MapPin, title: 'Ubicación', body: 'Solicita la ubicación de un conductor bajo demanda (sin rastreo continuo). El conductor la comparte una sola vez desde su app.' },
-  { icon: FileText, title: 'Importar', body: 'Carga conductores o vehículos de forma masiva desde un archivo CSV, con vista previa antes de confirmar.' },
-  { icon: Shield, title: 'Admin y permisos', body: 'Edita la marca de tu organización (logo y colores), invita usuarios, asigna roles y configura permisos por módulo para Dispatcher, Mecánico y Conductor.' },
-];
 
 const badgeClasses = {
   warning: 'bg-warning/10 text-warning',
@@ -45,7 +31,7 @@ export default function Help() {
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
-      <PageHeader title="Centro de ayuda" subtitle="Guía de uso, atajos y soporte" />
+      <PageHeader title="Centro de ayuda" subtitle="Manual de uso, atajos y soporte" />
 
       {/* Soporte — CTA principal: abre un ticket real */}
       <div className="bg-card border border-border rounded-xl p-5 mb-5">
@@ -114,21 +100,12 @@ export default function Help() {
         </ul>
       </div>
 
-      {/* Guía por módulo */}
-      <h2 className="font-semibold text-sm mb-2 px-1">Guía por módulo</h2>
-      <Accordion type="single" collapsible className="bg-card border border-border rounded-xl px-4">
-        {GUIDE.map(({ icon: Icon, title, body }) => (
-          <AccordionItem key={title} value={title}>
-            <AccordionTrigger className="text-sm">
-              <span className="flex items-center gap-2.5">
-                <Icon className="w-4 h-4 text-primary shrink-0" />
-                {title}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground">{body}</AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
+      {/* Manual de usuario */}
+      <h2 className="font-semibold text-sm mb-2 px-1 flex items-center gap-2">
+        <BookOpen className="w-4 h-4 text-primary" /> Manual de usuario
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3 px-1">Guía paso a paso de cada módulo. Usa el buscador para encontrar un proceso.</p>
+      <ManualGuide />
 
       <p className="text-xs text-muted-foreground mt-6 px-1">Rumbo · versión {APP_VERSION}</p>
 
