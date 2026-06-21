@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.21.0 | Updated 2026-06-21**
+**Version 1.22.0 | Updated 2026-06-21**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -244,7 +244,7 @@ Bulk import data via CSV files.
 The in-app help center.
 
 - Concise per-module guide (accordion), keyboard shortcuts, and tips.
-- **Open a real support ticket** directly from the page (subject, category, priority, description). The ticket is created in Rumbo and the support team is notified by email. Tickets can be opened even when the license is read-only.
+- **Open a real support ticket** directly from the page (subject, category, priority, description). Before escalating, Rumbo **suggests a manual section** that may solve your problem. If you still need help, the case is **escalated to the support team by email** and you receive an email confirming we'll respond **within 48 business hours**. Tickets can be opened even when the license is read-only.
 - **Mis solicitudes:** see your own tickets with their status (Abierto, En proceso, Resuelto, Cerrado) and the support team's replies.
 - Shows the current app version.
 
@@ -256,7 +256,7 @@ Also reachable from **Ayuda y soporte** at the bottom of the sidebar.
 
 The app owner has a **Soporte** dashboard (`/tickets`, under the Plataforma group) that lists support tickets across all organizations. From there they can filter by status, change a ticket's status, and reply — replies are emailed to the person who opened the ticket.
 
-Support email recipient is configured via the `SUPPORT_EMAIL` (or `APP_OWNER_EMAIL`) environment variable.
+Support email recipient is configured via the `Support_email` secret (also accepts `SUPPORT_EMAIL` / `APP_OWNER_EMAIL`); if none is set it defaults to `soporte@acaciaco.com.mx`.
 
 ---
 

@@ -56,7 +56,7 @@ export default function Help() {
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold text-sm">¿Necesitas ayuda?</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Abre un ticket y nuestro equipo de soporte te responderá. Recibirás la respuesta por correo y aquí mismo.
+              Primero te sugerimos una sección del manual que podría resolverlo. Si aún necesitas ayuda, escalamos tu caso a soporte y te respondemos en un máximo de <span className="text-foreground font-medium">48 horas hábiles</span> por correo.
             </p>
             <div className="mt-3">
               <Button size="sm" className="gap-2" onClick={() => setShowForm(true)}>

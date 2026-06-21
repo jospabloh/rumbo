@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   TICKET_CATEGORIES, TICKET_STATUSES, TICKET_PRIORITIES,
-  labelFor, statusColor, validateTicket,
+  labelFor, statusColor, validateTicket, suggestSolution, SUPPORT_SLA_HOURS,
 } from '@/lib/support';
 
 describe('support catalogs', () => {
@@ -46,5 +46,33 @@ describe('validateTicket', () => {
   it('requires a body with enough detail', () => {
     expect(validateTicket({ subject: 'Asunto válido', body: '' })).toMatch(/describe/i);
     expect(validateTicket({ subject: 'Asunto válido', body: 'corto' })).toMatch(/detalle/i);
+  });
+});
+
+describe('suggestSolution', () => {
+  it('matches by keyword over category', () => {
+    expect(suggestSolution('question', 'no puedo registrar un cobro de renta').section).toBe('Rentas');
+    expect(suggestSolution('question', 'problema con un permiso de rol').section).toBe('Admin y permisos');
+    expect(suggestSolution('question', 'el stock de una refacción').section).toBe('Taller');
+    expect(suggestSolution('question', 'error al importar csv').section).toBe('Importar');
+  });
+
+  it('falls back to the category when no keyword matches', () => {
+    expect(suggestSolution('billing', 'asdfqwer').section).toBe('Licencia');
+    expect(suggestSolution('feature', 'xyz').section).toBe('Guía por módulo');
+  });
+
+  it('falls back to a generic section for unknown category and text', () => {
+    expect(suggestSolution('zzz', '').section).toBe('Guía por módulo');
+  });
+
+  it('always returns a tip string', () => {
+    expect(typeof suggestSolution('question', 'vehículo placa').tip).toBe('string');
+  });
+});
+
+describe('SUPPORT_SLA_HOURS', () => {
+  it('is 48 business hours', () => {
+    expect(SUPPORT_SLA_HOURS).toBe(48);
   });
 });

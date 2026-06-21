@@ -4,6 +4,32 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.22.0] — 2026-06-21 — soporte: manual primero, escalamiento por correo y SLA de 48 h
+
+### Changed — flujo de ticket con desvío al manual
+
+- Al abrir un ticket, **primero se sugiere una sección del manual** que podría
+  resolver el problema (`suggestSolution`, por palabra clave del asunto/descripción
+  con respaldo por categoría). El usuario puede cerrar si eso le ayudó o **escalar a
+  soporte**.
+- Al escalar, se confirma en pantalla y **por correo** que el caso fue escalado y que
+  se responderá **dentro de 48 horas hábiles**, incluyendo la sección del manual
+  sugerida.
+
+### Changed — escalamiento por correo a soporte
+
+- `submitTicket` ahora **envía dos correos** (best-effort): uno al equipo de soporte
+  con el ticket y la sección sugerida, y otro **al solicitante** confirmando el
+  escalamiento y el SLA de 48 h.
+- El destino de soporte se lee del secret **`Support_email`** (también acepta
+  `SUPPORT_EMAIL`/`APP_OWNER_EMAIL`) y, si no hay ninguno, cae a
+  `soporte@acaciaco.com.mx` por defecto.
+
+### Tests
+
+- **+5 pruebas** (362 en total): `suggestSolution` (coincidencia por palabra clave,
+  respaldo por categoría y genérico) y el SLA de soporte.
+
 ## [1.21.0] — 2026-06-21 — importador CSV robusto, refacciones con stock mínimo y portal del conductor
 
 ### Changed — importador CSV de verdad robusto
