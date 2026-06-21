@@ -3,7 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Plus, Search, ChevronRight, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/list-skeleton';
 import VehicleForm from '@/components/vehicles/VehicleForm';
 import VehicleDetail from '@/components/vehicles/VehicleDetail';
 import { useTenant } from '@/lib/TenantContext';
@@ -76,17 +78,15 @@ export default function Vehicles() {
 
   return (
     <div className="p-4 lg:p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold">Vehículos</h1>
-          <p className="text-sm text-muted-foreground">{vehicles.length}{Number.isFinite(limit) ? ` / ${limit}` : ''} en total</p>
-        </div>
-        {!readOnly && can('vehicles', 'create') && (
+      <PageHeader
+        title="Vehículos"
+        subtitle={`${vehicles.length}${Number.isFinite(limit) ? ` / ${limit}` : ''} en total`}
+        action={!readOnly && can('vehicles', 'create') && (
           <Button size="sm" onClick={() => { setEditVehicle(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Agregar
           </Button>
         )}
-      </div>
+      />
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -94,7 +94,7 @@ export default function Vehicles() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><Spinner /></div>
+        <ListSkeleton />
       ) : (
         <div className="space-y-2">
           {filtered.map(v => {
@@ -118,7 +118,18 @@ export default function Vehicles() {
               </button>
             );
           })}
-          {filtered.length === 0 && <p className="text-center text-muted-foreground py-10 text-sm">Sin resultados</p>}
+          {filtered.length === 0 && (
+            <EmptyState
+              icon={Truck}
+              title={search ? 'Sin resultados' : 'Aún no hay vehículos'}
+              description={search ? 'Prueba con otra placa, marca o modelo.' : 'Agrega tu primera unidad para empezar a gestionar tu flotilla.'}
+              action={!search && !readOnly && can('vehicles', 'create') && (
+                <Button size="sm" onClick={() => { setEditVehicle(null); setShowForm(true); }} className="gap-2">
+                  <Plus className="w-4 h-4" /> Agregar vehículo
+                </Button>
+              )}
+            />
+          )}
         </div>
       )}
 

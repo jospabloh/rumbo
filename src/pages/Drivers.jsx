@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Star, Phone, ChevronRight } from 'lucide-react';
+import { Plus, Search, Star, Phone, ChevronRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/list-skeleton';
 import DriverForm from '@/components/drivers/DriverForm';
 import DriverDetail from '@/components/drivers/DriverDetail';
 import { useTenant } from '@/lib/TenantContext';
@@ -71,17 +73,15 @@ export default function Drivers() {
 
   return (
     <div className="p-4 lg:p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold">Conductores</h1>
-          <p className="text-sm text-muted-foreground">{drivers.length}{Number.isFinite(limit) ? ` / ${limit}` : ''} en total</p>
-        </div>
-        {!readOnly && can('drivers', 'create') && (
+      <PageHeader
+        title="Conductores"
+        subtitle={`${drivers.length}${Number.isFinite(limit) ? ` / ${limit}` : ''} en total`}
+        action={!readOnly && can('drivers', 'create') && (
           <Button size="sm" onClick={() => { setEditDriver(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Agregar
           </Button>
         )}
-      </div>
+      />
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -94,9 +94,7 @@ export default function Drivers() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <Spinner />
-        </div>
+        <ListSkeleton />
       ) : (
         <div className="space-y-2">
           {filtered.map(d => (
@@ -132,7 +130,16 @@ export default function Drivers() {
             </button>
           ))}
           {filtered.length === 0 && (
-            <p className="text-center text-muted-foreground py-10 text-sm">Sin resultados</p>
+            <EmptyState
+              icon={Users}
+              title={search ? 'Sin resultados' : 'Aún no hay conductores'}
+              description={search ? 'Prueba con otro nombre o número de licencia.' : 'Agrega tu primer conductor para empezar a operar.'}
+              action={!search && !readOnly && can('drivers', 'create') && (
+                <Button size="sm" onClick={() => { setEditDriver(null); setShowForm(true); }} className="gap-2">
+                  <Plus className="w-4 h-4" /> Agregar conductor
+                </Button>
+              )}
+            />
           )}
         </div>
       )}

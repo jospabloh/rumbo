@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { TenantProvider, useTenant } from '@/lib/TenantContext';
+import { useMe } from '@/hooks/useEntities';
+import { can, isDriver } from '@/lib/permissions';
+import { accessibleNavItems } from '@/lib/nav';
 import Onboarding from './pages/Onboarding';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -33,30 +35,24 @@ import UsefulLinks from './pages/UsefulLinks';
 import TestData from './pages/TestData';
 import Landing from './pages/Landing';
 import RequireAppOwner from './components/RequireAppOwner';
+import RequireAccess from './components/RequireAccess';
 import ErrorBoundary from './components/ErrorBoundary';
+import { PageLoader, Spinner } from '@/components/ui/spinner';
 // Add page imports here
 
 const TenantGate = ({ children }) => {
   const { tenantId, isAppOwner, loading, reload } = useTenant();
   const { isLoadingAuth } = useAuth();
-  const [user, setUser] = useState(null);
-  const [userLoaded, setUserLoaded] = useState(false);
-
-  useEffect(() => {
-    import('@/api/base44Client').then(({ base44 }) => {
-      base44.auth.me().then(setUser).catch(() => {}).finally(() => setUserLoaded(true));
-    });
-  }, []);
+  const { data: user, isLoading: userLoading, isFetched: userFetched } = useMe();
 
   // Esperar a tener tenant resuelto Y el perfil del usuario antes de decidir, para no
   // mostrar la app vacía un instante ni parpadear el onboarding.
-  if (loading || isLoadingAuth || !userLoaded) return null;
+  if (loading || isLoadingAuth || (userLoading && !userFetched)) return null;
 
   // Cualquier usuario autenticado que aún no pertenece a un tenant pasa primero por el
   // onboarding: ahí elige crear su organización (prueba de 30 días) o unirse a una
   // existente con un código. El owner de la app es la única excepción: gestiona licencias
-  // y puede no tener un tenant propio. Antes solo se atrapaba a admin/owner, así que un
-  // usuario nuevo con correo externo caía directo en una app vacía sin guía ni aviso.
+  // y puede no tener un tenant propio.
   const needsOnboarding = user && !tenantId && !isAppOwner;
 
   if (needsOnboarding) {
@@ -66,21 +62,34 @@ const TenantGate = ({ children }) => {
   return children;
 };
 
+/**
+ * Home — destino de la ruta raíz según el rol. El dashboard no es accesible para
+ * todos (un mecánico, por ejemplo, no lo ve), así que en lugar de mostrar una
+ * pantalla de "acceso restringido" en `/`, redirige a la primera sección a la que
+ * el rol sí tiene acceso. El conductor va a su propia interfaz.
+ */
+const Home = () => {
+  const { userRole, loading } = useTenant();
+  if (loading) return <PageLoader />;
+  if (isDriver(userRole)) return <Navigate to="/driver/home" replace />;
+  if (can(userRole, 'dashboard')) return <Dashboard />;
+  const items = accessibleNavItems(userRole);
+  if (items.length > 0) return <Navigate to={items[0].path} replace />;
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] p-6 text-center">
+      <p className="text-sm text-muted-foreground">Tu cuenta no tiene secciones asignadas. Contacta al administrador.</p>
+    </div>
+  );
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    import('@/api/base44Client').then(({ base44 }) => {
-      base44.auth.me().then(setUser).catch(() => {});
-    });
-  }, []);
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -101,26 +110,26 @@ const AuthenticatedApp = () => {
     <TenantGate>
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/drivers" element={<Drivers />} />
-        <Route path="/vehicles" element={<Vehicles />} />
-        <Route path="/maintenance" element={<MaintenancePage />} />
-
-        <Route path="/rentas" element={<Rentas />} />
-        <Route path="/financial" element={<Financial />} />
-        <Route path="/alerts" element={<Alerts />} />
-        <Route path="/location" element={<Location />} />
-        <Route path="/messages" element={<Messages />} />
-        <Route path="/import" element={<Import />} />
-        <Route path="/driver/home" element={<DriverHome />} />
-        <Route path="/driver/profile" element={<DriverProfile />} />
-        <Route path="/driver/trips" element={<DriverTrips />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/drivers" element={<RequireAccess page="drivers"><Drivers /></RequireAccess>} />
+        <Route path="/vehicles" element={<RequireAccess page="vehicles"><Vehicles /></RequireAccess>} />
+        <Route path="/maintenance" element={<RequireAccess page="maintenance"><MaintenancePage /></RequireAccess>} />
+        <Route path="/rentas" element={<RequireAccess page="rentas"><Rentas /></RequireAccess>} />
+        <Route path="/financial" element={<RequireAccess page="financial"><Financial /></RequireAccess>} />
+        <Route path="/alerts" element={<RequireAccess page="alerts"><Alerts /></RequireAccess>} />
+        <Route path="/location" element={<RequireAccess page="location"><Location /></RequireAccess>} />
+        <Route path="/messages" element={<RequireAccess page="messages"><Messages /></RequireAccess>} />
+        <Route path="/links" element={<RequireAccess page="links"><UsefulLinks /></RequireAccess>} />
+        <Route path="/import" element={<RequireAccess page="import"><Import /></RequireAccess>} />
+        <Route path="/driver/home" element={<RequireAccess roles={['driver']}><DriverHome /></RequireAccess>} />
+        <Route path="/driver/profile" element={<RequireAccess roles={['driver']}><DriverProfile /></RequireAccess>} />
+        <Route path="/driver/trips" element={<RequireAccess roles={['driver']}><DriverTrips /></RequireAccess>} />
+        <Route path="/driver/messages" element={<RequireAccess roles={['driver']}><Messages /></RequireAccess>} />
         <Route path="/github" element={<RequireAppOwner><GitHubPage /></RequireAppOwner>} />
         <Route path="/supabase" element={<RequireAppOwner><SupabasePage /></RequireAppOwner>} />
-        <Route path="/billing" element={<Billing />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/catalogs" element={<Catalogs />} />
-        <Route path="/links" element={<UsefulLinks />} />
+        <Route path="/billing" element={<RequireAccess page="billing"><Billing /></RequireAccess>} />
+        <Route path="/admin" element={<RequireAccess page="admin"><Admin /></RequireAccess>} />
+        <Route path="/catalogs" element={<RequireAccess page="catalogs"><Catalogs /></RequireAccess>} />
         <Route path="/licenses" element={<RequireAppOwner><Licenses /></RequireAppOwner>} />
         <Route path="/test-data" element={<RequireAppOwner><TestData /></RequireAppOwner>} />
       </Route>

@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.17.0 | Updated 2026-06-19**
+**Version 1.18.0 | Updated 2026-06-21**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -83,6 +83,14 @@ Forms across the app (vehicles, drivers, fines, fuel logs, insurance claims, mai
 
 If saving fails on the server (for example, a connection problem), the error is shown at the bottom of the form so you can retry without losing what you typed.
 
+### Quick navigation — command palette (⌘K)
+
+Press **⌘K** (Mac) or **Ctrl+K** (Windows/Linux) — or click **Buscar…** at the top of the sidebar — to open the command palette. Start typing to jump to any section you have access to, or to switch between light and dark themes, all from the keyboard. The palette only ever lists sections your role can open, so it stays in sync with your permissions.
+
+### Loading and empty states
+
+Lists (drivers, vehicles, alerts, and more) show lightweight placeholders while data loads, so the page feels instant and doesn't jump when results arrive. When a list is genuinely empty, Rumbo distinguishes between "nothing here yet" (with a shortcut to add the first record) and "no results for your search."
+
 ---
 
 ## Modules
@@ -94,12 +102,13 @@ The main overview page showing:
 - Active driver count.
 - Open alerts (with critical alert banner).
 - Unread messages count.
-- Today's trips and earnings.
-- Average driver rating.
+- Today's collected rent income and outstanding balance.
+- Fleet availability (% of units operating).
+- **Revenue trend:** a 7-day chart of collected rent income.
 - Vehicle fleet table with assigned drivers.
 - Recent alerts panel.
 
-**Accessible to:** Owner, Admin, Dispatcher.
+**Accessible to:** Owner, Admin, Dispatcher. Roles without dashboard access (e.g. Mechanic) are taken to their first available section instead.
 
 ---
 
@@ -285,6 +294,7 @@ All data in Rumbo is strictly scoped to your tenant. Users in one organization c
 ## Security Notes
 
 - Permissions are enforced at the database level (Row-Level Security) in addition to UI controls.
+- **Routes are permission-gated.** Beyond hiding sidebar links, every route re-checks your role before rendering — opening a restricted section by typing its URL (e.g. `/financial`, `/admin`) shows an "access restricted" screen instead of the page. Drivers who reach a staff route are redirected to their own app.
 - Admin users can only access data within their own tenant.
 - The cost-per-km financial calculation requires at least Dispatcher-level access.
 - Document expiry alerts are generated only for your tenant's drivers and vehicles.

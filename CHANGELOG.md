@@ -4,6 +4,72 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.18.0] — 2026-06-21 — seguridad, pulido premium y navegación rápida (⌘K)
+
+Versión de "bump" transversal: cierra una brecha de permisos a nivel de ruta,
+unifica los patrones de UI en componentes compartidos, estrena un dashboard con
+tendencia de ingresos y una paleta de comandos, y retira patrones heredados de
+la capa de datos. Sin quitar funcionalidad: todo lo anterior sigue intacto.
+
+### Security — permisos aplicados también a nivel de ruta
+
+- **Guard de ruta `RequireAccess`.** Antes la barra lateral ocultaba las secciones
+  por rol, pero las rutas no se protegían: un dispatcher podía abrir `/financial`,
+  `/admin` o `/import` escribiendo la URL y la página se renderizaba (la RLS
+  protegía los datos, pero la UI exponía controles que no debía). Ahora cada ruta
+  revalida `can(rol, página)` —el mismo mapa que filtra la barra lateral— antes de
+  renderizar. A un conductor que cae en una ruta del staff se le redirige a su
+  panel; a los demás se les muestra una pantalla de "acceso restringido".
+- **Ruta raíz inteligente.** `/` ya no asume el dashboard para todos: redirige a la
+  primera sección accesible del rol (p. ej. un mecánico llega a Vehículos en vez de
+  a una pantalla vacía) y a los conductores a su propia interfaz.
+- Pantallas de "acceso restringido" y loaders ahora usan tokens del tema (antes
+  tenían colores `slate-*` fijos que se rompían en modo oscuro).
+
+### Fixed
+
+- **Mensajes del conductor (404).** La navegación y la campana móvil del conductor
+  apuntaban a `/driver/messages`, una ruta que no existía: tocar "Mensajes"
+  llevaba a la pantalla de "página no encontrada". Se agregó la ruta.
+
+### Added — nuevas funciones
+
+- **Paleta de comandos (⌘K / Ctrl+K).** Buscador global para saltar a cualquier
+  sección permitida y cambiar de tema, sin tocar el mouse. Reutiliza el mismo
+  registro de navegación que la barra lateral, así que nunca ofrece una sección
+  prohibida. Hay un botón "Buscar…" visible en la barra lateral.
+- **Tendencia de ingresos en el Dashboard.** Gráfica de área de los últimos 7 días
+  de cobros de rentas (con cifras tabulares y colores del tema/branding), para leer
+  la operación de un vistazo.
+
+### Changed — pulido de UI/UX consistente
+
+- Nuevos primitivos compartidos: **`EmptyState`** (vacío con icono, texto y acción),
+  **`PageHeader`** (encabezado uniforme) y **`ListSkeleton`** (esqueleto de carga en
+  lugar del spinner suelto, para que la carga se perciba más rápida).
+- Adoptados en Dashboard, Conductores, Vehículos y Alertas; reemplazan el
+  `<p>Sin registros</p>` y los `<div className="flex justify-between">` copiados en
+  cada página. Los estados vacíos ahora distinguen "aún no hay datos" de "sin
+  resultados de búsqueda" y ofrecen la acción adecuada.
+- La fecha del Dashboard se localiza en español (antes el día/mes salían en inglés).
+
+### Changed — capa de datos sin patrones heredados
+
+- **Registro central de navegación** en `src/lib/nav.js`: única fuente de verdad
+  para la barra lateral, la paleta de comandos y los guards de ruta (no se pueden
+  desincronizar).
+- `Layout` y `App` ya no refetchean `auth.me()` con `useState`/`useEffect`: usan el
+  hook cacheado `useMe()`. Los contadores de alertas/mensajes de la barra lateral
+  pasan a los hooks `useAlerts`/`useMessages` (misma caché que el dashboard ⇒ una
+  sola petición compartida) en vez del fetch manual que corría en cada montaje.
+- Eliminado código muerto (`ProtectedRoute` que no se usaba en ninguna ruta).
+
+### Tests
+
+- **+10 pruebas** nuevas (321 en total): `nav.test.js` verifica que la navegación
+  por rol nunca filtra una sección prohibida; `dashboard.test.js` cubre el cálculo
+  de la serie de ingresos (agrupación por día, ventana, datos malformados).
+
 ## [1.17.0] — 2026-06-19 — forms: react-hook-form + zod con validación en cliente
 
 ### Changed — los 7 formularios de entidad ahora usan react-hook-form + zod
