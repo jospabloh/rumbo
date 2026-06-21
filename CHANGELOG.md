@@ -4,6 +4,29 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.23.0] — 2026-06-21 — manual de usuario real e in-app (Centro de ayuda)
+
+### Added — manual paso a paso dentro de la app
+
+- La "Guía por módulo" (una línea por tema) se reemplaza por un **manual completo**
+  en `src/lib/manual.js`: 19 secciones con temas, **pasos numerados** y notas, que
+  cubren cada proceso de la app: primeros pasos, interfaz, dashboard, conductores,
+  vehículos, taller (mantenimiento e inventario), rentas, financiero, alertas,
+  mensajes, ubicación, importar, catálogos, enlaces, licencia, admin y permisos,
+  app del conductor, soporte y la plataforma del owner de la app.
+- Nuevo componente **`ManualGuide`** con **buscador** (filtra por sección, tema o
+  texto de los pasos) y acordeón por sección. Integrado en el Centro de ayuda.
+- Los títulos de sección coinciden con los que sugiere el flujo de soporte
+  (`suggestSolution`), así que "revisa la sección X" siempre apunta a contenido real.
+- Pasos redactados con las etiquetas reales de la interfaz (botones, campos,
+  pestañas) para que cada instrucción coincida con lo que el usuario ve.
+
+### Tests
+
+- **+5 pruebas** (367 en total): integridad del manual (toda sección con
+  id/título/ícono y temas con pasos; ids únicos) y que las secciones referidas por
+  el suplemento de soporte existan en el manual.
+
 ## [1.22.0] — 2026-06-21 — soporte: manual primero, escalamiento por correo y SLA de 48 h
 
 ### Changed — flujo de ticket con desvío al manual
