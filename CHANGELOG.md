@@ -4,6 +4,41 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.20.0] — 2026-06-21 — soporte real: tickets, bandeja del owner y notificación por correo
+
+La sección de Ayuda de 1.19.0 sólo enlazaba a un sitio externo. Esta versión
+implementa un sistema de soporte de verdad, de punta a punta.
+
+### Added — sistema de tickets de soporte
+
+- **Nueva entidad `SupportTicket`** (`base44/entities/SupportTicket.jsonc`) con RLS:
+  el owner/admin del tenant ve los tickets de su organización y cada usuario ve los
+  suyos; el panel cross-tenant del owner de la app corre con service role.
+- **Alta de tickets en la app** (`submitTicket`): desde el Centro de ayuda
+  cualquier usuario abre un ticket (asunto, categoría, prioridad, descripción) con
+  validación. Se crea del lado servidor —funciona incluso con la licencia en
+  solo-lectura, que es cuando más se necesita soporte— y **notifica por correo** al
+  equipo (`SUPPORT_EMAIL` o `APP_OWNER_EMAIL`).
+- **«Mis solicitudes»** en el Centro de ayuda: el usuario ve sus tickets con
+  estatus y el hilo de respuestas del soporte.
+- **Bandeja de soporte del owner de la app** (`/tickets`, protegida por
+  `RequireAppOwner`): lista todos los tickets de todas las organizaciones
+  (`ticketsAdmin`, service role), con filtros por estatus, cambio de estatus
+  (abierto → en proceso → resuelto → cerrado) y **respuesta que se envía por
+  correo al solicitante**. Aparece en el grupo «Plataforma» junto a Licencias.
+
+### Changed
+
+- El botón «Abrir ticket de soporte» del Centro de ayuda ahora abre el formulario
+  in-app real (antes sólo abría un enlace externo / `mailto`).
+- `PLATFORM_NAV` pasa a ser una lista (Licencias + Soporte), reutilizada por la
+  barra lateral y la paleta de comandos del owner de la app.
+
+### Tests
+
+- **+8 pruebas** (344 en total): catálogos de soporte, `labelFor`, `statusColor` y
+  `validateTicket` (asunto/descripción obligatorios y longitudes mínimas).
+
 ## [1.19.0] — 2026-06-21 — UX: navegación con permanencia, ayuda/soporte, paletas premium y tarjetas accionables
 
 Ronda de experiencia de usuario a partir de feedback directo: el menú ahora marca

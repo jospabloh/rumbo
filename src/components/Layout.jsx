@@ -137,7 +137,7 @@ export default function Layout() {
 
   // El owner de la app ve la sección Licencias (gestión de todas las tenants).
   const navGroups = isAppOwner
-    ? [...filteredGroups, { label: 'Plataforma', items: [PLATFORM_NAV] }]
+    ? [...filteredGroups, { label: 'Plataforma', items: PLATFORM_NAV }]
     : filteredGroups;
 
   const SidebarContent = ({ onLinkClick }) => (

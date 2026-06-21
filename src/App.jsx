@@ -33,6 +33,7 @@ import Licenses from './pages/Licenses';
 import Catalogs from './pages/Catalogs';
 import UsefulLinks from './pages/UsefulLinks';
 import TestData from './pages/TestData';
+import Tickets from './pages/Tickets';
 import Help from './pages/Help';
 import Landing from './pages/Landing';
 import RequireAppOwner from './components/RequireAppOwner';
@@ -133,6 +134,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin" element={<RequireAccess page="admin"><Admin /></RequireAccess>} />
         <Route path="/catalogs" element={<RequireAccess page="catalogs"><Catalogs /></RequireAccess>} />
         <Route path="/licenses" element={<RequireAppOwner><Licenses /></RequireAppOwner>} />
+        <Route path="/tickets" element={<RequireAppOwner><Tickets /></RequireAppOwner>} />
         <Route path="/test-data" element={<RequireAppOwner><TestData /></RequireAppOwner>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

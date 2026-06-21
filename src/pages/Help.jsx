@@ -1,9 +1,13 @@
-import { LifeBuoy, Mail, ExternalLink, Command, Truck, Users, Wrench, Banknote, DollarSign, Bell, MessageSquare, MapPin, Shield, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { LifeBuoy, Command, Truck, Users, Wrench, Banknote, DollarSign, Bell, MessageSquare, MapPin, Shield, FileText, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { SUPPORT_URL } from '@/lib/license';
+import TicketForm from '@/components/support/TicketForm';
 import { APP_VERSION } from '@/lib/version';
+import { useEntityList } from '@/hooks/useEntities';
+import { TICKET_STATUSES, TICKET_CATEGORIES, labelFor, statusColor } from '@/lib/support';
 
 // Guía concisa por módulo (en español, igual que el resto de la app).
 const GUIDE = [
@@ -19,12 +23,31 @@ const GUIDE = [
   { icon: Shield, title: 'Admin y permisos', body: 'Edita la marca de tu organización (logo y colores), invita usuarios, asigna roles y configura permisos por módulo para Dispatcher, Mecánico y Conductor.' },
 ];
 
+const badgeClasses = {
+  warning: 'bg-warning/10 text-warning',
+  primary: 'bg-primary/10 text-primary',
+  success: 'bg-success/10 text-success',
+  muted: 'bg-muted text-muted-foreground',
+};
+
+function StatusBadge({ status }) {
+  const color = statusColor(status);
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badgeClasses[color] || badgeClasses.muted}`}>
+      {labelFor(TICKET_STATUSES, status)}
+    </span>
+  );
+}
+
 export default function Help() {
+  const [showForm, setShowForm] = useState(false);
+  const { data: tickets = [] } = useEntityList('SupportTicket', { sort: '-last_activity_at' });
+
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <PageHeader title="Centro de ayuda" subtitle="Guía de uso, atajos y soporte" />
 
-      {/* Soporte — CTA principal */}
+      {/* Soporte — CTA principal: abre un ticket real */}
       <div className="bg-card border border-border rounded-xl p-5 mb-5">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -33,18 +56,49 @@ export default function Help() {
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold text-sm">¿Necesitas ayuda?</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Abre un ticket de soporte y nuestro equipo te responderá. Incluye tu organización y una breve descripción del problema.
+              Abre un ticket y nuestro equipo de soporte te responderá. Recibirás la respuesta por correo y aquí mismo.
             </p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" className="gap-2"><LifeBuoy className="w-4 h-4" /> Abrir ticket de soporte</Button>
-              </a>
-              <a href="mailto:soporte@acaciaco.com.mx?subject=Soporte%20Rumbo">
-                <Button size="sm" variant="outline" className="gap-2"><Mail className="w-4 h-4" /> Escribir por correo</Button>
-              </a>
+            <div className="mt-3">
+              <Button size="sm" className="gap-2" onClick={() => setShowForm(true)}>
+                <LifeBuoy className="w-4 h-4" /> Abrir ticket de soporte
+              </Button>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mis solicitudes */}
+      <div className="bg-card border border-border rounded-xl p-5 mb-5">
+        <h2 className="font-semibold text-sm mb-3">Mis solicitudes</h2>
+        {tickets.length === 0 ? (
+          <EmptyState icon={MessageCircle} title="Sin tickets" description="Cuando abras un ticket de soporte aparecerá aquí con su estatus y respuestas." className="py-8" />
+        ) : (
+          <div className="space-y-2">
+            {tickets.map((t) => (
+              <div key={t.id} className="border border-border rounded-lg p-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium flex-1 min-w-0 truncate">{t.subject}</p>
+                  <StatusBadge status={t.status} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {labelFor(TICKET_CATEGORIES, t.category)}
+                  {t.last_activity_at ? ` · ${new Date(t.last_activity_at).toLocaleDateString()}` : ''}
+                  {Array.isArray(t.responses) && t.responses.length > 0 ? ` · ${t.responses.length} respuesta${t.responses.length === 1 ? '' : 's'}` : ''}
+                </p>
+                {Array.isArray(t.responses) && t.responses.length > 0 && (
+                  <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                    {t.responses.map((r, i) => (
+                      <div key={i} className="text-xs">
+                        <span className="font-medium text-primary">{r.author_name || 'Soporte'}:</span>{' '}
+                        <span className="text-muted-foreground">{r.body}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Atajos / tips */}
@@ -76,12 +130,9 @@ export default function Help() {
         ))}
       </Accordion>
 
-      <div className="flex items-center justify-between mt-6 px-1">
-        <p className="text-xs text-muted-foreground">Rumbo · versión {APP_VERSION}</p>
-        <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-primary inline-flex items-center gap-1">
-          Sitio de soporte <ExternalLink className="w-3 h-3" />
-        </a>
-      </div>
+      <p className="text-xs text-muted-foreground mt-6 px-1">Rumbo · versión {APP_VERSION}</p>
+
+      {showForm && <TicketForm onClose={() => setShowForm(false)} />}
     </div>
   );
 }
