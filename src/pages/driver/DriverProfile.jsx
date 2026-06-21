@@ -1,14 +1,29 @@
-import { Star, Phone, FileText, Calendar, Shield } from 'lucide-react';
+import { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Star, Phone, FileText, Calendar, Shield, Truck, Pencil } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { FormError } from '@/components/ui/form-error';
 import { PageLoader } from '@/components/ui/spinner';
-import { useMe, useCurrentDriver, useEntityList } from '@/hooks/useEntities';
+import ResponsiveModal from '@/components/ui/responsive-modal';
+import { useMe, useCurrentDriver, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
 const docTypeLabel = { license: 'Licencia', medical: 'Cert. médico', background: 'Antecedentes', other: 'Otro' };
 
 export default function DriverProfile() {
   const { isLoading: meLoading } = useMe();
   const { data: driver, isLoading: driverLoading } = useCurrentDriver();
-  const { data: docs = [] } = useEntityList('DriverDocument', { filter: { driver_id: driver?.id }, enabled: !!driver });
+  const enabled = !!driver;
+  const { data: docs = [] } = useEntityList('DriverDocument', { filter: { driver_id: driver?.id }, enabled });
+  const { data: vehicles = [] } = useEntityList('Vehicle', { filter: { assigned_driver_id: driver?.id }, enabled });
+  const invalidate = useInvalidateEntity();
   const loading = meLoading || driverLoading;
+
+  const [editing, setEditing] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   if (loading) return <PageLoader />;
 
@@ -19,12 +34,32 @@ export default function DriverProfile() {
     </div>
   );
 
+  const vehicle = vehicles[0] || null;
   const statusCls = driver.status === 'active' ? 'bg-success/10 text-success' : driver.status === 'suspended' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground';
   const statusLabel = driver.status === 'active' ? 'Activo' : driver.status === 'suspended' ? 'Suspendido' : 'Inactivo';
 
+  const openEdit = () => { setPhone(driver.phone || ''); setError(''); setEditing(true); };
+
+  const savePhone = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await base44.entities.Driver.update(driver.id, { phone: phone.trim() });
+      invalidate('Driver');
+      setEditing(false);
+    } catch {
+      setError('No se pudo guardar. Inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="p-4 space-y-4 max-w-lg">
-      <h1 className="text-xl font-bold">Mi Perfil</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">Mi Perfil</h1>
+        <Button size="sm" variant="outline" onClick={openEdit} className="gap-2"><Pencil className="w-3.5 h-3.5" />Editar</Button>
+      </div>
 
       {/* Avatar & name */}
       <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
@@ -44,11 +79,23 @@ export default function DriverProfile() {
         </div>
         {driver.rating && (
           <div className="ml-auto text-center">
-            <p className="text-2xl font-bold text-warning">{driver.rating}</p>
+            <p className="text-2xl font-bold text-warning font-mono">{driver.rating}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Star className="w-3 h-3 fill-warning text-warning" />Rating</p>
           </div>
         )}
       </div>
+
+      {/* Assigned vehicle */}
+      {vehicle && (
+        <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0"><Truck className="w-5 h-5" /></div>
+          <div className="min-w-0">
+            <p className="font-bold font-mono tracking-tight">{vehicle.plate || (vehicle.unit_number ? `#${vehicle.unit_number}` : '—')}</p>
+            <p className="text-sm text-muted-foreground truncate">{vehicle.make} {vehicle.model} {vehicle.year && `(${vehicle.year})`}</p>
+          </div>
+          <span className="ml-auto text-xs px-2 py-0.5 bg-success/10 text-success rounded-full font-medium shrink-0">Asignado</span>
+        </div>
+      )}
 
       {/* Info */}
       <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-2 gap-4">
@@ -86,6 +133,23 @@ export default function DriverProfile() {
             </a>
           ))}
         </div>
+      )}
+
+      {editing && (
+        <ResponsiveModal title="Editar mi perfil" onClose={() => setEditing(false)} maxWidth="sm">
+          <div className="space-y-3">
+            <div>
+              <Label>Teléfono</Label>
+              <Input value={phone} onChange={e => setPhone(e.target.value)} className="mt-1 bg-background" placeholder="55 1234 5678" />
+            </div>
+            <p className="text-xs text-muted-foreground">Para actualizar otros datos (licencia, documentos) contacta a tu administrador.</p>
+            <FormError>{error}</FormError>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" onClick={() => setEditing(false)} className="flex-1">Cancelar</Button>
+              <Button onClick={savePhone} disabled={saving} className="flex-1">{saving ? 'Guardando...' : 'Guardar'}</Button>
+            </div>
+          </div>
+        </ResponsiveModal>
       )}
     </div>
   );

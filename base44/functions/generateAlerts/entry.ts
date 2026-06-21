@@ -22,12 +22,13 @@ Deno.serve(async (req) => {
     const tenantId = user.data?.tenant_id;
     if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
 
-    const [drivers, vehicles, driverDocs, vehicleDocs, maintenance, existingAlerts] = await Promise.all([
+    const [drivers, vehicles, driverDocs, vehicleDocs, maintenance, parts, existingAlerts] = await Promise.all([
       base44.asServiceRole.entities.Driver.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.Vehicle.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.DriverDocument.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.VehicleDocument.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.Maintenance.filter({ tenant_id: tenantId, next_due_at: { $exists: true } }),
+      base44.asServiceRole.entities.Part.filter({ tenant_id: tenantId }),
       base44.asServiceRole.entities.Alert.filter({ tenant_id: tenantId, resolved: false }),
     ]);
 
@@ -114,6 +115,23 @@ Deno.serve(async (req) => {
             vehicle_id: m.vehicle_id,
             message: `Mantenimiento de ${vehicle?.plate || 'vehículo'} vence en ${days} día${days === 1 ? '' : 's'}`,
             severity: severity(days), due_date: m.next_due_at, resolved: false,
+          });
+        }
+      }
+    }
+
+    // Refacciones con stock por debajo del mínimo (min_stock > 0).
+    for (const p of parts) {
+      const min = Number(p.min_stock) || 0;
+      const stock = Number(p.stock) || 0;
+      if (min > 0 && stock <= min) {
+        if (!existingAlerts.some(a => a.entity_id === p.id && a.entity_type === 'part')) {
+          toCreate.push({
+            entity_type: 'part', entity_id: p.id,
+            message: stock === 0
+              ? `Refacción agotada: ${p.name}`
+              : `Stock bajo: ${p.name} (${stock} disponible${stock === 1 ? '' : 's'}, mínimo ${min})`,
+            severity: stock === 0 ? 'critical' : 'warning', resolved: false,
           });
         }
       }

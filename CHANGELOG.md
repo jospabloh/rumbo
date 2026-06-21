@@ -4,6 +4,42 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.21.0] — 2026-06-21 — importador CSV robusto, refacciones con stock mínimo y portal del conductor
+
+### Changed — importador CSV de verdad robusto
+
+- **Parser nuevo** (`src/lib/csv.js`) que maneja campos entre comillas con comas y
+  saltos de línea, comillas escapadas (`""`), CRLF y BOM. El anterior hacía
+  `split(',')` y se rompía con cualquiera de esos casos.
+- **Validación por fila + éxito parcial:** antes de importar, las filas se separan
+  en válidas (con vista previa) y con problemas (listadas con su número de línea y
+  motivo). La importación va fila por fila: si una falla al guardar, las demás
+  continúan, y el resumen reporta importadas / omitidas / fallidas con su motivo.
+  Antes era todo-o-nada y se detenía en el primer error.
+
+### Added — inventario de refacciones con stock mínimo
+
+- Nuevo campo **`min_stock`** en la entidad `Part`. La lista marca **stock bajo**
+  (≤ mínimo) y **agotado** (0), con un resumen arriba, y ahora permite **editar**
+  una refacción (no sólo crear).
+- **Alertas automáticas de stock bajo**: `generateAlerts` crea una alerta
+  (warning ≤ mínimo, critical si 0) por cada refacción bajo su umbral; se agregó el
+  tipo `part` a la entidad `Alert`.
+- `PartsList` migrado a la capa de datos (React Query) en vez de `useState`/
+  `useEffect` manual, con `EmptyState`/`ListSkeleton`.
+
+### Added — portal del conductor más completo
+
+- **Registro de viajes** desde la app del conductor (plataforma, fecha, ingresos,
+  distancia) para su vehículo asignado, con totales.
+- **Edición de perfil**: el conductor puede actualizar su propio teléfono y ver su
+  **vehículo asignado**. Los demás datos siguen a cargo del administrador.
+
+### Tests
+
+- **+13 pruebas** (357 en total): parser de CSV (comillas/CRLF/BOM/líneas vacías),
+  validación y partición por fila, y lógica de stock bajo de refacciones.
+
 ## [1.20.0] — 2026-06-21 — soporte real: tickets, bandeja del owner y notificación por correo
 
 La sección de Ayuda de 1.19.0 sólo enlazaba a un sitio externo. Esta versión

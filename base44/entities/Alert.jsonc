@@ -13,7 +13,8 @@
         "vehicle_doc",
         "maintenance",
         "insurance",
-        "fine"
+        "fine",
+        "part"
       ],
       "title": "Tipo de entidad"
     },
