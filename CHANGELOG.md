@@ -4,6 +4,53 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.19.0] — 2026-06-21 — UX: navegación con permanencia, ayuda/soporte, paletas premium y tarjetas accionables
+
+Ronda de experiencia de usuario a partir de feedback directo: el menú ahora marca
+con claridad dónde estás y recuerda tu última sección; hay un Centro de ayuda con
+soporte; el branding ofrece paletas premium de un clic; y las tarjetas del
+dashboard llevan a su sección con atajos de alta pre-cargados.
+
+### Added — Centro de ayuda y soporte
+
+- **Nueva sección «Ayuda»** (`/help`): guía por módulo en español (acordeón),
+  atajos (⌘K), y un **botón para abrir ticket de soporte** + contacto por correo.
+  Accesible para todos los roles (incluido el conductor) desde el pie de la barra
+  lateral y desde el menú.
+
+### Added — branding con paletas premium
+
+- **8 paletas premium predefinidas** (`PalettePresets`) seleccionables de un clic,
+  tanto en el onboarding como en el editor de marca del Admin, además de la
+  extracción de colores del logo con IA que ya existía. En el onboarding se
+  aplican en vivo para previsualizarlas.
+
+### Added — tarjetas accionables y acciones rápidas
+
+- **Todas las tarjetas del dashboard son accionables**: cada KPI lleva a su sección
+  (vehículos, conductores, alertas, mensajes, rentas).
+- **Acciones rápidas** en el dashboard: botones que abren directamente el
+  formulario de alta de la sección correspondiente (vehículo, conductor,
+  mantenimiento) vía enlace profundo `?new=1`, respetando permisos y modo lectura.
+
+### Changed — navegación con permanencia e indicador claro
+
+- **Indicador de sección activa** mucho más visible: barra de acento a la
+  izquierda, fondo, texto en negrita e icono en color primario, con
+  `aria-current="page"`. La detección de "activo" es robusta (exacta en la raíz,
+  por prefijo en rutas anidadas).
+- **Permanencia de navegación**: la app recuerda la última sección visitada y la
+  restaura al recargar/volver a entrar (antes "se reseteaba al inicio"). Lógica
+  pura en `src/lib/routePersistence.js`.
+- **Pulido de Mantenimiento** con los primitivos compartidos (`PageHeader`,
+  `EmptyState`, `ListSkeleton`), igual que Dashboard/Conductores/Vehículos/Alertas.
+
+### Tests
+
+- **+15 pruebas** (336 en total): paletas premium (hex válidos/únicos),
+  permanencia de ruta (persistir/restaurar), `isNavItemActive` (raíz/anidado/
+  parcial) y acceso a «Ayuda» por rol.
+
 ## [1.18.0] — 2026-06-21 — seguridad, pulido premium y navegación rápida (⌘K)
 
 Versión de "bump" transversal: cierra una brecha de permisos a nivel de ruta,

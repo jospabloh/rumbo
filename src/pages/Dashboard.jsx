@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Banknote, Gauge } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Banknote, Gauge, Plus, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import StatCard from '@/components/dashboard/StatCard';
@@ -7,10 +7,16 @@ import AlertBadge from '@/components/dashboard/AlertBadge';
 import RevenueTrend from '@/components/dashboard/RevenueTrend';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
+import { useTenant } from '@/lib/TenantContext';
+import { useModulePerms } from '@/lib/modulePerms';
 import { useVehicles, useDrivers, useAlerts, useMessages, useRentCharges } from '@/hooks/useEntities';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { readOnly } = useTenant();
+  const { can } = useModulePerms();
   const vehiclesQ = useVehicles();
   const driversQ = useDrivers();
   const alertsQ = useAlerts({ filter: { resolved: false } });
@@ -45,6 +51,27 @@ export default function Dashboard() {
     <div className="p-4 lg:p-6 space-y-5">
       <PageHeader title="Dashboard" subtitle={format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })} className="mb-0" />
 
+      {/* Acciones rápidas: atajos con el formulario pre-cargado */}
+      {!readOnly && (can('vehicles', 'create') || can('drivers', 'create') || can('maintenance', 'create')) && (
+        <div className="flex flex-wrap gap-2">
+          {can('vehicles', 'create') && (
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => navigate('/vehicles?new=1')}>
+              <Plus className="w-4 h-4" /> Agregar vehículo
+            </Button>
+          )}
+          {can('drivers', 'create') && (
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => navigate('/drivers?new=1')}>
+              <Plus className="w-4 h-4" /> Agregar conductor
+            </Button>
+          )}
+          {can('maintenance', 'create') && (
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => navigate('/maintenance?new=1')}>
+              <Wrench className="w-4 h-4" /> Registrar mantenimiento
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Critical alerts banner */}
       {criticalAlerts.length > 0 && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center gap-3">
@@ -56,10 +83,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stats grid */}
+      {/* Stats grid — cada tarjeta es accionable y lleva a su sección */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard icon={Truck} label="Vehículos activos" value={activeVehicles} sub={`${maintenanceVehicles} en mant. · ${inactiveVehicles} inactivos`} color="blue" />
-        <StatCard icon={Users} label="Conductores" value={activeDrivers} sub={`${drivers.length} total`} color="green" />
+        <StatCard icon={Truck} label="Vehículos activos" value={activeVehicles} sub={`${maintenanceVehicles} en mant. · ${inactiveVehicles} inactivos`} color="blue" link="/vehicles" />
+        <StatCard icon={Users} label="Conductores" value={activeDrivers} sub={`${drivers.length} total`} color="green" link="/drivers" />
         <StatCard icon={AlertTriangle} label="Alertas abiertas" value={alerts.length} sub={`${criticalAlerts.length} críticas`} color="red" link="/alerts" />
         <StatCard icon={MessageSquare} label="No leídos" value={messages.length} sub="mensajes" color="purple" link="/messages" />
       </div>
@@ -67,8 +94,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={DollarSign} label="Ingresos hoy" value={`$${collectedToday.toLocaleString()}`} sub="rentas cobradas" color="green" link="/rentas" />
         <StatCard icon={Banknote} label="Por cobrar" value={`$${totalDue.toLocaleString()}`} sub="rentas pendientes" color="red" link="/rentas" />
-        <StatCard icon={Gauge} label="Disponibilidad" value={`${availability}%`} sub="unidades operando" color="blue" />
-        <StatCard icon={TrendingUp} label="Flota total" value={totalVehicles} sub="vehículos" color="gray" />
+        <StatCard icon={Gauge} label="Disponibilidad" value={`${availability}%`} sub="unidades operando" color="blue" link="/vehicles" />
+        <StatCard icon={TrendingUp} label="Flota total" value={totalVehicles} sub="vehículos" color="gray" link="/vehicles" />
       </div>
 
       {/* Revenue trend */}

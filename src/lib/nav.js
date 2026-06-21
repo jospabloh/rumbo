@@ -10,7 +10,7 @@
 import {
   LayoutDashboard, Users, Truck, Wrench, DollarSign,
   MapPin, MessageSquare, Bell, FileText, CreditCard,
-  Shield, Banknote, List, Link2,
+  Shield, Banknote, List, Link2, HelpCircle,
 } from 'lucide-react';
 import { can } from '@/lib/permissions';
 
@@ -24,6 +24,7 @@ export const NAV_GROUPS = [
       { path: '/messages', icon: MessageSquare,   label: 'Mensajes',       page: 'messages' },
       { path: '/location', icon: MapPin,          label: 'Ubicación',      page: 'location' },
       { path: '/links',    icon: Link2,           label: 'Enlaces útiles', page: 'links' },
+      { path: '/help',     icon: HelpCircle,      label: 'Ayuda',          page: 'help' },
     ],
   },
   {
@@ -70,4 +71,17 @@ export function accessibleNavItems(role, { isAppOwner = false } = {}) {
   const items = NAV_GROUPS.flatMap((g) => g.items).filter((i) => can(role, i.page));
   if (isAppOwner) items.push(PLATFORM_NAV);
   return items;
+}
+
+/**
+ * ¿El ítem de navegación está activo para la ruta actual? Coincidencia exacta
+ * para la raíz `/`; por prefijo para rutas anidadas (p. ej. `/driver` resalta en
+ * `/driver/home`). Pura, para resaltar el menú de forma consistente y testeable.
+ *
+ * @param {string} itemPath
+ * @param {string} pathname
+ */
+export function isNavItemActive(itemPath, pathname) {
+  if (itemPath === '/') return pathname === '/';
+  return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }

@@ -1,15 +1,16 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { applyTenantColors } from '@/pages/TenantOnboarding';
+import { LAST_PATH_KEY, shouldPersist, shouldRestore } from '@/lib/routePersistence';
 import {
-  LogOut, Menu, X, Bell, Shield, Search,
+  LogOut, Menu, X, Bell, Shield, Search, HelpCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver } from '@/lib/permissions';
 import { SUPPORT_URL } from '@/lib/license';
-import { NAV_GROUPS, DRIVER_NAV, PLATFORM_NAV } from '@/lib/nav';
+import { NAV_GROUPS, DRIVER_NAV, PLATFORM_NAV, isNavItemActive } from '@/lib/nav';
 import { useMe, useAlerts, useMessages } from '@/hooks/useEntities';
 import ThemeToggle from '@/components/ThemeToggle';
 import CommandPalette from '@/components/CommandPalette';
@@ -56,11 +57,15 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
     <Link
       to={path}
       onClick={onClick}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-        active ? 'bg-sidebar-accent text-primary' : 'text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent'
+      aria-current={active ? 'page' : undefined}
+      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+        active
+          ? 'bg-sidebar-accent text-primary font-semibold'
+          : 'text-muted-foreground font-medium hover:text-sidebar-foreground hover:bg-sidebar-accent'
       }`}
     >
-      <Icon className="w-4 h-4 shrink-0" />
+      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" aria-hidden="true" />}
+      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-primary' : ''}`} />
       <span>{label}</span>
       {label === 'Alertas' && alertCount > 0 && (
         <Badge className="ml-auto bg-critical text-white text-xs px-1.5 py-0 h-5">{alertCount}</Badge>
@@ -74,10 +79,30 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { tenant, tenantId, licenseInfo, isAppOwner } = useTenant();
   const { data: user } = useMe();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const restoredRef = useRef(false);
+
+  // Permanencia: recuerda la última sección y, al recargar (aterrizando en la
+  // raíz), restaura esa sección en vez de resetear al inicio.
+  useEffect(() => {
+    if (shouldPersist(location.pathname)) {
+      try { localStorage.setItem(LAST_PATH_KEY, location.pathname); } catch { /* almacenamiento no disponible */ }
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    let saved = null;
+    try { saved = localStorage.getItem(LAST_PATH_KEY); } catch { /* almacenamiento no disponible */ }
+    if (shouldRestore(location.pathname, saved)) navigate(saved, { replace: true });
+    // Solo en el primer montaje: no debe rebotar cuando el usuario va al inicio a propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Apply tenant colors when tenant loads
   useEffect(() => {
@@ -133,7 +158,7 @@ export default function Layout() {
         {isDriverRole ? (
           DRIVER_NAV.map(({ path, icon: Icon, label }) => (
             <NavItem key={path} path={path} icon={Icon} label={label}
-              active={location.pathname === path} onClick={onLinkClick}
+              active={isNavItemActive(path, location.pathname)} onClick={onLinkClick}
               alertCount={0} unreadCount={0} />
           ))
         ) : (
@@ -158,7 +183,7 @@ export default function Layout() {
                     path={path}
                     icon={icon}
                     label={label}
-                    active={location.pathname === path}
+                    active={isNavItemActive(path, location.pathname)}
                     onClick={onLinkClick}
                     alertCount={alertCount}
                     unreadCount={unreadCount}
@@ -182,6 +207,14 @@ export default function Layout() {
             <p className="text-xs text-muted-foreground capitalize">{user?.role || ''}</p>
           </div>
         </div>
+        <Link
+          to="/help"
+          onClick={onLinkClick}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent w-full transition-all"
+        >
+          <HelpCircle className="w-4 h-4" />
+          Ayuda y soporte
+        </Link>
         <ThemeToggle />
         <button
           onClick={handleLogout}
@@ -252,7 +285,7 @@ export default function Layout() {
         {isDriverRole && (
           <nav className="lg:hidden flex border-t border-border bg-card shrink-0">
             {DRIVER_NAV.map(({ path, icon: Icon, label }) => {
-              const active = location.pathname === path;
+              const active = isNavItemActive(path, location.pathname);
               return (
                 <Link key={path} to={path}
                   className={`flex-1 flex flex-col items-center py-2 gap-0.5 text-xs transition-colors ${active ? 'text-primary' : 'text-muted-foreground'}`}>

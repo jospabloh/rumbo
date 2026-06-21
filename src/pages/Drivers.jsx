@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, Star, Phone, ChevronRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,17 @@ export default function Drivers() {
   const [showForm, setShowForm] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [editDriver, setEditDriver] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Atajo desde el dashboard (/drivers?new=1): abre el formulario de alta.
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      if (!readOnly && can('drivers', 'create')) { setEditDriver(null); setShowForm(true); }
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = drivers.filter(d =>
     d.full_name?.toLowerCase().includes(search.toLowerCase()) ||

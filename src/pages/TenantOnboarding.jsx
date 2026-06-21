@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import PalettePresets from '@/components/admin/PalettePresets';
 import { Building2, Upload, Palette, CheckCircle2, Loader2, ArrowLeft, Gift, Copy, Check } from 'lucide-react';
 
 function hexToHsl(hex) {
@@ -271,6 +272,9 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
                 {extracting ? 'Extrayendo paleta...' : 'Extraer colores del logo con IA'}
               </Button>
             )}
+
+            {/* Paletas premium: alternativa de un clic a la extracción del logo */}
+            <PalettePresets onSelect={(p) => { setColors(p); applyTenantColors(p); }} />
 
             {/* Color palette preview */}
             {(colors.primary || colors.secondary || colors.accent || colors.background) && (

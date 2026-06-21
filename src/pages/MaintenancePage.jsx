@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/list-skeleton';
 import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
 import PartsList from '@/components/maintenance/PartsList';
 import { useTenant } from '@/lib/TenantContext';
@@ -21,6 +24,17 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const [showForm, setShowForm] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
   const [tab, setTab] = useState(defaultTab);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Atajo desde el dashboard (/maintenance?new=1): abre el formulario de alta.
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      if (!readOnly && can('maintenance', 'create')) { setTab('maintenance'); setEditRecord(null); setShowForm(true); }
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = records.filter(r => {
     const v = vehicles.find(x => x.id === r.vehicle_id);
@@ -48,17 +62,15 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
 
   return (
     <div className="p-4 lg:p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold">Mantenimiento</h1>
-          <p className="text-sm text-muted-foreground">{records.length} registros</p>
-        </div>
-        {tab === 'maintenance' && !readOnly && can('maintenance', 'create') && (
+      <PageHeader
+        title="Mantenimiento"
+        subtitle={`${records.length} registros`}
+        action={tab === 'maintenance' && !readOnly && can('maintenance', 'create') && (
           <Button size="sm" onClick={() => { setEditRecord(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Registrar
           </Button>
         )}
-      </div>
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 bg-muted rounded-lg p-1 mb-4">
@@ -80,7 +92,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-10"><Spinner /></div>
+            <ListSkeleton />
           ) : (
             <div className="space-y-2">
               {filtered.map(r => {
@@ -111,7 +123,18 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
                   </div>
                 );
               })}
-              {filtered.length === 0 && <p className="text-center text-muted-foreground py-10 text-sm">Sin registros</p>}
+              {filtered.length === 0 && (
+                <EmptyState
+                  icon={Wrench}
+                  title={search ? 'Sin resultados' : 'Sin mantenimientos registrados'}
+                  description={search ? 'Prueba con otra descripción o placa.' : 'Registra el primer servicio para llevar el historial de tu flotilla.'}
+                  action={!search && !readOnly && can('maintenance', 'create') && (
+                    <Button size="sm" onClick={() => { setEditRecord(null); setShowForm(true); }} className="gap-2">
+                      <Plus className="w-4 h-4" /> Registrar mantenimiento
+                    </Button>
+                  )}
+                />
+              )}
             </div>
           )}
 
