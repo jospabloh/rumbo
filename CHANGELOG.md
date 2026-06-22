@@ -4,6 +4,23 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.23.0] — 2026-06-22 — Automated security & permissions audit (documentation update)
+
+### Docs — permissions matrix updated to v1.23.0
+
+- `docs/permissions_matrix.md` updated from v1.0.2 to v1.23.0 to reflect all pages and entities added since 2026-06-15.
+- Added missing pages: Catalogs, Links/Útiles, Help/Centro de ayuda, GitHub, Supabase, Licenses, Support Tickets, Test Data, and all driver routes.
+- Added missing entities in RLS table: SupportTicket, Catalog, UsefulLink, DriverPrivateNote.
+- Added missing actions: submit support ticket, manage member (suspend/reactivate/remove), manage catalogs, manage useful links.
+- Corrected G2 (Known Gaps): page protection has been enforced at the route level since v1.18.0 via `RequireAccess` — the stale "client-side only" note was removed.
+- Added complete audit findings table (A1–A14) confirming no security vulnerabilities and clean CI.
+
+### Security audit result — no code changes required
+
+All security, tenant isolation, and permissions checks passed against the v1.23.0 codebase. No Critical, High, Medium, or Low code-level vulnerabilities found. All 367 unit tests pass; lint, typecheck, and build are clean.
+
+---
+
 ## [1.23.0] — 2026-06-21 — manual de usuario real e in-app (Centro de ayuda)
 
 ### Added — manual paso a paso dentro de la app
