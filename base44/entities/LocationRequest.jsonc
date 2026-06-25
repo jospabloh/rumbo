@@ -73,7 +73,7 @@
         }
       ],
       "user_condition": {
-        "write_access": "enabled"
+        "data.write_access": "enabled"
       }
     },
     "read": {
@@ -140,7 +140,7 @@
         }
       ],
       "user_condition": {
-        "write_access": "enabled"
+        "data.write_access": "enabled"
       }
     },
     "delete": {
@@ -158,7 +158,7 @@
         }
       ],
       "user_condition": {
-        "write_access": "enabled"
+        "data.write_access": "enabled"
       }
     }
   }
