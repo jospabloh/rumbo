@@ -27,6 +27,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Validate RLS
+        run: npm run validate:rls
+
       - name: Test
         run: npm run test
 
