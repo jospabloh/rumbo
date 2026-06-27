@@ -162,6 +162,11 @@
         },
         {
           "data.members.email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
       ]
     },
