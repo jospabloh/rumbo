@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.23.0 | Updated 2026-06-22**
+**Version 1.24.0 | Updated 2026-06-29**
 
 ---
 
@@ -180,6 +180,24 @@ Admin has full view, create, edit, delete access to every module within their te
 ---
 
 ## Audit History
+
+### v1.24.0 Audit (2026-06-29)
+
+Security, code quality, tenant isolation, permissions, and dependency audit at v1.24.0. Removed unused `react-quill` dependency (quill XSS). No code-level permission or tenant isolation findings. All 21 entities RLS-verified clean.
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A15 | Unused `react-quill` dependency declared in `package.json` but never imported in source — carries quill XSS (GHSA-4943-9vgg-gr5r) | MEDIUM | **FIXED — dependency removed** |
+| A16 | 16 indirect dependency vulnerabilities in dev tools and transitive packages | LOW | **FIXED by `npm audit fix` — reduced from 23 to 5 remaining; all remaining are dev-only** |
+| A17 | 5 remaining vulnerabilities in vite/vitest/esbuild (dev-only — no production exposure) | LOW | **Accepted — require breaking dep upgrades; no production risk** |
+| A18 | No hardcoded secrets, API keys, tokens, or credentials found in source | — | **CONFIRMED CLEAN** |
+| A19 | All 21 entity RLS rules verified — `data.tenant_id == {{user.data.tenant_id}}`; no bare field access | — | **CONFIRMED CLEAN** |
+| A20 | Tenant isolation: generateAlerts, calculateCostPerKm, resolveTenant, manageMember all tenant-scoped | — | **CONFIRMED CLEAN** |
+| A21 | Route protection: all routes covered by `RequireAccess` or `RequireAppOwner` | — | **CONFIRMED CLEAN** |
+| A22 | Permissions matrix reviewed — no new modules or permissions gaps found vs v1.23.0 | — | **CONFIRMED CURRENT** |
+| A23 | CI: lint, typecheck, tests (367/367), build, validate:rls — all pass on HEAD | — | **CONFIRMED PASSING** |
+
+---
 
 ### v1.23.0 Audit (2026-06-22)
 

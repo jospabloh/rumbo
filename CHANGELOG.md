@@ -4,6 +4,41 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.24.0] — 2026-06-29 — Automated security & dependency audit
+
+### Security — dependency hardening
+
+- Removed unused `react-quill` dependency (was never imported in source). Eliminates quill XSS vulnerability **GHSA-4943-9vgg-gr5r** (moderate).
+- Updated indirect dependency lock file via `npm audit fix`. Reduced total vulnerabilities from **23 to 5** (3 moderate, 1 high, 1 critical — all in dev-only tools: vite, vitest, esbuild; no production exposure).
+
+### Security audit result — no code-level changes required
+
+Full automated audit of security, tenant isolation, permissions, code quality, and release readiness at v1.24.0:
+
+- No hardcoded secrets, API keys, tokens, or credentials found.
+- All 21 entity RLS rules verified correct (`data.tenant_id == {{user.data.tenant_id}}`); `validate:rls` passes.
+- Tenant isolation confirmed clean across all modules, entities, and server functions.
+- Alert generation (`generateAlerts`): tenant-scoped and role-gated. CLEAN.
+- Cost calculation (`calculateCostPerKm`): tenant-scoped, role-gated (owner/admin/dispatcher). CLEAN.
+- Admin users list: filtered by `data.tenant_id`. CLEAN.
+- PermissionsPanel save: persists to `TenantLicense.permissions_config` with error feedback. CLEAN.
+- TenantContext fallback: no `all[0]` fallback for non-admin/owner users. CLEAN.
+- Route protection: all routes guarded by `RequireAccess` or `RequireAppOwner`. CLEAN.
+- Granular permissions matrix reviewed and confirmed current at v1.23.0 — no gaps.
+- All 367 unit tests pass; lint, typecheck, build, and validate:rls all clean.
+
+### Remaining acknowledged vulnerabilities (dev-only, require breaking changes to fix)
+
+| Vulnerability | Severity | Package | Risk | Status |
+|--------------|----------|---------|------|--------|
+| GHSA-f5bl-6b05-xchv (esbuild dev server) | Moderate | esbuild | Dev server only — no production exposure | Accepted |
+| GHSA-67mh-4wv8-2f99 (esbuild) | Moderate | esbuild | Dev server only | Accepted |
+| vite dev server various | Moderate | vite | Dev server only | Accepted |
+| GHSA-mw96-cpmx-2vgc (rollup path traversal) | High | rollup | Build time only — dev environment | Accepted |
+| vitest UI server | Critical | vitest | Only when Vitest UI (`--ui`) is running — not used in CI | Accepted |
+
+---
+
 ## [1.23.0] — 2026-06-22 — Automated security & permissions audit (documentation update)
 
 ### Docs — permissions matrix updated to v1.23.0
