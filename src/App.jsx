@@ -2,16 +2,18 @@ import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import ContinueAs from '@/components/auth/ContinueAs';
-import { getRememberedIdentity } from '@/lib/lastIdentity';
 import { TenantProvider, useTenant } from '@/lib/TenantContext';
 import { useMe } from '@/hooks/useEntities';
 import { can, isDriver } from '@/lib/permissions';
 import { accessibleNavItems } from '@/lib/nav';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import ProtectedRoute from './components/ProtectedRoute';
 import Onboarding from './pages/Onboarding';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -86,10 +88,9 @@ const Home = () => {
   );
 };
 
-const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+const AppShell = () => {
+  const { isLoadingAuth, isLoadingPublicSettings } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -98,72 +99,52 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // If we remember the last user, show the "Continuar como" card instead of
-      // bouncing straight to the hosted login. The card still goes through the
-      // real Base44 auth flow (silent if the session is alive).
-      if (getRememberedIdentity()) {
-        return <ContinueAs />;
-      }
-      // No remembered identity → behave exactly as before.
-      navigateToLogin();
-      return null;
-    }
-  }
-
-  // Render the main app
   return (
-    <TenantGate>
     <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/drivers" element={<RequireAccess page="drivers"><Drivers /></RequireAccess>} />
-        <Route path="/vehicles" element={<RequireAccess page="vehicles"><Vehicles /></RequireAccess>} />
-        <Route path="/maintenance" element={<RequireAccess page="maintenance"><MaintenancePage /></RequireAccess>} />
-        <Route path="/rentas" element={<RequireAccess page="rentas"><Rentas /></RequireAccess>} />
-        <Route path="/financial" element={<RequireAccess page="financial"><Financial /></RequireAccess>} />
-        <Route path="/alerts" element={<RequireAccess page="alerts"><Alerts /></RequireAccess>} />
-        <Route path="/location" element={<RequireAccess page="location"><Location /></RequireAccess>} />
-        <Route path="/messages" element={<RequireAccess page="messages"><Messages /></RequireAccess>} />
-        <Route path="/links" element={<RequireAccess page="links"><UsefulLinks /></RequireAccess>} />
-        <Route path="/help" element={<RequireAccess page="help"><Help /></RequireAccess>} />
-        <Route path="/import" element={<RequireAccess page="import"><Import /></RequireAccess>} />
-        <Route path="/driver/home" element={<RequireAccess roles={['driver']}><DriverHome /></RequireAccess>} />
-        <Route path="/driver/profile" element={<RequireAccess roles={['driver']}><DriverProfile /></RequireAccess>} />
-        <Route path="/driver/trips" element={<RequireAccess roles={['driver']}><DriverTrips /></RequireAccess>} />
-        <Route path="/driver/messages" element={<RequireAccess roles={['driver']}><Messages /></RequireAccess>} />
-        <Route path="/github" element={<RequireAppOwner><GitHubPage /></RequireAppOwner>} />
-        <Route path="/supabase" element={<RequireAppOwner><SupabasePage /></RequireAppOwner>} />
-        <Route path="/billing" element={<RequireAccess page="billing"><Billing /></RequireAccess>} />
-        <Route path="/admin" element={<RequireAccess page="admin"><Admin /></RequireAccess>} />
-        <Route path="/catalogs" element={<RequireAccess page="catalogs"><Catalogs /></RequireAccess>} />
-        <Route path="/licenses" element={<RequireAppOwner><Licenses /></RequireAppOwner>} />
-        <Route path="/tickets" element={<RequireAppOwner><Tickets /></RequireAppOwner>} />
-        <Route path="/test-data" element={<RequireAppOwner><TestData /></RequireAppOwner>} />
+      {/* Public routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/landing" element={<Landing />} />
+
+      {/* Protected routes — unauthenticated users redirect to /login */}
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route element={
+          <TenantGate>
+            <Layout />
+          </TenantGate>
+        }>
+          <Route path="/" element={<Home />} />
+          <Route path="/drivers" element={<RequireAccess page="drivers"><Drivers /></RequireAccess>} />
+          <Route path="/vehicles" element={<RequireAccess page="vehicles"><Vehicles /></RequireAccess>} />
+          <Route path="/maintenance" element={<RequireAccess page="maintenance"><MaintenancePage /></RequireAccess>} />
+          <Route path="/rentas" element={<RequireAccess page="rentas"><Rentas /></RequireAccess>} />
+          <Route path="/financial" element={<RequireAccess page="financial"><Financial /></RequireAccess>} />
+          <Route path="/alerts" element={<RequireAccess page="alerts"><Alerts /></RequireAccess>} />
+          <Route path="/location" element={<RequireAccess page="location"><Location /></RequireAccess>} />
+          <Route path="/messages" element={<RequireAccess page="messages"><Messages /></RequireAccess>} />
+          <Route path="/links" element={<RequireAccess page="links"><UsefulLinks /></RequireAccess>} />
+          <Route path="/help" element={<RequireAccess page="help"><Help /></RequireAccess>} />
+          <Route path="/import" element={<RequireAccess page="import"><Import /></RequireAccess>} />
+          <Route path="/driver/home" element={<RequireAccess roles={['driver']}><DriverHome /></RequireAccess>} />
+          <Route path="/driver/profile" element={<RequireAccess roles={['driver']}><DriverProfile /></RequireAccess>} />
+          <Route path="/driver/trips" element={<RequireAccess roles={['driver']}><DriverTrips /></RequireAccess>} />
+          <Route path="/driver/messages" element={<RequireAccess roles={['driver']}><Messages /></RequireAccess>} />
+          <Route path="/github" element={<RequireAppOwner><GitHubPage /></RequireAppOwner>} />
+          <Route path="/supabase" element={<RequireAppOwner><SupabasePage /></RequireAppOwner>} />
+          <Route path="/billing" element={<RequireAccess page="billing"><Billing /></RequireAccess>} />
+          <Route path="/admin" element={<RequireAccess page="admin"><Admin /></RequireAccess>} />
+          <Route path="/catalogs" element={<RequireAccess page="catalogs"><Catalogs /></RequireAccess>} />
+          <Route path="/licenses" element={<RequireAppOwner><Licenses /></RequireAppOwner>} />
+          <Route path="/tickets" element={<RequireAppOwner><Tickets /></RequireAppOwner>} />
+          <Route path="/test-data" element={<RequireAppOwner><TestData /></RequireAppOwner>} />
+        </Route>
       </Route>
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
-    </TenantGate>
   );
-};
-
-
-/**
- * AppShell — decides between the public marketing landing and the
- * authenticated app. The landing must render WITHOUT going through the
- * auth gate (which redirects unauthenticated visitors to login), so we
- * short-circuit it here based on the URL.
- */
-const AppShell = () => {
-  const location = useLocation();
-  if (/^\/landing\/?$/i.test(location.pathname)) {
-    return <Landing />;
-  }
-  return <AuthenticatedApp />;
 };
 
 function App() {
