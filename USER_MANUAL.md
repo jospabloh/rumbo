@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.24.0 | Updated 2026-06-29**
+**Version 1.25.0 | Updated 2026-06-29**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 

@@ -4,6 +4,16 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.25.0] — 2026-06-29 — Autenticación personalizada (diseño propio)
+
+### Pantallas de inicio de sesión propias
+
+- Rediseño profesional y en español de las páginas de autenticación generadas por Base44 (`/login`, `/register`, `/forgot-password`, `/reset-password`), con la marca Rumbo: layout de dos columnas, logo, panel de marca y formularios pulidos.
+- Inicio de sesión social con **Google** y **Apple** (`loginWithProvider`), además de correo/contraseña.
+- Registro con verificación **OTP** por correo (`register` → `verifyOtp` / `resendOtp`) y restablecimiento de contraseña (`resetPasswordRequest` / `resetPassword`).
+- **Recordar / tap once:** `/login` reconoce al último usuario (correo prerellenado, contraseña enfocada, "Usar otra cuenta"). El token nunca se persiste en este flujo cosmético; la sesión real sigue siendo el token de Base44 + RLS.
+- Piezas compartidas (`AuthLayout`, `SocialButtons`, campos) para mantener las cuatro pantallas consistentes.
+
 ## [1.24.0] — 2026-06-29 — Automated security & dependency audit
 
 ### Security — dependency hardening
