@@ -16,6 +16,51 @@ const PRIORITIES = ['low', 'normal', 'high'];
 const DEFAULT_SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 const SLA_HOURS = 48;
 
+// Stable JSON (keys sorted recursively) — mirrors Mission Control's
+// api/_lib/ingestSign.js so both sides sign the exact same string.
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
+}
+
+async function hmacHex(secret: string, msg: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(mac), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Real-time push of the new ticket to ACACIA Mission Control. This reflects the
+// ticket in Mission Control within seconds — no manual sync — and lets Mission
+// Control fire the unified ITIL alert (system ticket id + SLA anchored to the
+// customer's creation instant) to the support desk. Returns true on a 2xx so the
+// caller can skip Rumbo's own legacy support email and avoid a double-send.
+// Requires app secrets INGEST_HMAC_SECRET + ACACIA_MC_INGEST_URL (+ ACACIA_APP_SLUG=rumbo).
+async function pushToMissionControl(record: Record<string, unknown>): Promise<boolean> {
+  const secret = Deno.env.get('INGEST_HMAC_SECRET');
+  const url = Deno.env.get('ACACIA_MC_INGEST_URL');
+  const app = Deno.env.get('ACACIA_APP_SLUG') || 'rumbo';
+  if (!secret || !url) return false; // not configured → caller falls back to its own email
+  try {
+    const ts = Date.now().toString();
+    const params = { app, record };
+    const sig = await hmacHex(secret, `${ts}.ticket.ingest.${stableStringify(params)}`);
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ app, record, ts, sig }),
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -60,7 +105,12 @@ Deno.serve(async (req) => {
       last_activity_at: nowIso,
     });
 
-    // 1) Escalar a soporte por correo (best-effort).
+    // 0) Push en tiempo real a ACACIA Mission Control. Si Mission Control acusa
+    // recibo (2xx), ÉL manda la alerta unificada a soporte y NO duplicamos correo.
+    const pushed = await pushToMissionControl(ticket as Record<string, unknown>);
+
+    // 1) Escalar a soporte por correo — solo como respaldo si el push a Mission
+    // Control no fue posible (no configurado / caído). Evita el doble envío.
     let emailed = false;
     // Acepta varios nombres de secret (Deno.env distingue mayúsculas): el creado en
     // Base44 es `Support_email`. Si no hay ninguno, cae al destino por defecto.
@@ -70,7 +120,7 @@ Deno.serve(async (req) => {
       Deno.env.get('APP_OWNER_EMAIL') ||
       DEFAULT_SUPPORT_EMAIL
     ).trim();
-    if (to) {
+    if (!pushed && to) {
       try {
         await base44.integrations.Core.SendEmail({
           to,
@@ -114,7 +164,7 @@ Deno.serve(async (req) => {
       } catch { /* best-effort */ }
     }
 
-    return Response.json({ ticket, emailed, notified, sla_hours: SLA_HOURS, suggested_section: suggestedSection });
+    return Response.json({ ticket, pushed, emailed, notified, sla_hours: SLA_HOURS, suggested_section: suggestedSection });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
