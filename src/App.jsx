@@ -7,8 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { TenantProvider, useTenant } from '@/lib/TenantContext';
 import { useMe } from '@/hooks/useEntities';
-import { can, isDriver } from '@/lib/permissions';
-import { accessibleNavItems } from '@/lib/nav';
+import { resolveHomeTarget } from '@/lib/nav';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -75,15 +74,14 @@ const TenantGate = ({ children }) => {
  * el rol sí tiene acceso. El conductor va a su propia interfaz.
  */
 const Home = () => {
-  const { userRole, isAppOwner, loading } = useTenant();
+  const { userRole, isAppOwner, tenantId, loading } = useTenant();
   if (loading) return <PageLoader />;
-  if (isDriver(userRole)) return <Navigate to="/driver/home" replace />;
-  // El owner de la app (gestor de licencias, a menudo sin tenant propio ni rol de staff)
-  // debe aterrizar en su consola, no en la pantalla de "sin secciones".
-  if (isAppOwner) return <Navigate to="/licenses" replace />;
-  if (can(userRole, 'dashboard')) return <Dashboard />;
-  const items = accessibleNavItems(userRole, { isAppOwner });
-  if (items.length > 0) return <Navigate to={items[0].path} replace />;
+  // El owner de la plataforma que además tiene su propia flotilla ve su dashboard como
+  // cualquier admin (la consola de Licencias queda a un clic en el menú). Solo un app
+  // owner SIN tenant propio aterriza directo en /licenses. Ver resolveHomeTarget.
+  const target = resolveHomeTarget(userRole, { isAppOwner, hasTenant: !!tenantId });
+  if (target === 'dashboard') return <Dashboard />;
+  if (target) return <Navigate to={target} replace />;
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6 text-center">
       <p className="text-sm text-muted-foreground">Tu cuenta no tiene secciones asignadas. Contacta al administrador.</p>

@@ -12,7 +12,7 @@ import {
   MapPin, MessageSquare, Bell, FileText, CreditCard,
   Shield, Banknote, List, Link2, HelpCircle, LifeBuoy,
 } from 'lucide-react';
-import { can } from '@/lib/permissions';
+import { can, isDriver } from '@/lib/permissions';
 
 /** Grupos de navegación del staff (owner/admin/dispatcher/mechanic). */
 export const NAV_GROUPS = [
@@ -74,6 +74,29 @@ export function accessibleNavItems(role, { isAppOwner = false } = {}) {
   const items = NAV_GROUPS.flatMap((g) => g.items).filter((i) => can(role, i.page));
   if (isAppOwner) items.push(...PLATFORM_NAV);
   return items;
+}
+
+/**
+ * Decide a dónde aterriza la ruta raíz `/` según el usuario. Pura y testeable:
+ * el componente `Home` solo traduce el resultado a un `<Navigate>` o al `<Dashboard>`.
+ *
+ * Orden intencional — el owner de la plataforma que ADEMÁS tiene su propia flotilla
+ * ve su dashboard como cualquier admin; su consola de licencias queda a un clic en el
+ * menú (grupo "Plataforma"). Solo cuando el owner de la app NO tiene tenant propio (y
+ * por tanto no tiene dashboard que mostrar) aterriza directo en `/licenses`, en vez de
+ * la pantalla "sin secciones".
+ *
+ * @param {string} role
+ * @param {{ isAppOwner?: boolean, hasTenant?: boolean }} [opts]
+ * @returns {string|null} ruta destino, el centinela `'dashboard'` (render directo), o
+ *   `null` si el rol no tiene ninguna sección asignada.
+ */
+export function resolveHomeTarget(role, { isAppOwner = false, hasTenant = false } = {}) {
+  if (isDriver(role)) return '/driver/home';
+  if (hasTenant && can(role, 'dashboard')) return 'dashboard';
+  if (isAppOwner) return '/licenses';
+  const items = accessibleNavItems(role, { isAppOwner });
+  return items.length > 0 ? items[0].path : null;
 }
 
 /**
