@@ -26,6 +26,7 @@ export default function TicketForm({ onClose }) {
   const [suggestion, setSuggestion] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [folio, setFolio] = useState('');
 
   const review = () => {
     const validation = validateTicket(form);
@@ -42,6 +43,7 @@ export default function TicketForm({ onClose }) {
       const res = await base44.functions.invoke('submitTicket', { ...form, suggested_section: suggestion?.section });
       const data = res?.data || res;
       if (data?.error) { setError(data.error); setSaving(false); return; }
+      setFolio(data?.ticket?.ticket_number || '');
       invalidate('SupportTicket');
       setStep('done');
     } catch {
@@ -114,8 +116,13 @@ export default function TicketForm({ onClose }) {
             <CheckCircle2 className="w-6 h-6 text-success" />
           </div>
           <p className="font-semibold">Tu solicitud fue escalada a soporte</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Te responderemos dentro de las próximas <span className="text-foreground font-medium">{SUPPORT_SLA_HOURS} horas hábiles</span>. Enviamos una copia a tu correo.
+          {folio && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+              Folio: {folio}
+            </p>
+          )}
+          <p className="text-sm text-muted-foreground mt-2">
+            Te responderemos dentro de las próximas <span className="text-foreground font-medium">{SUPPORT_SLA_HOURS} horas hábiles</span>. Enviamos una copia a tu correo{folio ? ` con tu folio ${folio}` : ''}.
           </p>
           {suggestion?.section && (
             <p className="text-xs text-muted-foreground mt-2">Mientras tanto, revisa la sección «{suggestion.section}» en la Guía por módulo.</p>

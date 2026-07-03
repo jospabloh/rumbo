@@ -2,6 +2,11 @@
   "name": "SupportTicket",
   "type": "object",
   "properties": {
+    "ticket_number": {
+      "type": "string",
+      "title": "Folio",
+      "description": "Folio legible del ticket (ITSM), p. ej. RUM-000001. Lo asigna submitTicket del lado servidor; el cliente no lo escribe."
+    },
     "tenant_id": {
       "type": "string",
       "title": "Tenant"

@@ -119,6 +119,9 @@ export default function Tickets() {
             <button key={t.id} onClick={() => setSelected(t)}
               className="w-full text-left bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-all">
               <div className="flex items-center gap-2 flex-wrap">
+                {t.ticket_number && (
+                  <span className="text-xs font-mono font-semibold text-primary shrink-0">{t.ticket_number}</span>
+                )}
                 <p className="text-sm font-semibold flex-1 min-w-0 truncate">{t.subject}</p>
                 <StatusBadge status={t.status} />
               </div>
@@ -133,6 +136,9 @@ export default function Tickets() {
       {selectedTicket && (
         <ResponsiveModal title={selectedTicket.subject} onClose={() => setSelected(null)} maxWidth="lg">
           <div className="space-y-3">
+            {selectedTicket.ticket_number && (
+              <p className="text-sm font-mono font-semibold text-primary">{selectedTicket.ticket_number}</p>
+            )}
             <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
               <StatusBadge status={selectedTicket.status} />
               <span>{selectedTicket.tenant_name || selectedTicket.tenant_id}</span>
