@@ -49,6 +49,13 @@ function stableStringify(value: unknown): string {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
 }
 
+// Los correos se envían como texto plano; si el cliente de correo del destinatario
+// igual renderiza HTML, esto evita que un asunto/descripción con markup (tags,
+// atributos con javascript:, etc.) se interprete como HTML e imite el phishing.
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, '');
+}
+
 async function hmacHex(secret: string, msg: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw', new TextEncoder().encode(secret),
@@ -155,14 +162,14 @@ Deno.serve(async (req) => {
       try {
         await base44.integrations.Core.SendEmail({
           to,
-          subject: `[Rumbo] Nuevo ticket (${priority}): ${subject}`,
+          subject: `[Rumbo] Nuevo ticket (${priority}): ${stripHtml(subject)}`,
           body: [
-            `Organización: ${tenantName || tenantId}`,
-            `Solicitante: ${user.full_name || ''} <${user.email || ''}>`,
+            `Organización: ${stripHtml(tenantName || tenantId)}`,
+            `Solicitante: ${stripHtml(user.full_name || '')} <${user.email || ''}>`,
             `Categoría: ${category} · Prioridad: ${priority}`,
-            suggestedSection ? `Sección sugerida al usuario: ${suggestedSection}` : '',
+            suggestedSection ? `Sección sugerida al usuario: ${stripHtml(suggestedSection)}` : '',
             '',
-            description,
+            stripHtml(description),
           ].filter(Boolean).join('\n'),
         });
         emailed = true;
@@ -175,18 +182,18 @@ Deno.serve(async (req) => {
       try {
         await base44.integrations.Core.SendEmail({
           to: user.email,
-          subject: `Recibimos tu solicitud: ${subject}`,
+          subject: `Recibimos tu solicitud: ${stripHtml(subject)}`,
           body: [
-            `Hola ${user.full_name || ''},`,
+            `Hola ${stripHtml(user.full_name || '')},`,
             '',
             'Recibimos tu solicitud y la escalamos a nuestro equipo de soporte.',
             `Te responderemos dentro de las próximas ${SLA_HOURS} horas hábiles.`,
             suggestedSection
-              ? `\nMientras tanto, quizá te ayude revisar la sección "${suggestedSection}" del Centro de ayuda en la app.`
+              ? `\nMientras tanto, quizá te ayude revisar la sección "${stripHtml(suggestedSection)}" del Centro de ayuda en la app.`
               : '\nMientras tanto, puedes revisar el Centro de ayuda en la app.',
             '',
             'Tu solicitud:',
-            description,
+            stripHtml(description),
             '',
             '— Equipo de soporte de Rumbo',
           ].join('\n'),
