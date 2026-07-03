@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "name": "AcaciaReplayKey",
+  "properties": {
+    "replay_key": {
+      "type": "string",
+      "title": "Replay key (sig[:nonce])"
+    },
+    "seen_at": {
+      "type": "number",
+      "title": "Seen at (epoch ms)"
+    }
+  },
+  "required": [
+    "replay_key",
+    "seen_at"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "read": false,
+    "update": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "delete": false
+  }
+}

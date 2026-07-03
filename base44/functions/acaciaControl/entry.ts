@@ -26,23 +26,19 @@ const COUNT_CAP = 5000; // Base44 caps list at 5,000 — usage counts are capped
 // peticiones legítimas distintas difieren en `ts` → difieren en `sig`; un replay
 // reusa exactamente la misma `sig` y se rechaza.
 //
-// IMPORTANTE (corrección multi-instancia): este Map vive en memoria del proceso.
-// Las funciones Deno son sin estado y pueden escalar a varias instancias, por lo
-// que este store NO garantiza rechazo de replay entre instancias ni tras un
-// reinicio en frío. Para correctitud real se necesita un store persistente y
-// compartido (entidad Base44 dedicada o Deno KV). No se crea una entidad aquí por
-// estar fuera de alcance; mientras tanto la ventana de skew corta (2 min) acota la
-// exposición.
-// TODO(acacia): mover el store de nonces a Deno KV o a una entidad dedicada, e
-//   idealmente incluir un `nonce`/`jti` DENTRO de los params firmados por MC para
-//   defensa en profundidad (hoy es opcional-pero-registrado).
-const seenReplayKeys = new Map<string, number>();
-
-function pruneReplayStore(now: number): void {
+// Store persistente y compartido entre instancias: entidad dedicada
+// `AcaciaReplayKey` (en vez de un Map en memoria del proceso). Las funciones
+// Deno son sin estado y pueden escalar a varias instancias o reiniciarse en
+// frío, así que un store en memoria no detecta un replay servido por otra
+// instancia. Persistir en la base de datos cierra ese hueco.
+async function pruneReplayStore(sr: any, now: number): Promise<void> {
   // Elimina entradas más viejas que la ventana de skew (ya no son reproducibles).
-  for (const [k, seenAt] of seenReplayKeys) {
-    if (now - seenAt > MAX_SKEW_MS) seenReplayKeys.delete(k);
-  }
+  try {
+    const stale = await sr.entities.AcaciaReplayKey.filter({ seen_at: { $lt: now - MAX_SKEW_MS } });
+    for (const row of stale) {
+      try { await sr.entities.AcaciaReplayKey.delete(row.id); } catch { /* best-effort cleanup */ }
+    }
+  } catch { /* best-effort cleanup */ }
 }
 
 // Stable JSON: keys sorted recursively, so MC and this function sign the exact
