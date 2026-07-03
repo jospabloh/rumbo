@@ -13,6 +13,11 @@ const SELECT_RE = /^[a-zA-Z0-9_,()* ]+$/;
 const ORDER_RE = /^[a-zA-Z0-9_]+(\.(asc|desc))?$/;
 // Claves de filtro deben ser nombres de columna simples.
 const FILTER_KEY_RE = /^[a-zA-Z0-9_]+$/;
+// Valores de filtro deben ser un operador PostgREST válido (eq/gt/gte/lt/lte/neq/
+// like/ilike/in/is/not) seguido de un valor simple. Sin esto, un valor como
+// `col=eq.1&extra_param=...` o `col=` con contenido arbitrario podría inyectar
+// parámetros o lógica de consulta adicionales hacia PostgREST.
+const FILTER_VALUE_RE = /^(not\.)?(eq|gt|gte|lt|lte|neq|like|ilike|is)\.[a-zA-Z0-9_.@%*+-]{1,200}$|^(not\.)?in\.\([a-zA-Z0-9_,.@%*+-]{1,500}\)$/;
 // Tope máximo de filas por lectura para evitar respuestas gigantes.
 const MAX_LIMIT = 1000;
 
@@ -93,10 +98,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Guard 5: filtros — sólo claves que sean nombres de columna simples; los
-      // valores se codifican con encodeURIComponent. Si un valor trae un operador
-      // de PostgREST (p.ej. `gte.5`) se conserva el comportamiento, pero la clave
-      // (columna) queda garantizada como identificador válido.
+      // Guard 5: filtros — claves deben ser nombres de columna simples Y valores
+      // deben calzar con un operador PostgREST válido (eq./gt./in.(...)/etc). Esto
+      // impide que un valor arbitrario inyecte parámetros extra de query o lógica
+      // de filtro no soportada (p.ej. subconsultas, operadores desconocidos).
       const filterPairs: string[] = [];
       if (filters !== undefined && filters !== null) {
         if (typeof filters !== 'object' || Array.isArray(filters)) {
@@ -106,7 +111,11 @@ Deno.serve(async (req) => {
           if (!FILTER_KEY_RE.test(col)) {
             return Response.json({ error: `Invalid filter key: ${col}` }, { status: 400 });
           }
-          filterPairs.push(`${col}=${encodeURIComponent(String(val))}`);
+          const valStr = String(val);
+          if (!FILTER_VALUE_RE.test(valStr)) {
+            return Response.json({ error: `Invalid filter value for ${col}` }, { status: 400 });
+          }
+          filterPairs.push(`${col}=${encodeURIComponent(valStr)}`);
         }
       }
 
