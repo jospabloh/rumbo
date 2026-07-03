@@ -14,6 +14,30 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const MAX_SKEW_MS = 2 * 60 * 1000;
 const COUNT_CAP = 5000; // Base44 caps list at 5,000 — usage counts are capped here.
 
+// Defense-in-depth: even with a valid HMAC signature, never let a caller name an
+// arbitrary entity to read/write via the service role. Only these entities are
+// legitimately touched by Mission Control for THIS app (Rumbo); anything else —
+// including built-ins like `User` — is rejected outright. This bounds the blast
+// radius of a leaked/guessed INGEST_HMAC_SECRET or a replayed request to just
+// these two entities, instead of unrestricted service-role access to the whole
+// multi-tenant database.
+const ALLOWED_ENTITIES = new Set(['TenantLicense', 'SupportTicket']);
+
+class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function assertAllowedEntity(name: unknown): string {
+  if (typeof name !== 'string' || !ALLOWED_ENTITIES.has(name)) {
+    throw new HttpError(`entity not allowed: ${String(name)}`, 403);
+  }
+  return name;
+}
+
 // --- Protección anti-replay -------------------------------------------------
 // Las peticiones van firmadas por HMAC (bien), pero sin esto una petición firmada
 // capturada podía reproducirse dentro de la ventana de skew. Guardamos las claves
@@ -107,8 +131,8 @@ Deno.serve(async (req) => {
         return Response.json({ ok: true, pong: true });
 
       case 'licenses.list': {
-        const entity = params.entity;
-        if (!entity) return Response.json({ error: 'params.entity required' }, { status: 400 });
+        if (!params.entity) return Response.json({ error: 'params.entity required' }, { status: 400 });
+        const entity = assertAllowedEntity(params.entity);
         const records = await sr.entities[entity].list('-created_date', COUNT_CAP);
         return Response.json({ ok: true, records });
       }
@@ -119,10 +143,11 @@ Deno.serve(async (req) => {
         const counts: Record<string, number | null> = {};
         for (const e of entities) {
           try {
-            const rows = await sr.entities[e].list('-created_date', COUNT_CAP);
+            const allowed = assertAllowedEntity(e);
+            const rows = await sr.entities[allowed].list('-created_date', COUNT_CAP);
             counts[e] = rows.length;
           } catch {
-            counts[e] = null; // entity missing/inaccessible in this app
+            counts[e] = null; // entity missing/inaccessible or not allowed in this app
           }
         }
         return Response.json({ ok: true, counts, cap: COUNT_CAP });
@@ -131,10 +156,10 @@ Deno.serve(async (req) => {
       case 'emails.status': {
         // Read follow-up / lifecycle email history for one tenant from the app's
         // email log entity (apps that have one). Returns [] when absent. Read-only.
-        const logEntity = params.logEntity;
         const idField = params.idField;
         const id = params.id;
-        if (!logEntity || !idField || !id) return Response.json({ error: 'params.logEntity/idField/id required' }, { status: 400 });
+        if (!params.logEntity || !idField || !id) return Response.json({ error: 'params.logEntity/idField/id required' }, { status: 400 });
+        const logEntity = assertAllowedEntity(params.logEntity);
         try {
           const rows = await sr.entities[logEntity].filter({ [idField]: id });
           const records = (rows ?? []).map((r: Record<string, unknown>) => ({
@@ -150,16 +175,16 @@ Deno.serve(async (req) => {
         // Mission Control writes a tenant's license (service-role, HMAC-gated).
         // MC owns the per-app field mapping and builds `patch`; optional `log`
         // appends an audit row (e.g. puntos LicenseEvent). Returns the updated row.
-        const entity = params.entity;
         const id = params.id;
         const patch = params.patch;
-        if (!entity || !id || !patch || typeof patch !== 'object') {
+        if (!params.entity || !id || !patch || typeof patch !== 'object') {
           return Response.json({ error: 'params.entity/id/patch required' }, { status: 400 });
         }
+        const entity = assertAllowedEntity(params.entity);
         const updated = await sr.entities[entity].update(id, patch);
         const log = params.log;
         if (log && log.entity && log.row && typeof log.row === 'object') {
-          try { await sr.entities[log.entity].create(log.row); } catch { /* audit best-effort */ }
+          try { await sr.entities[assertAllowedEntity(log.entity)].create(log.row); } catch { /* audit best-effort */ }
         }
         return Response.json({ ok: true, updated });
       }
@@ -184,7 +209,7 @@ Deno.serve(async (req) => {
         const sent_at = new Date().toISOString();
         const log = params.log;
         if (log && log.entity && log.row && typeof log.row === 'object') {
-          try { await sr.entities[log.entity].create({ ...log.row, sent_at }); } catch { /* audit best-effort */ }
+          try { await sr.entities[assertAllowedEntity(log.entity)].create({ ...log.row, sent_at }); } catch { /* audit best-effort */ }
         }
         return Response.json({ ok: true, sent_at, recipient: to });
       }
@@ -193,9 +218,9 @@ Deno.serve(async (req) => {
         // Resolve recipient contacts for the app's tenants (read-only). MC passes
         // the per-app recipient spec: emails from fields on the license record, or
         // from a related entity (membership / school). Used to target campaigns.
-        const entity = params.entity;
         const r = params.recipient || {};
-        if (!entity) return Response.json({ error: 'params.entity required' }, { status: 400 });
+        if (!params.entity) return Response.json({ error: 'params.entity required' }, { status: 400 });
+        const entity = assertAllowedEntity(params.entity);
         const records = await sr.entities[entity].list('-created_date', COUNT_CAP);
         const contacts = [];
         for (const rec of records) {
@@ -205,8 +230,9 @@ Deno.serve(async (req) => {
           }
           if (!email && r.related && r.related.entity && r.related.keyField && r.related.emailField) {
             try {
+              const relatedEntity = assertAllowedEntity(r.related.entity);
               const key = r.related.keyFromRecord ? rec[r.related.keyFromRecord] : rec.id;
-              const rows = await sr.entities[r.related.entity].filter({ [r.related.keyField]: key });
+              const rows = await sr.entities[relatedEntity].filter({ [r.related.keyField]: key });
               // When roles are required, ONLY accept a row with an allowed role —
               // never fall back to an arbitrary (wrong-role) contact.
               let pick;
@@ -226,9 +252,9 @@ Deno.serve(async (req) => {
       case 'usage.byTenant': {
         // Per-tenant consumption: count records of an entity grouped by its tenant
         // FK field. Privacy: returns ONLY { tenant id, count } — no record data.
-        const entity = params.entity;
         const field = params.tenantField;
-        if (!entity || !field) return Response.json({ error: 'params.entity/tenantField required' }, { status: 400 });
+        if (!params.entity || !field) return Response.json({ error: 'params.entity/tenantField required' }, { status: 400 });
+        const entity = assertAllowedEntity(params.entity);
         try {
           const rows = await sr.entities[entity].list('-created_date', COUNT_CAP);
           const counts: Record<string, number> = {};
@@ -249,8 +275,8 @@ Deno.serve(async (req) => {
       case 'tickets.list': {
         // List an app's support tickets (service-role). MC owns the per-app field
         // mapping; this returns the raw records. Read-only.
-        const entity = params.entity;
-        if (!entity) return Response.json({ error: 'params.entity required' }, { status: 400 });
+        if (!params.entity) return Response.json({ error: 'params.entity required' }, { status: 400 });
+        const entity = assertAllowedEntity(params.entity);
         const records = await sr.entities[entity].list(params.order || '-created_date', COUNT_CAP);
         return Response.json({ ok: true, records });
       }
@@ -258,10 +284,10 @@ Deno.serve(async (req) => {
       case 'tickets.thread': {
         // Messages of one ticket, for apps with a SEPARATE message entity
         // (puntos/liuma). Rumbo stores the thread inline so MC never calls this.
-        const messageEntity = params.messageEntity;
         const fkField = params.fkField;
         const ticketId = params.ticketId;
-        if (!messageEntity || !fkField || !ticketId) return Response.json({ error: 'params.messageEntity/fkField/ticketId required' }, { status: 400 });
+        if (!params.messageEntity || !fkField || !ticketId) return Response.json({ error: 'params.messageEntity/fkField/ticketId required' }, { status: 400 });
+        const messageEntity = assertAllowedEntity(params.messageEntity);
         const records = await sr.entities[messageEntity].filter({ [fkField]: ticketId });
         return Response.json({ ok: true, records });
       }
@@ -271,11 +297,11 @@ Deno.serve(async (req) => {
         // MC owns the per-app shape: optionally create a message row (separate-entity
         // apps), optionally append to an inline array (rumbo `responses`), and patch
         // the ticket (status / activity / counters). Returns the updated row.
-        const entity = params.entity;
         const id = params.id;
-        if (!entity || !id) return Response.json({ error: 'params.entity/id required' }, { status: 400 });
+        if (!params.entity || !id) return Response.json({ error: 'params.entity/id required' }, { status: 400 });
+        const entity = assertAllowedEntity(params.entity);
         if (params.messageEntity && params.message && typeof params.message === 'object') {
-          await sr.entities[params.messageEntity].create(params.message);
+          await sr.entities[assertAllowedEntity(params.messageEntity)].create(params.message);
         }
         const patch = (params.patch && typeof params.patch === 'object') ? { ...params.patch } : {};
         if (params.appendField && params.appendItem && typeof params.appendItem === 'object') {
@@ -300,6 +326,7 @@ Deno.serve(async (req) => {
         return Response.json({ error: `unknown action: ${action}` }, { status: 400 });
     }
   } catch (e) {
+    if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 });
