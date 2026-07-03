@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Banknote, Gauge, Plus, Wrench } from 'lucide-react';
+import { Truck, Users, AlertTriangle, MessageSquare, TrendingUp, DollarSign, Banknote, Gauge, Plus, Wrench, Receipt, TrendingDown, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import StatCard from '@/components/dashboard/StatCard';
@@ -11,23 +11,33 @@ import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
-import { useVehicles, useDrivers, useAlerts, useMessages, useRentCharges } from '@/hooks/useEntities';
+import { monthlyExpenses, monthlyIncome, pendingFines, maintenanceDue } from '@/lib/dashboard';
+import { useVehicles, useDrivers, useAlerts, useMessages, useRentCharges, useEntityList } from '@/hooks/useEntities';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { readOnly } = useTenant();
+  const { readOnly, licenseInfo } = useTenant();
   const { can } = useModulePerms();
   const vehiclesQ = useVehicles();
   const driversQ = useDrivers();
   const alertsQ = useAlerts({ filter: { resolved: false } });
   const messagesQ = useMessages({ filter: { read: false } });
   const rentChargesQ = useRentCharges({ sort: '-period_start', limit: 300 });
+  // Fuentes para el centro de mando: infracciones, egresos y taller.
+  const finesQ = useEntityList('Fine', { sort: '-issued_at', limit: 500 });
+  const fuelQ = useEntityList('FuelLog', { sort: '-logged_at', limit: 500 });
+  const maintenanceQ = useEntityList('Maintenance', { sort: '-performed_at', limit: 500 });
+  const claimsQ = useEntityList('InsuranceClaim', { sort: '-incident_at', limit: 500 });
 
   const vehicles = vehiclesQ.data ?? [];
   const drivers = driversQ.data ?? [];
   const alerts = alertsQ.data ?? [];
   const messages = messagesQ.data ?? [];
   const rentCharges = rentChargesQ.data ?? [];
+  const fines = finesQ.data ?? [];
+  const fuel = fuelQ.data ?? [];
+  const maintenance = maintenanceQ.data ?? [];
+  const claims = claimsQ.data ?? [];
   const loading = vehiclesQ.isLoading || driversQ.isLoading || alertsQ.isLoading || messagesQ.isLoading || rentChargesQ.isLoading;
 
   const activeVehicles = vehicles.filter(v => v.status === 'active').length;
@@ -42,6 +52,23 @@ export default function Dashboard() {
   const totalDue = rentCharges.reduce((s, c) => s + Math.max((c.amount_due || 0) - (c.amount_paid || 0), 0), 0);
   const totalVehicles = vehicles.length;
   const availability = totalVehicles > 0 ? Math.round((activeVehicles / totalVehicles) * 100) : 0;
+
+  // Centro de mando: métricas agregadas del mes en curso (funciones puras y testeadas).
+  const incomeMonth = monthlyIncome(rentCharges);
+  const expenses = monthlyExpenses({ fuel, fines, maintenance, claims });
+  const fineStatus = pendingFines(fines);
+  const maintDue = maintenanceDue(maintenance);
+
+  // Tarjeta de licencia: días para vencer + color según urgencia (espejo de license.js).
+  const licenseDays = licenseInfo?.daysLeft;
+  const licenseValue = licenseDays == null ? 'Activa' : `${licenseDays}d`;
+  const licenseSub = licenseInfo?.state === 'readonly' ? 'solo lectura'
+    : licenseInfo?.state === 'past_due' ? 'pago pendiente'
+    : licenseInfo?.state === 'disabled' ? 'desactivada'
+    : licenseDays == null ? 'sin vencimiento' : 'vigente';
+  const licenseColor = licenseInfo?.state === 'readonly' || licenseInfo?.state === 'disabled' ? 'red'
+    : (licenseDays != null && licenseDays <= 7) || licenseInfo?.state === 'past_due' ? 'yellow'
+    : 'green';
 
   if (loading) {
     return <PageLoader />;
@@ -96,6 +123,19 @@ export default function Dashboard() {
         <StatCard icon={Banknote} label="Por cobrar" value={`$${totalDue.toLocaleString()}`} sub="rentas pendientes" color="red" link="/rentas" />
         <StatCard icon={Gauge} label="Disponibilidad" value={`${availability}%`} sub="unidades operando" color="blue" link="/vehicles" />
         <StatCard icon={TrendingUp} label="Flota total" value={totalVehicles} sub="vehículos" color="gray" link="/vehicles" />
+      </div>
+
+      {/* Centro de mando: finanzas del mes, infracciones, taller y licencia */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard icon={DollarSign} label="Ingresos del mes" value={`$${incomeMonth.toLocaleString()}`} sub="rentas cobradas" color="green" link="/rentas" />
+        <StatCard icon={TrendingDown} label="Egresos del mes" value={`$${expenses.total.toLocaleString()}`} sub="combustible · multas · taller" color="red" link="/financial" />
+        <StatCard icon={Receipt} label="Infracciones" value={fineStatus.count} sub={`$${fineStatus.amount.toLocaleString()} pendiente`} color="yellow" link="/financial" />
+        <StatCard icon={Wrench} label="Taller" value={maintDue.overdue + maintDue.dueSoon} sub={`${maintDue.overdue} vencidos · ${maintDue.dueSoon} por vencer`} color={maintDue.overdue > 0 ? 'red' : 'yellow'} link="/maintenance" />
+      </div>
+
+      {/* Estado de licencia */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard icon={ShieldCheck} label="Licencia" value={licenseValue} sub={licenseSub} color={licenseColor} link="/billing" />
       </div>
 
       {/* Revenue trend */}
