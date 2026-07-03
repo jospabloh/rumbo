@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import SuperAdminPanel from '@/components/admin/SuperAdminPanel';
 import PermissionsPanel from '@/components/admin/PermissionsPanel';
+import BusinessSettingsPanel from '@/components/admin/BusinessSettingsPanel';
 import UserRow from '@/components/admin/UserRow';
 import InviteForm from '@/components/admin/InviteForm';
 import TenantEditor from '@/components/admin/TenantEditor';
@@ -151,6 +152,9 @@ export default function Admin() {
           Una vez que inicie sesión, ve a <span className="text-foreground font-medium">Conductores</span> y vincula su perfil con su cuenta desde el detalle del conductor.
         </p>
       </section>
+
+      {/* Configuración del negocio (bono de referido, costo/km, etc.) — owner/admin del tenant */}
+      <BusinessSettingsPanel />
 
       {/* Permisos granulares — solo admin del tenant */}
       <PermissionsPanel />

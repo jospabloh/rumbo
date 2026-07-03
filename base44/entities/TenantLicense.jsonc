@@ -114,6 +114,10 @@
       "type": "object",
       "title": "Configuraci\u00f3n de permisos por rol"
     },
+    "settings": {
+      "type": "object",
+      "title": "Configuraci\u00f3n de negocio del tenant (bono de referido, ventana de costo/km, etc.). Editable por owner/admin del tenant y por el platform owner v\u00eda licensesAdmin. Cada ajuste tiene un default en la app si no se personaliza."
+    },
     "members": {
       "type": "array",
       "title": "Miembros del tenant",
