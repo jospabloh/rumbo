@@ -12,6 +12,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
   const [maintenance, setMaintenance] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docError, setDocError] = useState('');
 
   const driver = drivers.find(d => d.id === vehicle.assigned_driver_id);
 
@@ -24,11 +25,20 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
     const file = e.target.files[0];
     if (!file) return;
     setUploadingDoc(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    await base44.entities.VehicleDocument.create({ vehicle_id: vehicle.id, doc_type: 'other', file_url });
-    base44.entities.VehicleDocument.filter({ vehicle_id: vehicle.id }).then(setDocs);
-    setUploadingDoc(false);
+    setDocError('');
+    try {
+      const compressed = await compressImage(file);
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
+      // tenant_id es obligatorio: la RLS de create de VehicleDocument exige que coincida
+      // con el tenant del usuario. Sin él el documento se rechazaba y se perdía en silencio.
+      await base44.entities.VehicleDocument.create({ tenant_id: vehicle.tenant_id, vehicle_id: vehicle.id, doc_type: 'other', file_url });
+      const updated = await base44.entities.VehicleDocument.filter({ vehicle_id: vehicle.id });
+      setDocs(updated);
+    } catch (err) {
+      setDocError('No se pudo subir el documento. Verifica tu conexión y tus permisos, e inténtalo de nuevo.');
+    } finally {
+      setUploadingDoc(false);
+    }
   };
 
   const fields = [
@@ -122,6 +132,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
             <input type="file" accept="image/*" className="hidden" onChange={handleDocUpload} disabled={uploadingDoc} />
           </label>
         </div>
+        {docError && <p className="text-xs text-destructive mb-2">{docError}</p>}
         {docs.length === 0 ? <p className="text-sm text-muted-foreground">Sin documentos</p> : (
           docs.map(doc => (
             <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"

@@ -44,9 +44,12 @@ export default function PartsList({ vehicles }) {
     setShowForm(true);
   };
 
+  const [error, setError] = useState('');
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setError('');
     const payload = {
       ...form,
       tenant_id: tenantId,
@@ -55,31 +58,49 @@ export default function PartsList({ vehicles }) {
       unit_cost: form.unit_cost ? parseFloat(String(form.unit_cost)) : null,
       vehicle_id: form.vehicle_id || null,
     };
-    if (editId) await base44.entities.Part.update(editId, payload);
-    else await base44.entities.Part.create(payload);
-    setShowForm(false);
-    setEditId(null);
-    setForm(EMPTY);
-    refresh();
-    setSaving(false);
+    try {
+      if (editId) await base44.entities.Part.update(editId, payload);
+      else await base44.entities.Part.create(payload);
+      setShowForm(false);
+      setEditId(null);
+      setForm(EMPTY);
+      refresh();
+    } catch (err) {
+      setError('No se pudo guardar la refacción. Verifica tus permisos e inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const adjustStock = async (part, delta) => {
     const newStock = (part.stock || 0) + delta;
     if (newStock < 0) return;
-    await base44.entities.Part.update(part.id, { stock: newStock });
-    refresh();
+    setError('');
+    try {
+      await base44.entities.Part.update(part.id, { stock: newStock });
+      refresh();
+    } catch (err) {
+      setError('No se pudo actualizar el stock. Reintenta; el valor mostrado no cambió.');
+    }
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.Part.delete(id);
-    refresh();
+    setError('');
+    try {
+      await base44.entities.Part.delete(id);
+      refresh();
+    } catch (err) {
+      setError('No se pudo eliminar la refacción. Verifica tus permisos e inténtalo de nuevo.');
+    }
   };
 
   if (isLoading) return <ListSkeleton rows={4} />;
 
   return (
     <div>
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-3 text-sm text-destructive">{error}</div>
+      )}
       {/* Resumen de stock bajo */}
       {lowStock.length > 0 && (
         <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-3 flex items-center gap-2">

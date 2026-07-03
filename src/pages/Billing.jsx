@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users, Crown, Shield, Navigation, Wrench, Car, User } from 'lucide-react';
 import { useMe, useRawList } from '@/hooks/useEntities';
+import { parseLocalDate } from '@/lib/license';
 
 const ROLE_CONFIG = {
   owner:      { label: 'Owner',       icon: Crown,      color: 'text-warning bg-warning/10' },
@@ -70,12 +71,15 @@ export default function Billing() {
   const statusInfo = STATUS_LABELS[status];
   const StatusIcon = statusInfo.icon;
 
+  // Fechas 'YYYY-MM-DD' parseadas como medianoche local (no UTC) para no desfasar un día
+  // en zonas negativas como México; consistente con getLicenseInfo en license.js.
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const daysUntilRenewal = license?.renews_at
-    ? Math.ceil((new Date(license.renews_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((parseLocalDate(license.renews_at).getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   const daysUntilTrial = license?.trial_ends_at
-    ? Math.ceil((new Date(license.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((parseLocalDate(license.trial_ends_at).getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   return (

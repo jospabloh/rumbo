@@ -75,11 +75,14 @@ const TenantGate = ({ children }) => {
  * el rol sí tiene acceso. El conductor va a su propia interfaz.
  */
 const Home = () => {
-  const { userRole, loading } = useTenant();
+  const { userRole, isAppOwner, loading } = useTenant();
   if (loading) return <PageLoader />;
   if (isDriver(userRole)) return <Navigate to="/driver/home" replace />;
+  // El owner de la app (gestor de licencias, a menudo sin tenant propio ni rol de staff)
+  // debe aterrizar en su consola, no en la pantalla de "sin secciones".
+  if (isAppOwner) return <Navigate to="/licenses" replace />;
   if (can(userRole, 'dashboard')) return <Dashboard />;
-  const items = accessibleNavItems(userRole);
+  const items = accessibleNavItems(userRole, { isAppOwner });
   if (items.length > 0) return <Navigate to={items[0].path} replace />;
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6 text-center">

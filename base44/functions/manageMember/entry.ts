@@ -20,7 +20,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 function computeWriteAccess(tenant: any): 'enabled' | 'blocked' {
   if (!tenant) return 'enabled';
-  if (tenant.status === 'cancelled' || tenant.status === 'suspended') return 'blocked';
+  if (tenant.status === 'cancelled' || tenant.status === 'suspended' || tenant.status === 'expired') return 'blocked';
   const endStr = tenant.current_period_end || tenant.trial_ends_at;
   if (!endStr) return 'enabled';
   const today = new Date(); today.setHours(0, 0, 0, 0);

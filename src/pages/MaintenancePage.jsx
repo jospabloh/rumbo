@@ -24,7 +24,10 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const [showForm, setShowForm] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
   const [tab, setTab] = useState(defaultTab);
+  const [error, setError] = useState('');
+  const [confirmId, setConfirmId] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const canDelete = !readOnly && can('maintenance', 'delete');
 
   // Atajo desde el dashboard (/maintenance?new=1): abre el formulario de alta.
   useEffect(() => {
@@ -45,19 +48,33 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   });
 
   const handleSave = async (data) => {
-    if (editRecord) {
-      await base44.entities.Maintenance.update(editRecord.id, data);
-    } else {
-      await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId });
+    if (!tenantId) { setError('Tu organización aún se está configurando. Espera unos segundos e inténtalo de nuevo.'); return; }
+    if (readOnly) { setError('Tu licencia está en modo solo lectura: renueva tu pago para registrar mantenimientos.'); return; }
+    setError('');
+    try {
+      if (editRecord) {
+        await base44.entities.Maintenance.update(editRecord.id, data);
+      } else {
+        await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId });
+      }
+      setShowForm(false);
+      setEditRecord(null);
+      refresh();
+    } catch (err) {
+      setError('No se pudo guardar el mantenimiento. Verifica tus permisos e inténtalo de nuevo.');
     }
-    setShowForm(false);
-    setEditRecord(null);
-    refresh();
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.Maintenance.delete(id);
-    refresh();
+    setError('');
+    try {
+      await base44.entities.Maintenance.delete(id);
+      setConfirmId(null);
+      refresh();
+    } catch (err) {
+      setConfirmId(null);
+      setError('No se pudo eliminar el mantenimiento. Verifica tus permisos e inténtalo de nuevo.');
+    }
   };
 
   return (
@@ -71,6 +88,8 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
           </Button>
         )}
       />
+
+      {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4 text-sm text-destructive">{error}</div>}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-muted rounded-lg p-1 mb-4">
@@ -111,7 +130,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
                       </div>
                       <div className="flex items-center gap-2">
                         {r.cost && <span className="text-sm font-bold">${parseFloat(r.cost).toFixed(2)}</span>}
-                        <button onClick={() => handleDelete(r.id)} className="text-xs text-muted-foreground hover:text-destructive transition-colors ml-2">✕</button>
+                        {canDelete && <button onClick={() => setConfirmId(r.id)} className="text-xs text-muted-foreground hover:text-destructive transition-colors ml-2">✕</button>}
                       </div>
                     </div>
                     {r.next_due_at && (
@@ -140,6 +159,20 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
 
           {showForm && (
             <MaintenanceForm record={editRecord} vehicles={vehicles} onSave={handleSave} onClose={() => { setShowForm(false); setEditRecord(null); }} />
+          )}
+
+          {confirmId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/60" onClick={() => setConfirmId(null)} />
+              <div className="relative z-10 bg-card border border-border rounded-xl p-6 mx-4 max-w-sm w-full">
+                <h3 className="font-bold mb-2">¿Eliminar mantenimiento?</h3>
+                <p className="text-sm text-muted-foreground mb-4">Esta acción no se puede deshacer.</p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setConfirmId(null)} className="flex-1">Cancelar</Button>
+                  <Button variant="destructive" onClick={() => handleDelete(confirmId)} className="flex-1">Eliminar</Button>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}

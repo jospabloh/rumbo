@@ -14,6 +14,7 @@ export default function Catalogs() {
   const [category, setCategory] = useState(CATALOG_CATEGORIES[0].key);
   const [newLabel, setNewLabel] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const { data, isLoading: loading } = useEntityList('Catalog', { filter: { category }, enabled: !!tenantId });
   const invalidate = useInvalidateEntity();
@@ -27,26 +28,42 @@ export default function Catalogs() {
     const label = newLabel.trim();
     if (!label || !tenantId) return;
     setSaving(true);
-    await base44.entities.Catalog.create({
-      tenant_id: tenantId,
-      category,
-      label,
-      active: true,
-      sort_order: items.length,
-    }).catch(() => {});
-    setNewLabel('');
-    setSaving(false);
-    refresh();
+    setError('');
+    try {
+      await base44.entities.Catalog.create({
+        tenant_id: tenantId,
+        category,
+        label,
+        active: true,
+        sort_order: items.length,
+      });
+      setNewLabel('');
+      refresh();
+    } catch (err) {
+      setError('No se pudo agregar el valor. Verifica tus permisos e inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggle = async (item) => {
-    await base44.entities.Catalog.update(item.id, { active: !item.active }).catch(() => {});
-    refresh();
+    setError('');
+    try {
+      await base44.entities.Catalog.update(item.id, { active: !item.active });
+      refresh();
+    } catch (err) {
+      setError('No se pudo cambiar el estado del valor. Inténtalo de nuevo.');
+    }
   };
 
   const remove = async (item) => {
-    await base44.entities.Catalog.delete(item.id).catch(() => {});
-    refresh();
+    setError('');
+    try {
+      await base44.entities.Catalog.delete(item.id);
+      refresh();
+    } catch (err) {
+      setError('No se pudo eliminar el valor. Inténtalo de nuevo.');
+    }
   };
 
   const cat = CATALOG_CATEGORIES.find(c => c.key === category);
@@ -81,6 +98,8 @@ export default function Catalogs() {
           <Button onClick={add} disabled={saving || !newLabel.trim()} className="gap-2"><Plus className="w-4 h-4" />Agregar</Button>
         </div>
       )}
+
+      {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4 text-sm text-destructive">{error}</div>}
 
       {loading ? (
         <div className="flex justify-center py-10"><Spinner /></div>

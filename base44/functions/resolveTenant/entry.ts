@@ -30,7 +30,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  */
 function computeWriteAccess(tenant: any): 'enabled' | 'blocked' {
   if (!tenant) return 'enabled'; // sin tenant la RLS de tenant_id ya bloquea la escritura
-  if (tenant.status === 'cancelled' || tenant.status === 'suspended') return 'blocked';
+  // 'expired' es un override manual del owner igual que cancelled/suspended: debe bloquear
+  // aunque current_period_end aún no haya pasado (antes caía al cálculo por fechas y no revocaba nada).
+  if (tenant.status === 'cancelled' || tenant.status === 'suspended' || tenant.status === 'expired') return 'blocked';
   const endStr = tenant.current_period_end || tenant.trial_ends_at;
   if (!endStr) return 'enabled'; // activa sin fecha de corte
   const today = new Date(); today.setHours(0, 0, 0, 0);

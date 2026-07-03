@@ -26,7 +26,8 @@ export function TenantProvider({ children }) {
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadTenant = async () => {
+  const loadTenant = async ({ showLoading = false } = {}) => {
+    if (showLoading) setLoading(true);
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
@@ -45,7 +46,9 @@ export function TenantProvider({ children }) {
 
       // La licencia completa (branding, plan, etc.) se lee del cliente; la RLS ya lo
       // permite porque el usuario pertenece al tenant.
-      const all = await base44.entities.TenantLicense.list('-created_date', 50).catch(() => []);
+      // Límite alineado con resolveTenant (1000): con 50 un owner cuyo tenant no estaba
+      // entre los 50 más recientes quedaba sin resolver y caía al onboarding en bucle.
+      const all = await base44.entities.TenantLicense.list('-created_date', 1000).catch(() => []);
       const email = (user.email || '').toLowerCase();
 
       let found = resolvedId ? all.find(t => t.id === resolvedId) || null : null;
@@ -80,9 +83,10 @@ export function TenantProvider({ children }) {
   };
 
   useEffect(() => {
-    loadTenant();
+    loadTenant({ showLoading: true });
     // Revalidación periódica + al volver el foco a la pestaña: mantiene write_access
     // (y el estado de licencia que ve la UI) fresco sin obligar a recargar la página.
+    // Silenciosa (sin showLoading) para no parpadear la app cada 15 min ni al enfocar.
     const interval = setInterval(() => { loadTenant(); }, REVALIDATE_MS);
     const onFocus = () => { if (document.visibilityState === 'visible') loadTenant(); };
     document.addEventListener('visibilitychange', onFocus);
@@ -96,7 +100,7 @@ export function TenantProvider({ children }) {
   const writeBlocked = isWriteBlocked(licenseInfo);
 
   return (
-    <TenantContext.Provider value={{ tenant, tenantId, isAppOwner, userRole, loading, reload: loadTenant, setTenant, licenseInfo, readOnly, writeBlocked }}>
+    <TenantContext.Provider value={{ tenant, tenantId, isAppOwner, userRole, loading, reload: () => loadTenant({ showLoading: true }), setTenant, licenseInfo, readOnly, writeBlocked }}>
       {children}
     </TenantContext.Provider>
   );

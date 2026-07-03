@@ -13,6 +13,20 @@
 
 export const SUPPORT_URL = 'https://acaciaco.com.mx/rumbo';
 
+/**
+ * Parsea una fecha 'YYYY-MM-DD' como medianoche LOCAL (no UTC).
+ * `new Date('2026-07-03')` la interpreta como UTC, y en zonas negativas (México,
+ * UTC-6/-7) al normalizar a local se corría un día, haciendo que el frontend
+ * calculara la licencia un día más severo que el backend. Parsear componentes
+ * evita ese desfase y mantiene front y back de acuerdo.
+ */
+export function parseLocalDate(str) {
+  if (!str) return null;
+  const [y, m, d] = String(str).split('-').map(Number);
+  if (!y || !m || !d) { const dt = new Date(str); dt.setHours(0, 0, 0, 0); return dt; }
+  return new Date(y, m - 1, d); // medianoche local
+}
+
 export function getLicenseInfo(tenant) {
   if (!tenant) return { state: 'active', daysLeft: null, overdue: 0, message: '' };
 
@@ -22,12 +36,18 @@ export function getLicenseInfo(tenant) {
   if (tenant.status === 'suspended') {
     return { state: 'disabled', daysLeft: null, overdue: null, message: 'Tu cuenta está suspendida.' };
   }
+  // 'expired' es un override manual del owner (igual que cancelled/suspended). Debe
+  // cortar el acceso aunque current_period_end aún no haya pasado; si no, marcar
+  // "Expirada" no revocaba nada (el cálculo por fechas la dejaba activa).
+  if (tenant.status === 'expired') {
+    return { state: 'disabled', daysLeft: null, overdue: null, message: 'Tu licencia expiró. Contacta a soporte para reactivarla.' };
+  }
 
   const endStr = tenant.current_period_end || tenant.trial_ends_at;
   if (!endStr) return { state: 'active', daysLeft: null, overdue: 0, message: '' };
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const end = new Date(endStr); end.setHours(0, 0, 0, 0);
+  const end = parseLocalDate(endStr);
   const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000);
 
   if (daysLeft >= 0) {

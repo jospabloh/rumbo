@@ -20,9 +20,13 @@ export function currentPeriod(freq, rentDay) {
 }
 
 export function statusOf(c) {
-  const due = c.amount_due || 0;
-  const paid = c.amount_paid || 0;
-  if (paid >= due && due > 0) return 'paid';
+  const due = Number(c.amount_due) || 0;
+  const paid = Number(c.amount_paid) || 0;
+  // Un cargo sin saldo (due<=0, p. ej. cubierto por un bono de referido) está saldado.
+  // Antes devolvía 'pending' y dejaba vivo el botón de cobro → riesgo de doble cobro.
+  if (due <= 0) return 'paid';
+  // Comparación en centavos para no dejar 'partial' un cargo pagado por redondeo de floats.
+  if (Math.round((paid - due) * 100) >= 0) return 'paid';
   if (paid > 0) return 'partial';
   return 'pending';
 }
