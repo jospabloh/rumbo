@@ -88,10 +88,7 @@
   ],
   "rls": {
     "create": {
-      "$or": [
-        { "data.tenant_id": "{{user.data.tenant_id}}" },
-        { "user_condition": { "role": "admin" } }
-      ]
+      "data.tenant_id": "{{user.data.tenant_id}}"
     },
     "read": {
       "$or": [
@@ -105,19 +102,13 @@
         },
         {
           "data.requester_id": "{{user.id}}"
-        },
-        { "user_condition": { "role": "admin" } }
+        }
       ]
     },
     "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
-        {
-          "data.tenant_id": "{{user.data.tenant_id}}",
-          "$or": [
-            { "user_condition": { "role": "owner" } },
-            { "user_condition": { "role": "admin" } }
-          ]
-        },
+        { "user_condition": { "role": "owner" } },
         { "user_condition": { "role": "admin" } }
       ]
     },
