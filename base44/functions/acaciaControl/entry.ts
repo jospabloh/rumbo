@@ -25,6 +25,8 @@ const COUNT_CAP = 5000; // Base44 caps list at 5,000 — usage counts are capped
 // cambiar el esquema del payload ni requerir cambios en el firmante: dos
 // peticiones legítimas distintas difieren en `ts` → difieren en `sig`; un replay
 // reusa exactamente la misma `sig` y se rechaza.
+// El store de claves vistas es la entidad `AcaciaReplayKey` (persistente y
+// compartida entre instancias), no memoria del proceso.
 //
 // Store persistente y compartido entre instancias: entidad dedicada
 // `AcaciaReplayKey` (en vez de un Map en memoria del proceso). Las funciones
@@ -83,21 +85,22 @@ Deno.serve(async (req) => {
     // Anti-replay: SÓLO tras verificar la firma (así un atacante no autenticado no
     // puede inundar el store). `nonce`/`jti` es opcional y sólo se registra por
     // ahora; la clave de replay se basa en la firma, que ya es única por petición.
+    const base44 = createClientFromRequest(req);
+    const sr = base44.asServiceRole;
+
     const now = Date.now();
-    pruneReplayStore(now);
+    await pruneReplayStore(sr, now);
     const nonce = (params as Record<string, unknown>)?.nonce ?? (params as Record<string, unknown>)?.jti;
     if (nonce === undefined) {
-      // Payload legado sin nonce: se acepta pero se deja constancia. Ver TODO arriba.
+      // Payload legado sin nonce: se acepta pero se deja constancia.
       console.warn('acaciaControl: petición sin nonce/jti; anti-replay basado sólo en firma');
     }
     const replayKey = nonce !== undefined ? `${String(sig)}:${String(nonce)}` : String(sig);
-    if (seenReplayKeys.has(replayKey)) {
+    const existing = await sr.entities.AcaciaReplayKey.filter({ replay_key: replayKey });
+    if (existing.length > 0) {
       return Response.json({ error: 'replay detected' }, { status: 409 });
     }
-    seenReplayKeys.set(replayKey, now);
-
-    const base44 = createClientFromRequest(req);
-    const sr = base44.asServiceRole;
+    await sr.entities.AcaciaReplayKey.create({ replay_key: replayKey, seen_at: now });
 
     switch (action) {
       case 'ping':
