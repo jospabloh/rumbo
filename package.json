@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "validate:rls": "node scripts/validate-rls.mjs"
+    "validate:rls": "node scripts/validate-rls.mjs",
+    "audit:tenant-scope": "node scripts/audit-tenant-scope.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.35",

@@ -30,6 +30,9 @@ jobs:
       - name: Validate RLS
         run: npm run validate:rls
 
+      - name: Audit tenant scope (cross-tenant leak guard)
+        run: npm run audit:tenant-scope
+
       - name: Test
         run: npm run test
 
