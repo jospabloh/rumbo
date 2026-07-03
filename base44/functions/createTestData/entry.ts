@@ -13,15 +13,10 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole;
 
-    // Buscar el tenant del usuario (solo del propio owner; nunca el de otro tenant)
-    let tenantId = user.data?.tenant_id;
-
-    if (!tenantId) {
-      const tenants = await svc.entities.TenantLicense.list('-created_date', 50);
-      const found = tenants.find(t => t.created_by_id === user.id)
-        || tenants.find(t => t.owner_email === user.email);
-      tenantId = found?.id;
-    }
+    // Estricto: sólo el tenant_id ya resuelto en el token del usuario invocador
+    // (vía resolveTenant). Nunca se listan licencias globales para "adivinar" un
+    // tenant, así que no hay riesgo de poblar datos de prueba en un tenant ajeno.
+    const tenantId = user.data?.tenant_id;
 
     if (!tenantId) {
       return Response.json({
