@@ -99,7 +99,7 @@ export default function TicketForm({ onClose }) {
             <p className="text-sm text-muted-foreground">{suggestion?.tip}</p>
             <p className="text-sm mt-2">
               Sección sugerida: <span className="font-medium text-foreground">{suggestion?.section}</span>
-              <span className="text-muted-foreground"> — la encuentras en este mismo Centro de ayuda, en «Guía por módulo».</span>
+              <span className="text-muted-foreground"> — revísala en el Centro de ayuda.</span>
             </p>
           </div>
           <FormError>{error}</FormError>

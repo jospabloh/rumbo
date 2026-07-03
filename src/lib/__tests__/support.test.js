@@ -57,9 +57,21 @@ describe('suggestSolution', () => {
     expect(suggestSolution('question', 'error al importar csv').section).toBe('Importar');
   });
 
+  it('matches login/account phrasing before generic permissions', () => {
+    expect(suggestSolution('question', 'no puedo entrar a la app').section).toBe('Acceso y cuenta');
+    expect(suggestSolution('other', 'olvidé mi contraseña').section).toBe('Acceso y cuenta');
+    expect(suggestSolution('question', 'problema al iniciar sesión').section).toBe('Acceso y cuenta');
+  });
+
   it('falls back to the category when no keyword matches', () => {
     expect(suggestSolution('billing', 'asdfqwer').section).toBe('Licencia');
     expect(suggestSolution('feature', 'xyz').section).toBe('Guía por módulo');
+  });
+
+  it('gives an actionable, non-empty tip on the generic fallback', () => {
+    const { tip } = suggestSolution('other', 'zzz sin coincidencia');
+    expect(tip.length).toBeGreaterThan(20);
+    expect(tip).toMatch(/escál|48 h/i); // guides the user to escalate rather than a dead end
   });
 
   it('falls back to a generic section for unknown category and text', () => {

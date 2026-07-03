@@ -172,7 +172,15 @@ Deno.serve(async (req) => {
         const subject = params.subject;
         const html = params.html;
         if (!to || !subject || !html) return Response.json({ error: 'params.to/subject/html required' }, { status: 400 });
-        await sr.integrations.Core.SendEmail({ to, subject, body: html, from_name: 'ACACIA' });
+        // Defense-in-depth: even HMAC-gated, the bridge must never become an open
+        // relay for phishing. Validate the recipient and cap sizes.
+        if (typeof to !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to.trim())) {
+          return Response.json({ error: 'invalid recipient' }, { status: 400 });
+        }
+        if (String(subject).length > 500 || new TextEncoder().encode(String(html)).length > 512 * 1024) {
+          return Response.json({ error: 'payload too large' }, { status: 413 });
+        }
+        await sr.integrations.Core.SendEmail({ to: to.trim(), subject, body: html, from_name: 'ACACIA' });
         const sent_at = new Date().toISOString();
         const log = params.log;
         if (log && log.entity && log.row && typeof log.row === 'object') {
