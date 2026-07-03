@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getLicenseInfo, isReadOnly, isDisabled, isWriteBlocked, SUPPORT_URL } from '../license.js';
+import { getLicenseInfo, isReadOnly, isDisabled, isWriteBlocked, parseLocalDate, SUPPORT_URL } from '../license.js';
 
 /** Build an ISO date string that is `offsetDays` away from today (negative = past). */
 function dateOffset(offsetDays) {
@@ -36,6 +36,28 @@ describe('getLicenseInfo() — forced disabled states', () => {
     const info = getLicenseInfo({ status: 'suspended' });
     expect(info.state).toBe('disabled');
     expect(info.message).toMatch(/suspendida/i);
+  });
+
+  it('expired status returns disabled even with a future period end (owner override)', () => {
+    const info = getLicenseInfo({ status: 'expired', current_period_end: dateOffset(30) });
+    expect(info.state).toBe('disabled');
+    expect(isWriteBlocked(info)).toBe(true);
+  });
+});
+
+describe('parseLocalDate() — evita el desfase de un día en zonas negativas', () => {
+  it('parses YYYY-MM-DD to LOCAL midnight components (no UTC shift)', () => {
+    const d = parseLocalDate('2026-07-03');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6); // julio (0-indexed)
+    expect(d.getDate()).toBe(3);
+    expect(d.getHours()).toBe(0);
+    expect(d.getMinutes()).toBe(0);
+  });
+
+  it('returns null for empty input', () => {
+    expect(parseLocalDate('')).toBeNull();
+    expect(parseLocalDate(null)).toBeNull();
   });
 });
 

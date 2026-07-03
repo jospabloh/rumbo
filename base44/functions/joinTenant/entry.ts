@@ -34,7 +34,7 @@ function normalizeCode(raw: string): string {
 function isJoinable(tenant: any): boolean {
   if (!tenant) return false;
   // Bloquea unión a tenants apagados por el owner de la app.
-  if (tenant.status === 'cancelled' || tenant.status === 'suspended') return false;
+  if (tenant.status === 'cancelled' || tenant.status === 'suspended' || tenant.status === 'expired') return false;
   return true;
 }
 

@@ -20,6 +20,7 @@ export default function Alerts() {
   const invalidate = useInvalidateEntity();
   const [generating, setGenerating] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [error, setError] = useState('');
 
   const alerts = useMemo(
     () => (data ?? []).slice().sort((x, y) => (SEVERITY_ORDER[x.severity] ?? 2) - (SEVERITY_ORDER[y.severity] ?? 2)),
@@ -27,15 +28,26 @@ export default function Alerts() {
   );
 
   const handleResolve = async (id) => {
-    await base44.entities.Alert.update(id, { resolved: true });
-    invalidate('Alert');
+    setError('');
+    try {
+      await base44.entities.Alert.update(id, { resolved: true });
+      invalidate('Alert');
+    } catch (err) {
+      setError('No se pudo marcar la alerta como resuelta. Inténtalo de nuevo.');
+    }
   };
 
   const handleGenerate = async () => {
     setGenerating(true);
-    await base44.functions.invoke('generateAlerts', {});
-    invalidate('Alert');
-    setGenerating(false);
+    setError('');
+    try {
+      await base44.functions.invoke('generateAlerts', {});
+      invalidate('Alert');
+    } catch (err) {
+      setError('No se pudieron verificar las alertas. Inténtalo de nuevo.');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const filtered = filter === 'all' ? alerts : alerts.filter(a => a.severity === filter);
@@ -52,6 +64,8 @@ export default function Alerts() {
           </Button>
         )}
       />
+
+      {error && <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4 text-sm text-destructive">{error}</div>}
 
       {/* Filter tabs */}
       <div className="flex gap-1 bg-muted rounded-lg p-1 mb-4">

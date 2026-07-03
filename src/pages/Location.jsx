@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMe, useVehicles, useDrivers, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
+import { useTenant } from '@/lib/TenantContext';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -24,6 +25,7 @@ const statusConfig = {
 };
 
 export default function Location() {
+  const { tenantId } = useTenant();
   const { data: user, isLoading: meLoading } = useMe();
   const { data: vehicles = [], isLoading: vLoading } = useVehicles();
   const { data: drivers = [], isLoading: dLoading } = useDrivers();
@@ -34,6 +36,7 @@ export default function Location() {
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [creating, setCreating] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [error, setError] = useState('');
 
   const loading = meLoading || vLoading || dLoading || requestsQ.isLoading;
 
@@ -54,18 +57,31 @@ export default function Location() {
 
   const handleRequestLocation = async () => {
     if (!selectedVehicle) return;
-    setCreating(true);
     const vehicle = vehicles.find(v => v.id === selectedVehicle);
-    await base44.entities.LocationRequest.create({
-      vehicle_id: selectedVehicle,
-      driver_id: vehicle?.assigned_driver_id,
-      requested_by: user?.id,
-      status: 'pending',
-      requested_at: new Date().toISOString(),
-    });
-    setSelectedVehicle('');
-    refresh();
-    setCreating(false);
+    if (!vehicle?.assigned_driver_id) {
+      setError('Ese vehículo no tiene conductor asignado. Asigna uno para poder pedir su ubicación.');
+      return;
+    }
+    setCreating(true);
+    setError('');
+    try {
+      // tenant_id es obligatorio (RLS de create de LocationRequest); sin él la solicitud
+      // se rechazaba y el botón quedaba colgado en "Enviando...".
+      await base44.entities.LocationRequest.create({
+        tenant_id: tenantId,
+        vehicle_id: selectedVehicle,
+        driver_id: vehicle.assigned_driver_id,
+        requested_by: user?.id,
+        status: 'pending',
+        requested_at: new Date().toISOString(),
+      });
+      setSelectedVehicle('');
+      refresh();
+    } catch (err) {
+      setError('No se pudo enviar la solicitud. Verifica tu conexión y permisos, e inténtalo de nuevo.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleShareLocation = async () => {
@@ -132,6 +148,7 @@ export default function Location() {
               <Plus className="w-4 h-4" />{creating ? 'Enviando...' : 'Solicitar'}
             </Button>
           </div>
+          {error && <p className="text-xs text-destructive mt-2">{error}</p>}
         </div>
       )}
 

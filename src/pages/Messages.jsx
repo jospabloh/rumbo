@@ -118,11 +118,16 @@ export default function Messages() {
   };
 
   const handleCreateChannel = async (data) => {
-    const ch = await base44.entities.Channel.create(data);
+    // tenant_id es obligatorio: la RLS de create de Channel exige que coincida con el
+    // tenant del usuario. Sin él, crear un canal fallaba y Mensajes quedaba inutilizable.
+    const ch = await base44.entities.Channel.create({ ...data, tenant_id: tenantId });
     invalidate('Channel');
     setSelectedChannel(ch);
     setShowNewChannel(false);
   };
+
+  // Los conductores no pueden crear canales (RLS: solo owner/admin/dispatcher).
+  const canManageChannels = user?.role !== 'driver';
 
   if (loading) {
     return <PageLoader />;
@@ -134,7 +139,9 @@ export default function Messages() {
       <div className="w-56 lg:w-64 border-r border-border bg-sidebar flex flex-col shrink-0">
         <div className="p-3 border-b border-border flex items-center justify-between">
           <span className="text-sm font-semibold">Canales</span>
-          <button onClick={() => setShowNewChannel(true)} className="text-primary hover:opacity-80"><Plus className="w-4 h-4" /></button>
+          {canManageChannels && (
+            <button onClick={() => setShowNewChannel(true)} className="text-primary hover:opacity-80"><Plus className="w-4 h-4" /></button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {channels.map(ch => (
