@@ -15,6 +15,29 @@ const PRIORITIES = ['low', 'normal', 'high'];
 // Destino por defecto del escalamiento. Se puede sobrescribir con el secret SUPPORT_EMAIL.
 const DEFAULT_SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 const SLA_HOURS = 48;
+// Prefijo del folio ITSM. Se puede sobrescribir con el secret TICKET_PREFIX.
+const TICKET_PREFIX = 'RUM';
+const TICKET_PAD = 6;
+
+// Siguiente folio secuencial global (RUM-000001). Deriva del MÁXIMO folio ya
+// existente (no del conteo) para no repetir números si se borran tickets, y cae
+// al conteo cuando ningún registro trae folio todavía (tickets previos al cambio).
+async function nextTicketNumber(svc: { entities: Record<string, { list: (o: string, n: number) => Promise<Array<Record<string, unknown>>> }> }): Promise<string> {
+  const prefix = (Deno.env.get('TICKET_PREFIX') || TICKET_PREFIX).trim();
+  const re = new RegExp(`^${prefix}-(\\d+)$`);
+  let maxSeq = 0;
+  let total = 0;
+  try {
+    const rows = await svc.entities.SupportTicket.list('-created_date', 5000);
+    total = rows.length;
+    for (const r of rows) {
+      const m = re.exec(String((r as { ticket_number?: unknown }).ticket_number ?? ''));
+      if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+    }
+  } catch { /* si la lista falla, el fallback de tiempo evita colisión total */ }
+  const seq = (maxSeq || total) + 1;
+  return `${prefix}-${String(seq).padStart(TICKET_PAD, '0')}`;
+}
 
 // Stable JSON (keys sorted recursively) — mirrors Mission Control's
 // api/_lib/ingestSign.js so both sides sign the exact same string.
@@ -89,8 +112,16 @@ Deno.serve(async (req) => {
       tenantName = tenants.find((t) => t.id === tenantId)?.tenant_name || '';
     } catch { /* no crítico */ }
 
+    // Folio legible (ITSM): RUM-000001 secuencial y global. El hash interno de
+    // Base44 sirve como llave técnica, pero el cliente y el SLA necesitan un
+    // identificador humano. Se deriva del máximo folio existente (robusto ante
+    // borrados) y cae al conteo si aún no hay ninguno. Volumen de soporte bajo →
+    // secuencia por conteo es suficiente; se asigna del lado servidor.
+    const ticketNumber = await nextTicketNumber(svc);
+
     const nowIso = new Date().toISOString();
     const ticket = await svc.entities.SupportTicket.create({
+      ticket_number: ticketNumber,
       tenant_id: tenantId,
       tenant_name: tenantName,
       subject,
