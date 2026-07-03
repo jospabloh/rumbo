@@ -8,8 +8,42 @@
 // Same file deploys to every app.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const MAX_SKEW_MS = 5 * 60 * 1000;
+// Ventana de tolerancia de reloj entre Mission Control y esta función. Se ajusta
+// a 2 min (antes 5): reduce la superficie temporal para reproducir (replay) una
+// petición firmada capturada, manteniendo margen razonable de deriva de reloj.
+const MAX_SKEW_MS = 2 * 60 * 1000;
 const COUNT_CAP = 5000; // Base44 caps list at 5,000 — usage counts are capped here.
+
+// --- Protección anti-replay -------------------------------------------------
+// Las peticiones van firmadas por HMAC (bien), pero sin esto una petición firmada
+// capturada podía reproducirse dentro de la ventana de skew. Guardamos las claves
+// de replay ya vistas y rechazamos duplicados.
+//
+// Clave de replay: usamos la propia firma `sig` (determinista sobre ts+action+
+// params y no forjable sin el secreto) combinada con un `nonce`/`jti` opcional
+// que MC pueda incluir en `params`. Usar `sig` da protección anti-replay SIN
+// cambiar el esquema del payload ni requerir cambios en el firmante: dos
+// peticiones legítimas distintas difieren en `ts` → difieren en `sig`; un replay
+// reusa exactamente la misma `sig` y se rechaza.
+//
+// IMPORTANTE (corrección multi-instancia): este Map vive en memoria del proceso.
+// Las funciones Deno son sin estado y pueden escalar a varias instancias, por lo
+// que este store NO garantiza rechazo de replay entre instancias ni tras un
+// reinicio en frío. Para correctitud real se necesita un store persistente y
+// compartido (entidad Base44 dedicada o Deno KV). No se crea una entidad aquí por
+// estar fuera de alcance; mientras tanto la ventana de skew corta (2 min) acota la
+// exposición.
+// TODO(acacia): mover el store de nonces a Deno KV o a una entidad dedicada, e
+//   idealmente incluir un `nonce`/`jti` DENTRO de los params firmados por MC para
+//   defensa en profundidad (hoy es opcional-pero-registrado).
+const seenReplayKeys = new Map<string, number>();
+
+function pruneReplayStore(now: number): void {
+  // Elimina entradas más viejas que la ventana de skew (ya no son reproducibles).
+  for (const [k, seenAt] of seenReplayKeys) {
+    if (now - seenAt > MAX_SKEW_MS) seenReplayKeys.delete(k);
+  }
+}
 
 // Stable JSON: keys sorted recursively, so MC and this function sign the exact
 // same string (must mirror api/_lib/ingestSign.js in Mission Control).
@@ -49,6 +83,22 @@ Deno.serve(async (req) => {
 
     const expected = await hmacHex(secret, `${ts}.${action}.${stableStringify(params)}`);
     if (!timingSafeEqual(expected, String(sig))) return Response.json({ error: 'bad signature' }, { status: 401 });
+
+    // Anti-replay: SÓLO tras verificar la firma (así un atacante no autenticado no
+    // puede inundar el store). `nonce`/`jti` es opcional y sólo se registra por
+    // ahora; la clave de replay se basa en la firma, que ya es única por petición.
+    const now = Date.now();
+    pruneReplayStore(now);
+    const nonce = (params as Record<string, unknown>)?.nonce ?? (params as Record<string, unknown>)?.jti;
+    if (nonce === undefined) {
+      // Payload legado sin nonce: se acepta pero se deja constancia. Ver TODO arriba.
+      console.warn('acaciaControl: petición sin nonce/jti; anti-replay basado sólo en firma');
+    }
+    const replayKey = nonce !== undefined ? `${String(sig)}:${String(nonce)}` : String(sig);
+    if (seenReplayKeys.has(replayKey)) {
+      return Response.json({ error: 'replay detected' }, { status: 409 });
+    }
+    seenReplayKeys.set(replayKey, now);
 
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;

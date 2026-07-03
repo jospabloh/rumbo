@@ -31,7 +31,25 @@ export function statusOf(c) {
   return 'pending';
 }
 
-export const isOverdue = (c) => statusOf(c) !== 'paid' && c.period_end && c.period_end < todayStr();
+/**
+ * ¿El cobro está vencido? Considera los días de gracia configurables del tenant:
+ * el límite es period_end + graceDays. Con graceDays=0 equivale a "vencido si
+ * period_end < hoy".
+ * @param {any} c
+ * @param {number} [graceDays]
+ */
+export const isOverdue = (c, graceDays = 0) => {
+  if (statusOf(c) === 'paid' || !c.period_end) return false;
+  const [y, m, d] = String(c.period_end).split('-').map(Number);
+  if (!y || !m || !d) return false;
+  const limit = new Date(y, m - 1, d + (Number(graceDays) || 0)); limit.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return limit < today;
+};
+
+/** ¿Dos periodos [aStart,aEnd] y [bStart,bEnd] se solapan? (fechas YYYY-MM-DD comparables como texto) */
+export const periodsOverlap = (aStart, aEnd, bStart, bEnd) =>
+  !!aStart && !!bStart && (aStart <= (bEnd || bStart)) && ((aEnd || aStart) >= bStart);
 
 export const statusMeta = {
   paid: { label: 'Pagado', cls: 'bg-success/10 text-success' },

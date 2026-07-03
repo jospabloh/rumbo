@@ -74,6 +74,12 @@
       "title": "Bono de referido aplicado",
       "default": false
     },
+    "referral_credit": {
+      "type": "number",
+      "title": "Crédito de bono por aplicar",
+      "default": 0,
+      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta automáticamente de los próximos cobros generados para este conductor."
+    },
     "profile_id": {
       "type": "string",
       "title": "ID de perfil vinculado"

@@ -11,13 +11,15 @@ import { FormError } from '@/components/ui/form-error';
 import { useTenant } from '@/lib/TenantContext';
 import { useCatalog } from '@/lib/catalogs';
 import { useRentCharges, useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
-import { todayStr, currentPeriod, statusOf, isOverdue, statusMeta } from '@/components/rentas/rentUtils';
+import { todayStr, currentPeriod, statusOf, isOverdue, periodsOverlap, statusMeta } from '@/components/rentas/rentUtils';
+import { getSetting } from '@/lib/settings';
 import ManualChargeModal from '@/components/rentas/ManualChargeModal';
 import IngresosView from '@/components/rentas/IngresosView';
 import ReferralsView from '@/components/rentas/ReferralsView';
 
 export default function Rentas() {
-  const { tenantId, readOnly } = useTenant();
+  const { tenant, tenantId, readOnly } = useTenant();
+  const graceDays = getSetting(tenant, 'rent_grace_days');
   const paymentMethods = useCatalog('payment_method');
   const { data: charges = [], isLoading: loading } = useRentCharges({ sort: '-period_start', limit: 300 });
   const { data: vehicles = [] } = useVehicles();
@@ -63,7 +65,7 @@ export default function Rentas() {
     .sort((a, b) => b.bal - a.bal);
 
   const filtered = charges.filter(c => {
-    const st = isOverdue(c) ? 'overdue' : statusOf(c);
+    const st = isOverdue(c, graceDays) ? 'overdue' : statusOf(c);
     if (statusFilter !== 'all' && st !== statusFilter) return false;
     if (!search) return true;
     const v = vehicleById(c.vehicle_id);
@@ -77,30 +79,60 @@ export default function Rentas() {
     setGenerating(true);
     setBanner('');
     try {
-      let created = 0, skipped = 0;
+      let created = 0, skipped = 0, credited = 0;
+      // Créditos de bono de referido pendientes por conductor (se consumen al generar sus cobros).
+      const creditLeft = {};
+      for (const d of drivers) creditLeft[d.id] = Number(d.referral_credit) || 0;
+
       for (const v of vehicles) {
         if (v.status !== 'active') continue;
         if (!v.rent_amount || !v.assigned_driver_id) continue;
         const freq = v.rent_frequency || 'weekly';
         const { period_start, period_end } = currentPeriod(freq, v.rent_day);
-        const exists = charges.some(c => c.vehicle_id === v.id && c.period_start === period_start);
+        // Dedup por SOLAPAMIENTO de periodo (no solo period_start exacto): evita cobros
+        // duplicados de la misma semana cuando cambia el día de cobro (rent_day).
+        const exists = charges.some(c => c.vehicle_id === v.id && periodsOverlap(c.period_start, c.period_end, period_start, period_end));
         if (exists) { skipped++; continue; }
+
+        let amount_due = Number(v.rent_amount);
+        const driverId = v.assigned_driver_id;
+        let note = '';
+        const credit = creditLeft[driverId] || 0;
+        if (credit > 0) {
+          const applied = Math.min(credit, amount_due);
+          amount_due = Math.round((amount_due - applied) * 100) / 100;
+          creditLeft[driverId] = Math.round((credit - applied) * 100) / 100;
+          note = `Crédito de bono aplicado (-$${applied.toLocaleString()})`;
+          credited++;
+        }
+
         await base44.entities.RentCharge.create({
           tenant_id: tenantId,
           vehicle_id: v.id,
-          driver_id: v.assigned_driver_id,
+          driver_id: driverId,
           period_type: freq,
           period_start,
           period_end,
-          amount_due: Number(v.rent_amount),
+          amount_due,
           amount_paid: 0,
-          status: 'pending',
+          status: statusOf({ amount_due, amount_paid: 0 }),
           payments: [],
+          notes: note,
         });
         created++;
       }
-      setBanner(`${created} cobro(s) generado(s)${skipped ? `, ${skipped} ya existían` : ''}.`);
+
+      // Persiste el crédito restante por conductor (lo que no se consumió esta vez).
+      for (const d of drivers) {
+        const left = creditLeft[d.id] || 0;
+        if (left !== (Number(d.referral_credit) || 0)) {
+          await base44.entities.Driver.update(d.id, { referral_credit: left }).catch(() => {});
+        }
+      }
+
+      setBanner(`${created} cobro(s) generado(s)${skipped ? `, ${skipped} ya existían` : ''}${credited ? `, ${credited} con crédito de referido` : ''}.`);
       refresh();
+      if (credited) invalidate('Driver');
     } catch (e) {
       setBanner('No se pudieron generar los cobros. Inténtalo de nuevo.');
     } finally {
@@ -122,8 +154,8 @@ export default function Rentas() {
     try {
       const c = payCharge;
       const payments = [...(c.payments || []), { amount, paid_at: todayStr(), method: payForm.method, note: payForm.note.trim() }];
-      const amount_paid = payments.reduce((a, p) => a + (p.amount || 0), 0);
-      const status = amount_paid >= (c.amount_due || 0) ? 'paid' : 'partial';
+      const amount_paid = Math.round(payments.reduce((a, p) => a + (p.amount || 0), 0) * 100) / 100;
+      const status = statusOf({ amount_due: c.amount_due, amount_paid });
       await base44.entities.RentCharge.update(c.id, { payments, amount_paid, status });
       setPayCharge(null);
       refresh();
@@ -230,7 +262,7 @@ export default function Rentas() {
           {filtered.map(c => {
             const v = vehicleById(c.vehicle_id);
             const d = driverById(c.driver_id);
-            const st = isOverdue(c) ? 'overdue' : statusOf(c);
+            const st = isOverdue(c, graceDays) ? 'overdue' : statusOf(c);
             const remaining = Math.max((c.amount_due || 0) - (c.amount_paid || 0), 0);
             const meta = statusMeta[st];
             return (
