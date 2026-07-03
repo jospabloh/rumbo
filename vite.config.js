@@ -1,7 +1,21 @@
 import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
+import fs from 'fs'
 import path from 'path'
 import { defineConfig } from 'vite'
+
+// Bake the Base44 app id into the client bundle so the app authenticates on ANY
+// host. On the native *.base44.app domain Base44 injects ?app_id, but custom
+// domains (e.g. rumbo.acaciaco.com.mx) don't — without this the client boots with
+// app_id=null and the login redirect fails. Source of truth is base44/.app.jsonc
+// (committed); an explicit VITE_BASE44_APP_ID env still wins.
+if (!process.env.VITE_BASE44_APP_ID) {
+  try {
+    const raw = fs.readFileSync(path.resolve(__dirname, './base44/.app.jsonc'), 'utf8').replace(/\/\/.*$/gm, '')
+    const id = JSON.parse(raw)?.id
+    if (id) process.env.VITE_BASE44_APP_ID = id
+  } catch { /* fall back to Base44's runtime injection */ }
+}
 
 // https://vite.dev/config/
 export default defineConfig({

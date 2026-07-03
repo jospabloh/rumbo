@@ -31,6 +31,7 @@ export const SUPPORT_SLA_HOURS = 48;
 // Coincidencias por palabra clave → sección del manual/Centro de ayuda. El orden
 // importa: la primera que coincida gana.
 const KEYWORD_SECTIONS = [
+  { re: /(no puedo (entrar|acceder|iniciar)|no me deja entrar|inici\w*\s+(de\s+)?sesi[oó]n|contrase[nñ]a|olvid[eé].*contra|login)/i, section: 'Acceso y cuenta', tip: 'Si no puedes entrar, verifica que uses el correo correcto y usa «¿Olvidaste tu contraseña?» en la pantalla de acceso. Si el problema sigue, escálalo abajo.' },
   { re: /(renta|cobro|pago|ingreso|adeudo)/i, section: 'Rentas', tip: 'Genera cobros por periodo y registra pagos desde la sección Rentas.' },
   { re: /(permiso|rol|acceso|no puedo (ver|entrar)|restring)/i, section: 'Admin y permisos', tip: 'Configura los permisos por rol en Admin → Permisos por rol.' },
   { re: /(licencia|venc|plan|factur|suscrip|cobr[oa] de licencia)/i, section: 'Licencia', tip: 'Revisa el estado de tu licencia y su renovación en la sección Licencia.' },
@@ -47,13 +48,13 @@ const KEYWORD_SECTIONS = [
 
 const CATEGORY_SECTIONS = {
   billing: { section: 'Licencia', tip: 'Las dudas de facturación y plan se gestionan en la sección Licencia.' },
-  bug: { section: 'Guía por módulo', tip: 'Revisa la guía del módulo afectado en el Centro de ayuda antes de escalar.' },
-  feature: { section: 'Guía por módulo', tip: 'Quizá la función ya exista; revisa la guía por módulo en el Centro de ayuda.' },
-  question: { section: 'Guía por módulo', tip: 'Consulta la guía por módulo en el Centro de ayuda.' },
-  other: { section: 'Guía por módulo', tip: 'Consulta la guía por módulo en el Centro de ayuda.' },
+  bug: { section: 'Guía por módulo', tip: 'Indica en qué pantalla ocurre y qué esperabas que pasara — con eso soporte lo reproduce y resuelve más rápido. Si el problema sigue, escálalo abajo.' },
+  feature: { section: 'Guía por módulo', tip: 'Quizá la función ya exista con otro nombre; revisa el módulo relacionado en el Centro de ayuda. Si no, escálala como sugerencia.' },
+  question: { section: 'Guía por módulo', tip: 'Busca tu módulo en la Guía por módulo del Centro de ayuda. Si no resuelve tu duda, escálala con el detalle.' },
+  other: { section: 'Guía por módulo', tip: 'Descríbelo con el mayor detalle posible (pantalla, qué esperabas, qué pasó) y escálalo — soporte responde en 48 h hábiles.' },
 };
 
-const GENERIC = { section: 'Guía por módulo', tip: 'Consulta la guía por módulo en el Centro de ayuda.' };
+const GENERIC = { section: 'Guía por módulo', tip: 'Descríbelo con detalle (pantalla, qué esperabas, qué pasó) y escálalo — soporte responde en 48 h hábiles.' };
 
 /**
  * Sugiere una sección del manual para intentar resolver el problema antes de
