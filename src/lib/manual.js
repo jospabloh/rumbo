@@ -364,14 +364,14 @@ export const MANUAL_SECTIONS = [
   },
   {
     id: 'catalogos',
-    title: 'Catálogos',
+    title: 'Listas',
     icon: List,
-    intro: 'Listas configurables que alimentan los formularios.',
+    intro: 'Listas configurables que alimentan los desplegables de los formularios (en el menú: Configuración → Listas).',
     topics: [
       {
-        title: 'Administrar catálogos',
+        title: 'Administrar listas',
         steps: [
-          'Entra a "Catálogos" y elige la categoría: tipos de multa, métodos de pago o marcas de vehículo.',
+          'Entra a "Listas" (menú Configuración) y elige la categoría: tipos de multa, métodos de pago o marcas de vehículo.',
           'Agrega elementos, actívalos/desactívalos o elimínalos.',
         ],
         notes: ['Si no defines elementos, se usan valores por defecto.'],
@@ -397,14 +397,14 @@ export const MANUAL_SECTIONS = [
   },
   {
     id: 'licencia',
-    title: 'Licencia',
+    title: 'Mi licencia',
     icon: CreditCard,
-    intro: 'Tu plan, uso, límites y estado de la licencia.',
+    intro: 'Tu plan, uso, límites y estado de la licencia (en el menú: Configuración → Mi licencia).',
     topics: [
       {
         title: 'Consultar plan y uso',
         steps: [
-          'Entra a "Licencia" para ver tu plan (Trial, Starter, Pro, Enterprise) y estado.',
+          'Entra a "Mi licencia" (menú Configuración) para ver tu plan (Trial, Starter, Pro, Enterprise) y estado.',
           'Revisa el uso de vehículos y conductores contra los límites de tu plan y los días restantes.',
         ],
         notes: [

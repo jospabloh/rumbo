@@ -36,14 +36,24 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    // Operación del día a día (dinero que entra y sale).
     label: 'Gestión',
     items: [
       { path: '/rentas',    icon: Banknote,   label: 'Rentas',     page: 'rentas' },
       { path: '/financial', icon: DollarSign, label: 'Financiero', page: 'financial' },
-      { path: '/import',    icon: FileText,   label: 'Importar',   page: 'import' },
-      { path: '/billing',   icon: CreditCard, label: 'Licencia',   page: 'billing' },
-      { path: '/catalogs',  icon: List,       label: 'Catálogos',  page: 'catalogs' },
-      { path: '/admin',     icon: Shield,     label: 'Admin',      page: 'admin' },
+    ],
+  },
+  {
+    // Configuración del tenant. Se separa de "Gestión" para que el menú distinga
+    // operar de configurar. Etiquetas desambiguadas: "Mi licencia" (el plan de este
+    // tenant) no se confunde con "Licencias" de la consola de plataforma, y "Listas"
+    // (valores de los desplegables) no se confunde con el grupo "Catálogos" (flota).
+    label: 'Configuración',
+    items: [
+      { path: '/import',   icon: FileText,   label: 'Importar',    page: 'import' },
+      { path: '/catalogs', icon: List,       label: 'Listas',      page: 'catalogs' },
+      { path: '/billing',  icon: CreditCard, label: 'Mi licencia', page: 'billing' },
+      { path: '/admin',    icon: Shield,     label: 'Admin',       page: 'admin' },
     ],
   },
 ];
