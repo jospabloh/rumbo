@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { useTenant } from '@/lib/TenantContext';
 import { useInvalidateEntity } from '@/hooks/useEntities';
-import { parseCSV, analyzeImport, buildTemplate, IMPORT_SPECS, IMPORT_TYPES } from '@/lib/csv';
+import { parseCSV, analyzeImport, buildTemplate, buildRefIndex, IMPORT_SPECS, IMPORT_TYPES } from '@/lib/csv';
 
 /** Dispara la descarga de un archivo de texto en el navegador. */
 function downloadText(content, filename, type = 'text/csv;charset=utf-8') {
@@ -29,10 +29,11 @@ export default function Import() {
   const [result, setResult] = useState(null); // { imported, failed:[{line,reason,fix}], skippedExisting, skippedInFile, skippedInvalid, examples }
   const [error, setError] = useState('');
   const [dedupWarning, setDedupWarning] = useState('');
+  const [refsCtx, setRefsCtx] = useState(null); // índice vehículo/conductor para tipos con referencias
 
   const spec = IMPORT_SPECS[importType];
 
-  const reset = () => { setAnalysis(null); setResult(null); setError(''); setDedupWarning(''); };
+  const reset = () => { setAnalysis(null); setResult(null); setError(''); setDedupWarning(''); setRefsCtx(null); };
 
   const selectType = (t) => { setImportType(t); reset(); };
 
@@ -56,6 +57,25 @@ export default function Import() {
         setLoadingFile(false);
         return;
       }
+      // Tipos que apuntan a un vehículo/conductor (combustible, multas, taller):
+      // se enlazan por placa y licencia/nombre, así que primero cargamos esas
+      // listas del tenant para resolver y validar las referencias.
+      let ctx = null;
+      if (spec.needsRefs) {
+        try {
+          const [vehicles, drivers] = await Promise.all([
+            base44.entities.Vehicle.filter({ tenant_id: tenantId }, null, 5000),
+            base44.entities.Driver.filter({ tenant_id: tenantId }, null, 5000),
+          ]);
+          ctx = buildRefIndex(vehicles, drivers);
+        } catch (err) {
+          setError('No se pudieron leer tus vehículos/conductores para enlazar los registros. Espera unos segundos e inténtalo de nuevo.');
+          setLoadingFile(false);
+          return;
+        }
+      }
+      setRefsCtx(ctx);
+
       // Para no crear duplicados comparamos contra lo que ya existe en el tenant.
       let existing = [];
       try {
@@ -64,7 +84,7 @@ export default function Import() {
         // Si no se pudo leer lo existente, seguimos: deduplicamos al menos dentro del archivo.
         setDedupWarning('No se pudieron leer los registros actuales para comparar; se evitarán duplicados dentro de este archivo, pero verifica que no existieran antes.');
       }
-      setAnalysis(analyzeImport(importType, rows, existing));
+      setAnalysis(analyzeImport(importType, rows, existing, ctx));
     } catch (err) {
       setError('No se pudo leer el archivo. Asegúrate de que sea un CSV válido (puedes exportarlo desde Excel o Google Sheets).');
     } finally {
@@ -84,7 +104,7 @@ export default function Import() {
     // Importación fila por fila: una fila mala no detiene a las demás (éxito parcial).
     for (const item of analysis.toImport) {
       try {
-        await entity.create(spec.buildPayload(item.row, tenantId));
+        await entity.create(spec.buildPayload(item.row, tenantId, refsCtx));
         imported++;
       } catch (err) {
         failed.push({
@@ -124,7 +144,7 @@ export default function Import() {
 
   return (
     <div className="p-4 lg:p-6 max-w-2xl">
-      <PageHeader title="Importar datos" subtitle="Migra tu catálogo (conductores, vehículos, refacciones y listas) desde archivos CSV" />
+      <PageHeader title="Importar datos" subtitle="Migra tu operación (conductores, vehículos, combustible, multas, mantenimientos, refacciones y listas) desde archivos CSV" />
 
       {/* Selector de tipo */}
       <div className="flex flex-wrap gap-1 bg-muted rounded-lg p-1 mb-5 w-fit">

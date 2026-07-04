@@ -343,18 +343,19 @@ export const MANUAL_SECTIONS = [
     id: 'importar',
     title: 'Importar',
     icon: FileUp,
-    intro: 'Carga masiva de conductores o vehículos desde CSV con validación por fila.',
+    intro: 'Carga masiva desde CSV con validación por fila: conductores, vehículos, combustible, multas, mantenimientos, refacciones y listas de catálogo.',
     topics: [
       {
         title: 'Importar un archivo CSV',
         steps: [
-          'Entra a "Importar" y elige el tipo: Conductores o Vehículos.',
+          'Entra a "Importar" y elige el tipo: Conductores, Vehículos, Combustible, Multas, Mantenimientos, Refacciones o Catálogos.',
           'Descarga la plantilla para ver las columnas exactas y llénala (admite comillas, comas dentro de comillas y saltos de línea).',
           'Sube el archivo. Rumbo separa las filas válidas (con vista previa) de las que tienen problemas (listadas con su número de línea y motivo).',
           'Pulsa "Importar … registros válidos". Sólo se importan las filas válidas.',
         ],
         notes: [
           'Conductores requieren "nombre"; vehículos requieren "placa" o "no_unidad".',
+          'Combustible, multas y mantenimientos se enlazan a un vehículo existente por "placa" y a un conductor por "conductor" (su licencia o su nombre exacto). Si la placa/conductor no existe en tu flota, esa fila se marca con error para que la corrijas — no se crean registros incompletos.',
           'La importación es fila por fila: si una falla al guardar, las demás continúan y el resumen indica importadas/omitidas/fallidas.',
         ],
       },

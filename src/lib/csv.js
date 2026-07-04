@@ -93,6 +93,56 @@ const parseNum = (v) => {
   return norm(v) === '' || Number.isNaN(n) ? null : n;
 };
 
+// ---------------------------------------------------------------------------
+// Resolución de referencias (importaciones que apuntan a un vehículo/conductor
+// YA existente, p. ej. combustible, multas, mantenimientos).
+//
+// La página de importación arma un índice (`ctx`) con los registros del tenant y
+// lo pasa a analyzeImport; las specs lo usan para (a) validar que la referencia
+// exista, (b) resolver el id al construir el registro y (c) deduplicar por id.
+// Sin ctx (llamadas de compatibilidad) las specs solo validan la estructura.
+//   ctx = { vehicleByPlate, vehicleByUnit, driverByLicense, driverByName } (Map<MAYÚS, record>)
+// ---------------------------------------------------------------------------
+
+/** Encuentra el vehículo referenciado por la fila (por placa, luego no_unidad). */
+function findVehicle(row, ctx) {
+  const plate = upper(row['placa']);
+  if (plate && ctx?.vehicleByPlate?.has(plate)) return ctx.vehicleByPlate.get(plate);
+  const unit = upper(row['no_unidad']);
+  if (unit && ctx?.vehicleByUnit?.has(unit)) return ctx.vehicleByUnit.get(unit);
+  return null;
+}
+
+/** Encuentra el conductor referenciado (una sola columna: licencia o nombre). */
+function findDriver(row, ctx) {
+  const ref = upper(row['conductor']);
+  if (!ref) return null;
+  return ctx?.driverByLicense?.get(ref) || ctx?.driverByName?.get(ref) || null;
+}
+
+/**
+ * Construye el índice de referencias (`ctx`) a partir de las listas del tenant.
+ * Se exporta para que la página de importación lo arme una sola vez por archivo.
+ *
+ * @param {any[]} [vehicles]
+ * @param {any[]} [drivers]
+ */
+export function buildRefIndex(vehicles = [], drivers = []) {
+  const vehicleByPlate = new Map();
+  const vehicleByUnit = new Map();
+  for (const v of vehicles) {
+    if (v?.plate) vehicleByPlate.set(upper(v.plate), v);
+    if (v?.unit_number) vehicleByUnit.set(upper(v.unit_number), v);
+  }
+  const driverByLicense = new Map();
+  const driverByName = new Map();
+  for (const d of drivers) {
+    if (d?.license_no) driverByLicense.set(upper(d.license_no), d);
+    if (d?.full_name) driverByName.set(upper(d.full_name), d);
+  }
+  return { vehicleByPlate, vehicleByUnit, driverByLicense, driverByName };
+}
+
 /**
  * Especificaciones de importación. Cada una:
  *  - `entity`: nombre de la entidad Base44.
@@ -226,6 +276,197 @@ export const IMPORT_SPECS = {
       if (vin) return `vin:${vin}`;
       const unit = upper(rec.unit_number);
       return unit ? `unit:${unit}` : null;
+    },
+  },
+
+  fuel: {
+    entity: 'FuelLog',
+    label: 'Combustible',
+    keyLabel: 'placa + fecha + costo',
+    needsRefs: true,
+    columns: ['placa', 'conductor', 'fecha', 'litros', 'precio_litro', 'costo_total', 'odometro'],
+    example: {
+      placa: 'ABC-1234',
+      conductor: 'LIC-0001',
+      fecha: '2026-06-15',
+      litros: '40',
+      precio_litro: '23.50',
+      costo_total: '940',
+      odometro: '85000',
+    },
+    validate(row, ctx) {
+      const errors = [];
+      if (!norm(row['placa'])) {
+        errors.push({ msg: 'falta la placa', fix: 'Escribe la placa del vehículo en la columna "placa".' });
+      } else if (ctx && !findVehicle(row, ctx)) {
+        errors.push({ msg: `no existe un vehículo con placa "${norm(row['placa'])}"`, fix: 'Verifica la placa, o crea/importa primero ese vehículo en Vehículos.' });
+      }
+      if (norm(row['conductor']) && ctx && !findDriver(row, ctx)) {
+        errors.push({ msg: `no se encontró el conductor "${norm(row['conductor'])}"`, fix: 'Usa la licencia o el nombre exacto de un conductor existente, o deja la celda vacía.' });
+      }
+      if (norm(row['fecha']) && !isDateish(row['fecha'])) {
+        errors.push({ msg: 'la fecha no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2026-06-15).' });
+      }
+      if (norm(row['litros']) && parseNum(row['litros']) === null) {
+        errors.push({ msg: 'los litros no son un número', fix: 'Escribe la cantidad en números (ej. 40) o deja la celda vacía.' });
+      }
+      if (norm(row['costo_total']) && parseNum(row['costo_total']) === null) {
+        errors.push({ msg: 'el costo total no es un número', fix: 'Escribe solo el monto (ej. 940) sin símbolos.' });
+      }
+      return errors;
+    },
+    buildPayload(row, tenantId, ctx) {
+      const v = findVehicle(row, ctx);
+      const d = findDriver(row, ctx);
+      return {
+        tenant_id: tenantId,
+        vehicle_id: v?.id || null,
+        driver_id: d?.id || null,
+        liters: parseNum(row['litros']),
+        price_per_liter: parseNum(row['precio_litro']),
+        total_cost: parseNum(row['costo_total']),
+        logged_at: norm(row['fecha']) || null,
+        odometer: parseNum(row['odometro']),
+      };
+    },
+    keyOfRow(row, ctx) {
+      const v = findVehicle(row, ctx);
+      const f = norm(row['fecha']);
+      if (!v || !f) return null;
+      return `fuel:${v.id}|${f}|${parseNum(row['costo_total'])}`;
+    },
+    keyOfRecord(rec) {
+      if (!rec?.vehicle_id || !rec?.logged_at) return null;
+      return `fuel:${rec.vehicle_id}|${rec.logged_at}|${rec.total_cost ?? ''}`;
+    },
+  },
+
+  fines: {
+    entity: 'Fine',
+    label: 'Multas',
+    keyLabel: 'placa + fecha + monto',
+    needsRefs: true,
+    columns: ['placa', 'conductor', 'tipo', 'monto', 'puntos', 'fecha', 'pagada'],
+    example: {
+      placa: 'ABC-1234',
+      conductor: 'LIC-0001',
+      tipo: 'Exceso de velocidad',
+      monto: '1500',
+      puntos: '3',
+      fecha: '2026-06-10',
+      pagada: 'no',
+    },
+    validate(row, ctx) {
+      const errors = [];
+      if (!norm(row['placa'])) {
+        errors.push({ msg: 'falta la placa', fix: 'Escribe la placa del vehículo en la columna "placa".' });
+      } else if (ctx && !findVehicle(row, ctx)) {
+        errors.push({ msg: `no existe un vehículo con placa "${norm(row['placa'])}"`, fix: 'Verifica la placa, o crea/importa primero ese vehículo.' });
+      }
+      if (!norm(row['conductor'])) {
+        errors.push({ msg: 'falta el conductor', fix: 'Escribe la licencia o el nombre del conductor en la columna "conductor".' });
+      } else if (ctx && !findDriver(row, ctx)) {
+        errors.push({ msg: `no se encontró el conductor "${norm(row['conductor'])}"`, fix: 'Usa la licencia o el nombre exacto de un conductor existente.' });
+      }
+      const amount = parseNum(row['monto']);
+      if (norm(row['monto']) === '') {
+        errors.push({ msg: 'falta el monto', fix: 'Escribe el monto de la multa (ej. 1500) en la columna "monto".' });
+      } else if (amount === null || amount <= 0) {
+        errors.push({ msg: 'el monto no es válido', fix: 'Escribe un número mayor a 0 en "monto".' });
+      }
+      if (norm(row['fecha']) && !isDateish(row['fecha'])) {
+        errors.push({ msg: 'la fecha no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2026-06-10).' });
+      }
+      return errors;
+    },
+    buildPayload(row, tenantId, ctx) {
+      const v = findVehicle(row, ctx);
+      const d = findDriver(row, ctx);
+      const paid = norm(row['pagada']).toLowerCase();
+      return {
+        tenant_id: tenantId,
+        vehicle_id: v?.id || null,
+        driver_id: d?.id || null,
+        fine_type: norm(row['tipo']) || null,
+        amount: parseNum(row['monto']),
+        points: parseNum(row['puntos']) ?? 0,
+        issued_at: norm(row['fecha']) || null,
+        paid: ['true', '1', 'si', 'sí', 'yes', 'pagada'].includes(paid),
+      };
+    },
+    keyOfRow(row, ctx) {
+      const v = findVehicle(row, ctx);
+      const f = norm(row['fecha']);
+      if (!v || !f) return null;
+      return `fine:${v.id}|${f}|${parseNum(row['monto'])}`;
+    },
+    keyOfRecord(rec) {
+      if (!rec?.vehicle_id || !rec?.issued_at) return null;
+      return `fine:${rec.vehicle_id}|${rec.issued_at}|${rec.amount ?? ''}`;
+    },
+  },
+
+  maintenance: {
+    entity: 'Maintenance',
+    label: 'Mantenimientos',
+    keyLabel: 'placa + fecha + descripción',
+    needsRefs: true,
+    columns: ['placa', 'tipo', 'descripcion', 'costo', 'fecha', 'proximo_servicio', 'odometro'],
+    example: {
+      placa: 'ABC-1234',
+      tipo: 'preventivo',
+      descripcion: 'Cambio de aceite',
+      costo: '1200',
+      fecha: '2026-06-01',
+      proximo_servicio: '2026-09-01',
+      odometro: '85000',
+    },
+    validate(row, ctx) {
+      const errors = [];
+      if (!norm(row['placa'])) {
+        errors.push({ msg: 'falta la placa', fix: 'Escribe la placa del vehículo en la columna "placa".' });
+      } else if (ctx && !findVehicle(row, ctx)) {
+        errors.push({ msg: `no existe un vehículo con placa "${norm(row['placa'])}"`, fix: 'Verifica la placa, o crea/importa primero ese vehículo.' });
+      }
+      const tipo = norm(row['tipo']).toLowerCase();
+      if (tipo && !['preventivo', 'correctivo', 'preventive', 'corrective'].includes(tipo)) {
+        errors.push({ msg: 'el tipo no es válido', fix: 'Usa "preventivo" o "correctivo", o deja la celda vacía.' });
+      }
+      if (norm(row['costo']) && parseNum(row['costo']) === null) {
+        errors.push({ msg: 'el costo no es un número', fix: 'Escribe solo el monto (ej. 1200) sin símbolos.' });
+      }
+      if (norm(row['fecha']) && !isDateish(row['fecha'])) {
+        errors.push({ msg: 'la fecha no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2026-06-01).' });
+      }
+      if (norm(row['proximo_servicio']) && !isDateish(row['proximo_servicio'])) {
+        errors.push({ msg: 'la fecha de próximo servicio no es válida', fix: 'Usa AAAA-MM-DD o deja la celda vacía.' });
+      }
+      return errors;
+    },
+    buildPayload(row, tenantId, ctx) {
+      const v = findVehicle(row, ctx);
+      const tipo = norm(row['tipo']).toLowerCase();
+      const kind = tipo === 'correctivo' || tipo === 'corrective' ? 'corrective' : 'preventive';
+      return {
+        tenant_id: tenantId,
+        vehicle_id: v?.id || null,
+        kind,
+        description: norm(row['descripcion']) || null,
+        cost: parseNum(row['costo']),
+        performed_at: norm(row['fecha']) || null,
+        next_due_at: norm(row['proximo_servicio']) || null,
+        odometer: parseNum(row['odometro']),
+      };
+    },
+    keyOfRow(row, ctx) {
+      const v = findVehicle(row, ctx);
+      const f = norm(row['fecha']);
+      if (!v || !f) return null;
+      return `mnt:${v.id}|${f}|${upper(row['descripcion'])}`;
+    },
+    keyOfRecord(rec) {
+      if (!rec?.vehicle_id || !rec?.performed_at) return null;
+      return `mnt:${rec.vehicle_id}|${rec.performed_at}|${upper(rec.description)}`;
     },
   },
 
@@ -438,6 +679,8 @@ export function partitionRows(type, rows) {
  * @param {string} type
  * @param {Record<string,string>[]} rows            filas parseadas (en orden del archivo)
  * @param {any[]} [existingRecords]                 registros ya existentes del tenant
+ * @param {object|null} [ctx]                        índice de referencias (buildRefIndex)
+ *   para importaciones que apuntan a vehículo/conductor; null para las que no.
  * @returns {{
  *   type: string,
  *   spec: any,
@@ -449,7 +692,7 @@ export function partitionRows(type, rows) {
  *   duplicatesInFile: { line: number, key: string }[],
  * }}
  */
-export function analyzeImport(type, rows, existingRecords = []) {
+export function analyzeImport(type, rows, existingRecords = [], ctx = null) {
   const spec = IMPORT_SPECS[type];
   if (!spec) throw new Error(`Tipo de importación desconocido: ${type}`);
 
@@ -471,10 +714,10 @@ export function analyzeImport(type, rows, existingRecords = []) {
 
     if (isExampleRow(type, row)) { examplesSkipped++; return; }
 
-    const errs = spec.validate(row);
+    const errs = spec.validate(row, ctx);
     if (errs.length) { invalid.push({ line, errors: errs }); return; }
 
-    const key = spec.keyOfRow(row);
+    const key = spec.keyOfRow(row, ctx);
     if (key && existingKeys.has(key)) { duplicatesExisting.push({ line, key }); return; }
     if (key && seenInFile.has(key)) { duplicatesInFile.push({ line, key }); return; }
     if (key) seenInFile.add(key);
