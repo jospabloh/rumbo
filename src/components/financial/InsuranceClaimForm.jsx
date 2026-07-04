@@ -8,13 +8,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormError } from '@/components/ui/form-error';
 import { insuranceClaimSchema } from '@/lib/schemas';
+import { useCatalog } from '@/lib/catalogs';
 
 export default function InsuranceClaimForm({ vehicles, drivers, onSave, onClose }) {
+  const insurers = useCatalog('insurance_company');
   const { register, control, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
     // Cast sidesteps the RHF/zod-coerce typing mismatch (empty-string numeric
     // input is coerced to a number on submit); field/error types stay intact.
     resolver: /** @type {any} */ (zodResolver(insuranceClaimSchema)),
-    defaultValues: { vehicle_id: '', driver_id: '', description: '', claim_amount: '', status: 'open', incident_at: '' },
+    defaultValues: { vehicle_id: '', driver_id: '', description: '', claim_amount: '', insurer: '', status: 'open', incident_at: '' },
   });
 
   const onValid = async (data) => {
@@ -57,6 +59,19 @@ export default function InsuranceClaimForm({ vehicles, drivers, onSave, onClose 
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>{drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+          <div>
+            <Label>Aseguradora</Label>
+            <Controller
+              name="insurer"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar (opcional)" /></SelectTrigger>
+                  <SelectContent>{insurers.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
                 </Select>
               )}
             />

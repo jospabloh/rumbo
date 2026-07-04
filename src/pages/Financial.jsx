@@ -104,7 +104,7 @@ export default function Financial() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold">{c.description || 'Reclamo de seguro'}</p>
-                    <p className="text-xs text-muted-foreground">{v?.plate} · {d?.full_name} · {c.incident_at}</p>
+                    <p className="text-xs text-muted-foreground">{v?.plate} · {d?.full_name} · {c.incident_at}{c.insurer ? ` · ${c.insurer}` : ''}</p>
                   </div>
                   <div className="text-right">
                     {c.claim_amount && <p className="text-sm font-bold">${parseFloat(c.claim_amount).toFixed(2)}</p>}
