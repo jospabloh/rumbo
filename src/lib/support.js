@@ -34,7 +34,7 @@ const KEYWORD_SECTIONS = [
   { re: /(no puedo (entrar|acceder|iniciar)|no me deja entrar|inici\w*\s+(de\s+)?sesi[oó]n|contrase[nñ]a|olvid[eé].*contra|login)/i, section: 'Acceso y cuenta', tip: 'Si no puedes entrar, verifica que uses el correo correcto y usa «¿Olvidaste tu contraseña?» en la pantalla de acceso. Si el problema sigue, escálalo abajo.' },
   { re: /(renta|cobro|pago|ingreso|adeudo)/i, section: 'Rentas', tip: 'Genera cobros por periodo y registra pagos desde la sección Rentas.' },
   { re: /(permiso|rol|acceso|no puedo (ver|entrar)|restring)/i, section: 'Admin y permisos', tip: 'Configura los permisos por rol en Admin → Permisos por rol.' },
-  { re: /(licencia|venc|plan|factur|suscrip|cobr[oa] de licencia)/i, section: 'Licencia', tip: 'Revisa el estado de tu licencia y su renovación en la sección Licencia.' },
+  { re: /(licencia|venc|plan|factur|suscrip|cobr[oa] de licencia)/i, section: 'Mi licencia', tip: 'Revisa el estado de tu licencia y su renovación en la sección Mi licencia.' },
   { re: /(refacci|repuesto|stock|inventari)/i, section: 'Taller', tip: 'Administra refacciones y stock mínimo en Taller → Inventario.' },
   { re: /(mantenimiento|taller|servicio)/i, section: 'Taller', tip: 'Registra mantenimientos y su próxima fecha en Taller.' },
   { re: /(conductor|chofer|licencia de manejo)/i, section: 'Conductores', tip: 'Da de alta y administra conductores en la sección Conductores.' },
@@ -47,7 +47,7 @@ const KEYWORD_SECTIONS = [
 ];
 
 const CATEGORY_SECTIONS = {
-  billing: { section: 'Licencia', tip: 'Las dudas de facturación y plan se gestionan en la sección Licencia.' },
+  billing: { section: 'Mi licencia', tip: 'Las dudas de facturación y plan se gestionan en la sección Mi licencia.' },
   bug: { section: 'Guía por módulo', tip: 'Indica en qué pantalla ocurre y qué esperabas que pasara — con eso soporte lo reproduce y resuelve más rápido. Si el problema sigue, escálalo abajo.' },
   feature: { section: 'Guía por módulo', tip: 'Quizá la función ya exista con otro nombre; revisa el módulo relacionado en el Centro de ayuda. Si no, escálala como sugerencia.' },
   question: { section: 'Guía por módulo', tip: 'Busca tu módulo en la Guía por módulo del Centro de ayuda. Si no resuelve tu duda, escálala con el detalle.' },

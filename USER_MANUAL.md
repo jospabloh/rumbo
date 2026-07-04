@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Version 1.25.0 | Updated 2026-06-29**
+**Updated 2026-07-04**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -111,13 +111,17 @@ White-label brand colors are applied on top of whichever theme (light/dark) is a
 
 ### Dashboard
 
-The main overview page showing:
+The main overview page — a command center showing:
 - Fleet status: active, maintenance, inactive vehicle counts.
 - Active driver count.
 - Open alerts (with critical alert banner).
 - Unread messages count.
 - Today's collected rent income and outstanding balance.
 - Fleet availability (% of units operating).
+- **This month's income and expenses** (expenses combine fuel, fines, maintenance and insurance claims).
+- **Open fines** (count and pending amount).
+- **Maintenance due** (overdue and due-soon counts, from each record's next-service date).
+- **License status** (days until renewal, color-coded by urgency).
 - **Revenue trend:** a 7-day chart of collected rent income.
 - Vehicle fleet table with assigned drivers.
 - Recent alerts panel.
@@ -168,6 +172,18 @@ Track maintenance records and parts.
 **Parts inventory:** Track parts by name, brand, SKU, stock count, and unit cost. Set a **minimum stock** per part to get a **low-stock badge** in the list and an automatic **alert** (warning when at/below the minimum, critical when out of stock) the next time alerts are generated. Edit a part by tapping its name; adjust stock with the +/− buttons.
 
 **Accessible to:** Owner, Admin, Mechanic.
+
+---
+
+### Rentas
+
+Manage rental charges and collections per vehicle/driver.
+
+- Generate the period's charges (daily/weekly) for active rentals.
+- Register a payment against a charge (full or partial), with method and date; a charge covered by a $0 bonus counts as paid.
+- See collected vs. outstanding balances, and register a manual charge.
+
+**Accessible to:** Owner, Admin, Dispatcher.
 
 ---
 
@@ -229,13 +245,31 @@ On-demand location sharing — no continuous tracking.
 
 ### Import (Importar)
 
-Bulk import data via CSV files.
+Bulk import data via CSV files. Available types: **Drivers, Vehicles, Fuel logs, Fines, Maintenance, Parts, and Catalog lists**. The parser handles quoted fields (commas/line breaks inside quotes), escaped quotes, CRLF and BOM.
 
-- Upload vehicle or driver data in CSV format. The parser handles quoted fields (commas/line breaks inside quotes), escaped quotes, CRLF and BOM.
-- **Per-row validation:** before importing, Rumbo splits your file into **valid rows** (previewed) and **rows with problems** (listed with their line number and reason, e.g. "missing name", "missing plate or unit"). Only valid rows are imported.
+- **Templates with an example row:** each type offers a downloadable CSV template with the exact columns and a sample row marked with `#` that the importer ignores.
+- **Linked records (Fuel, Fines, Maintenance):** these reference an existing vehicle and driver. The **vehicle** is matched by `placa` (or `no_unidad`); the **driver** by the `conductor` column (their license number or exact full name). If the plate/driver does not exist in your fleet, that row is flagged with an actionable error — **no phantom vehicles/drivers are created**. Import the vehicles/drivers first.
+- **Per-row validation:** before importing, Rumbo splits your file into **valid rows** (previewed) and **rows with problems** (listed with their line number, reason, and how to fix it). Only valid rows are imported.
+- **No duplicates:** each row is compared by its natural key against existing records and earlier rows in the same file, so re-uploading a file won't create duplicates.
 - **Partial success:** rows are imported one by one — if a single row fails to save, the rest still import, and the result summarizes how many were imported, skipped, or failed (with reasons).
 
 **Accessible to:** Owner, Admin.
+
+---
+
+### Lists (Listas)
+
+Configurable value lists that populate the app's dropdowns (menu: **Configuración → Listas**). Categories include fine types, payment methods, and vehicle makes. Add, activate/deactivate, or remove values; if a tenant defines none, sensible defaults are used.
+
+**Accessible to:** Owner, Admin.
+
+---
+
+### Useful Links (Enlaces útiles)
+
+Shortcuts to your organization's external systems. Any member sees the active links; admins/owners can add (name + URL, optional description), edit, or remove them.
+
+**Accessible to:** all staff roles.
 
 ---
 
@@ -280,9 +314,9 @@ Platform administration panel.
 
 ---
 
-### Billing / License (Licencia)
+### My License (Mi licencia)
 
-View your current plan, usage, and members.
+View your current plan, usage, and members (menu: **Configuración → Mi licencia**). Named "Mi licencia" to distinguish it from the platform-owner **Licencias** console (which manages every tenant).
 
 - See plan type (Trial, Starter, Pro, Enterprise) and status (Active, Expired, Suspended).
 - View vehicle and driver usage vs. plan limits.

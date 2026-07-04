@@ -64,7 +64,7 @@ describe('suggestSolution', () => {
   });
 
   it('falls back to the category when no keyword matches', () => {
-    expect(suggestSolution('billing', 'asdfqwer').section).toBe('Licencia');
+    expect(suggestSolution('billing', 'asdfqwer').section).toBe('Mi licencia');
     expect(suggestSolution('feature', 'xyz').section).toBe('Guía por módulo');
   });
 
