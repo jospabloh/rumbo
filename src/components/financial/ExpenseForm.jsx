@@ -19,7 +19,7 @@ export default function ExpenseForm({ record, vehicles = [], onSave, onClose }) 
   const categories = useCatalog('expense_category');
   const methods = useCatalog('payment_method');
   const { register, control, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
-    resolver: /** @type {any} */ (zodResolver(expenseSchema)),
+    resolver: zodResolver(expenseSchema),
     defaultValues: {
       category: record?.category || '',
       amount: record?.amount ?? '',
