@@ -68,19 +68,20 @@ function daysUntil(dateStr, now) {
 /**
  * Egresos del mes en curso, desglosados por fuente. Cada fuente declara su campo
  * de fecha y de monto: combustible (`logged_at`/`total_cost`), multas
- * (`issued_at`/`amount`), taller (`performed_at`/`cost`) y siniestros
- * (`incident_at`/`claim_amount`).
+ * (`issued_at`/`amount`), taller (`performed_at`/`cost`), siniestros
+ * (`incident_at`/`claim_amount`) y gastos generales (`expense_date`/`amount`).
  *
- * @returns {{ total, fuel, fines, maintenance, claims }} montos del mes
+ * @returns {{ total, fuel, fines, maintenance, claims, expenses }} montos del mes
  */
-export function monthlyExpenses({ fuel = [], fines = [], maintenance = [], claims = [] } = {}, { now = new Date() } = {}) {
+export function monthlyExpenses({ fuel = [], fines = [], maintenance = [], claims = [], expenses = [] } = {}, { now = new Date() } = {}) {
   const sum = (rows, dateField, amtField) =>
     rows.reduce((s, r) => (inCurrentMonth(r?.[dateField], now) ? s + (Number(r?.[amtField]) || 0) : s), 0);
   const fuelT = sum(fuel, 'logged_at', 'total_cost');
   const finesT = sum(fines, 'issued_at', 'amount');
   const maintT = sum(maintenance, 'performed_at', 'cost');
   const claimsT = sum(claims, 'incident_at', 'claim_amount');
-  return { total: fuelT + finesT + maintT + claimsT, fuel: fuelT, fines: finesT, maintenance: maintT, claims: claimsT };
+  const expensesT = sum(expenses, 'expense_date', 'amount');
+  return { total: fuelT + finesT + maintT + claimsT + expensesT, fuel: fuelT, fines: finesT, maintenance: maintT, claims: claimsT, expenses: expensesT };
 }
 
 /** Ingresos cobrados en el mes en curso (pagos con `paid_at` dentro del mes). */

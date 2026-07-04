@@ -14,6 +14,7 @@ export const CATALOG_CATEGORIES = [
   { key: 'vehicle_make', label: 'Marcas de vehículo', defaults: ['Nissan', 'Renault', 'Chevrolet', 'Toyota', 'Volkswagen', 'Honda', 'Mazda'] },
   { key: 'maintenance_type', label: 'Tipos de servicio (taller)', defaults: ['Cambio de aceite', 'Afinación', 'Frenos', 'Llantas', 'Suspensión', 'Alineación y balanceo', 'Batería', 'Verificación', 'Otro'] },
   { key: 'insurance_company', label: 'Aseguradoras', defaults: ['GNP', 'Qualitas', 'AXA', 'Chubb', 'Mapfre', 'HDI', 'Otra'] },
+  { key: 'expense_category', label: 'Categorías de gasto', defaults: ['Combustible', 'Peajes', 'Lavado', 'Papelería', 'Renta de local', 'Sueldos', 'Servicios (luz/agua/internet)', 'Comisiones', 'Impuestos', 'Otro'] },
 ];
 
 export const defaultsFor = (category) => CATALOG_CATEGORIES.find((c) => c.key === category)?.defaults || [];

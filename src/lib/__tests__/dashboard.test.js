@@ -46,12 +46,14 @@ describe('monthlyExpenses', () => {
       fines: [{ issued_at: '2026-06-10', amount: 500 }],
       maintenance: [{ performed_at: '2026-06-01', cost: 3500 }, { performed_at: '2026-06-15', cost: 1200 }],
       claims: [{ incident_at: '2026-06-20', claim_amount: 800 }],
+      expenses: [{ expense_date: '2026-06-03', amount: 2000 }, { expense_date: '2026-05-01', amount: 999 }],
     }, { now: NOW });
     expect(e.fuel).toBe(1000);        // el de mayo queda fuera
     expect(e.fines).toBe(500);
     expect(e.maintenance).toBe(4700);
     expect(e.claims).toBe(800);
-    expect(e.total).toBe(7000);
+    expect(e.expenses).toBe(2000);    // gastos generales del mes
+    expect(e.total).toBe(9000);
   });
 
   it('ignores malformed dates/amounts and empty sources', () => {

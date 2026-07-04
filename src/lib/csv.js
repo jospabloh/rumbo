@@ -638,6 +638,63 @@ export const IMPORT_SPECS = {
     },
   },
 
+  expenses: {
+    entity: 'Expense',
+    label: 'Gastos',
+    keyLabel: 'categoría + fecha + monto',
+    needsRefs: true, // la placa es opcional; se resuelve si viene
+    columns: ['categoria', 'monto', 'fecha', 'descripcion', 'metodo_pago', 'placa'],
+    example: {
+      categoria: 'Renta de local',
+      monto: '12000',
+      fecha: '2026-06-01',
+      descripcion: 'Renta mensual de la bodega',
+      metodo_pago: 'Transferencia',
+      placa: '',
+    },
+    validate(row, ctx) {
+      const errors = [];
+      if (!norm(row['categoria'])) {
+        errors.push({ msg: 'falta la categoría', fix: 'Escribe la categoría del gasto (ej. Renta de local) en la columna "categoria".' });
+      }
+      const amount = parseNum(row['monto']);
+      if (norm(row['monto']) === '') {
+        errors.push({ msg: 'falta el monto', fix: 'Escribe el monto del gasto (ej. 12000) en la columna "monto".' });
+      } else if (amount === null || amount <= 0) {
+        errors.push({ msg: 'el monto no es válido', fix: 'Escribe un número mayor a 0 en "monto".' });
+      }
+      if (norm(row['fecha']) && !isDateish(row['fecha'])) {
+        errors.push({ msg: 'la fecha no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2026-06-01).' });
+      }
+      if (norm(row['placa']) && ctx && !findVehicle(row, ctx)) {
+        errors.push({ msg: `no existe un vehículo con placa "${norm(row['placa'])}"`, fix: 'Verifica la placa, o deja la celda vacía (el gasto puede no estar ligado a un vehículo).' });
+      }
+      return errors;
+    },
+    buildPayload(row, tenantId, ctx) {
+      const v = findVehicle(row, ctx);
+      return {
+        tenant_id: tenantId,
+        category: norm(row['categoria']) || null,
+        amount: parseNum(row['monto']),
+        expense_date: norm(row['fecha']) || null,
+        description: norm(row['descripcion']) || null,
+        payment_method: norm(row['metodo_pago']) || null,
+        vehicle_id: v?.id || null,
+      };
+    },
+    keyOfRow(row) {
+      const c = upper(row['categoria']);
+      const f = norm(row['fecha']);
+      if (!c || !f) return null;
+      return `exp:${c}|${f}|${parseNum(row['monto'])}`;
+    },
+    keyOfRecord(rec) {
+      if (!rec?.category || !rec?.expense_date) return null;
+      return `exp:${upper(rec.category)}|${rec.expense_date}|${rec.amount ?? ''}`;
+    },
+  },
+
   parts: {
     entity: 'Part',
     label: 'Refacciones',
