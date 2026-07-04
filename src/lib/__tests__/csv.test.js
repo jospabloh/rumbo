@@ -121,10 +121,54 @@ describe('importaciones con referencias (combustible/multas/mantenimiento)', () 
   });
 
   it('cada tipo nuevo genera su plantilla con fila de ejemplo', () => {
-    for (const t of ['fuel', 'fines', 'maintenance']) {
+    for (const t of ['fuel', 'fines', 'maintenance', 'insurance', 'rentas']) {
       const tpl = buildTemplate(t);
       expect(tpl.split('\n')[0]).toContain('placa');
       expect(tpl).toContain('#'); // fila de ejemplo marcada
     }
+  });
+
+  it('seguro: resuelve referencias, mapea estado ES→EN y deduplica', () => {
+    const rows = [{ placa: 'ABC-1234', conductor: 'LIC-0001', descripcion: 'Choque', monto: '8000', estado: 'aprobado', fecha: '2026-06-12' }];
+    const a = analyzeImport('insurance', rows, [], ctx);
+    expect(a.toImport).toHaveLength(1);
+    const payload = IMPORT_SPECS.insurance.buildPayload(a.toImport[0].row, 't1', ctx);
+    expect(payload.vehicle_id).toBe('v1');
+    expect(payload.status).toBe('approved');
+    expect(payload.claim_amount).toBe(8000);
+
+    const dup = analyzeImport('insurance', rows, [{ vehicle_id: 'v1', incident_at: '2026-06-12', claim_amount: 8000 }], ctx);
+    expect(dup.toImport).toHaveLength(0);
+    expect(dup.duplicatesExisting).toHaveLength(1);
+  });
+
+  it('seguro: rechaza un estado inválido', () => {
+    const rows = [{ placa: 'ABC-1234', descripcion: 'X', monto: '100', estado: 'pendiente', fecha: '2026-06-12' }];
+    const a = analyzeImport('insurance', rows, [], ctx);
+    expect(a.toImport).toHaveLength(0);
+    expect(a.invalid[0].errors.some((e) => /estado no es válido/.test(e.msg))).toBe(true);
+  });
+
+  it('renta: calcula el estado según lo pagado vs. lo debido', () => {
+    const rows = [
+      { placa: 'ABC-1234', conductor: 'LIC-0001', periodo: 'semanal', inicio: '2026-06-01', fin: '2026-06-07', monto: '1500', pagado: '0' },
+      { placa: 'ABC-1234', conductor: 'LIC-0001', periodo: 'diaria', inicio: '2026-06-08', monto: '300', pagado: '300' },
+      { placa: 'ABC-1234', conductor: 'LIC-0001', periodo: 'semanal', inicio: '2026-06-15', monto: '1500', pagado: '500' },
+    ];
+    const a = analyzeImport('rentas', rows, [], ctx);
+    expect(a.toImport).toHaveLength(3);
+    const [p0, p1, p2] = a.toImport.map((it) => IMPORT_SPECS.rentas.buildPayload(it.row, 't1', ctx));
+    expect(p0.status).toBe('pending');
+    expect(p1.status).toBe('paid');
+    expect(p1.period_type).toBe('daily');
+    expect(p1.period_end).toBe('2026-06-08'); // fin vacío → usa inicio
+    expect(p2.status).toBe('partial');
+  });
+
+  it('renta: exige conductor, monto > 0 e inicio', () => {
+    const rows = [{ placa: 'ABC-1234', conductor: '', periodo: 'semanal', inicio: '', monto: '0' }];
+    const a = analyzeImport('rentas', rows, [], ctx);
+    expect(a.toImport).toHaveLength(0);
+    expect(a.invalid[0].errors.length).toBeGreaterThanOrEqual(3);
   });
 });

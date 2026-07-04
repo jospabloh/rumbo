@@ -11,6 +11,7 @@ import { FormError } from '@/components/ui/form-error';
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/lib/imageUtils';
 import { maintenanceSchema } from '@/lib/schemas';
+import { useCatalog } from '@/lib/catalogs';
 
 export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
   const [uploading, setUploading] = useState(false);
@@ -28,6 +29,7 @@ export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
     },
   });
   const photoUrl = watch('photo_url');
+  const serviceTypes = useCatalog('maintenance_type');
 
   const handlePhoto = async (e) => {
     const file = e.target.files[0];
@@ -91,6 +93,15 @@ export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
                   </Select>
                 )}
               />
+            </div>
+            <div className="col-span-2">
+              <Label>Servicio</Label>
+              {/* Atajo desde el catálogo "Tipos de servicio": llena la descripción,
+                  que sigue siendo editable para agregar detalle. */}
+              <Select onValueChange={(v) => setValue('description', v, { shouldDirty: true })}>
+                <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Elegir de la lista (opcional)" /></SelectTrigger>
+                <SelectContent>{serviceTypes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             <div className="col-span-2">
               <Label>Descripción</Label>

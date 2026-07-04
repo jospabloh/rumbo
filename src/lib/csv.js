@@ -143,6 +143,26 @@ export function buildRefIndex(vehicles = [], drivers = []) {
   return { vehicleByPlate, vehicleByUnit, driverByLicense, driverByName };
 }
 
+/** Estados de siniestro aceptados en el CSV (ES/EN) → valor de la entidad. */
+const INSURANCE_STATUS = {
+  abierto: 'open', open: 'open',
+  aprobado: 'approved', approved: 'approved',
+  negado: 'denied', denied: 'denied',
+  cerrado: 'closed', closed: 'closed',
+};
+
+/**
+ * Estado de un cargo de renta según lo debido vs. lo pagado. Espejo de statusOf()
+ * en components/rentas/rentUtils (comparación en centavos; due<=0 cuenta como pagado).
+ * Se replica aquí para mantener csv.js sin dependencias.
+ */
+const rentStatus = (due, paid) => {
+  if (due <= 0) return 'paid';
+  if (Math.round((paid - due) * 100) >= 0) return 'paid';
+  if (paid > 0) return 'partial';
+  return 'pending';
+};
+
 /**
  * Especificaciones de importación. Cada una:
  *  - `entity`: nombre de la entidad Base44.
@@ -467,6 +487,152 @@ export const IMPORT_SPECS = {
     keyOfRecord(rec) {
       if (!rec?.vehicle_id || !rec?.performed_at) return null;
       return `mnt:${rec.vehicle_id}|${rec.performed_at}|${upper(rec.description)}`;
+    },
+  },
+
+  insurance: {
+    entity: 'InsuranceClaim',
+    label: 'Seguros',
+    keyLabel: 'placa + fecha + monto',
+    needsRefs: true,
+    columns: ['placa', 'conductor', 'descripcion', 'monto', 'estado', 'fecha'],
+    example: {
+      placa: 'ABC-1234',
+      conductor: 'LIC-0001',
+      descripcion: 'Colisión leve en estacionamiento',
+      monto: '8000',
+      estado: 'abierto',
+      fecha: '2026-06-12',
+    },
+    validate(row, ctx) {
+      const errors = [];
+      if (!norm(row['placa'])) {
+        errors.push({ msg: 'falta la placa', fix: 'Escribe la placa del vehículo en la columna "placa".' });
+      } else if (ctx && !findVehicle(row, ctx)) {
+        errors.push({ msg: `no existe un vehículo con placa "${norm(row['placa'])}"`, fix: 'Verifica la placa, o crea/importa primero ese vehículo.' });
+      }
+      if (norm(row['conductor']) && ctx && !findDriver(row, ctx)) {
+        errors.push({ msg: `no se encontró el conductor "${norm(row['conductor'])}"`, fix: 'Usa la licencia o el nombre exacto de un conductor existente, o deja la celda vacía.' });
+      }
+      const estado = norm(row['estado']).toLowerCase();
+      if (estado && !INSURANCE_STATUS[estado]) {
+        errors.push({ msg: 'el estado no es válido', fix: 'Usa: abierto, aprobado, negado o cerrado (o deja la celda vacía).' });
+      }
+      if (norm(row['monto']) && parseNum(row['monto']) === null) {
+        errors.push({ msg: 'el monto no es un número', fix: 'Escribe solo el monto (ej. 8000) o deja la celda vacía.' });
+      }
+      if (norm(row['fecha']) && !isDateish(row['fecha'])) {
+        errors.push({ msg: 'la fecha no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2026-06-12).' });
+      }
+      return errors;
+    },
+    buildPayload(row, tenantId, ctx) {
+      const v = findVehicle(row, ctx);
+      const d = findDriver(row, ctx);
+      const estado = norm(row['estado']).toLowerCase();
+      return {
+        tenant_id: tenantId,
+        vehicle_id: v?.id || null,
+        driver_id: d?.id || null,
+        description: norm(row['descripcion']) || null,
+        claim_amount: parseNum(row['monto']),
+        status: INSURANCE_STATUS[estado] || 'open',
+        incident_at: norm(row['fecha']) || null,
+      };
+    },
+    keyOfRow(row, ctx) {
+      const v = findVehicle(row, ctx);
+      const f = norm(row['fecha']);
+      if (!v || !f) return null;
+      return `ins:${v.id}|${f}|${parseNum(row['monto'])}`;
+    },
+    keyOfRecord(rec) {
+      if (!rec?.vehicle_id || !rec?.incident_at) return null;
+      return `ins:${rec.vehicle_id}|${rec.incident_at}|${rec.claim_amount ?? ''}`;
+    },
+  },
+
+  rentas: {
+    entity: 'RentCharge',
+    label: 'Rentas',
+    keyLabel: 'placa + inicio del periodo',
+    needsRefs: true,
+    columns: ['placa', 'conductor', 'periodo', 'inicio', 'fin', 'monto', 'pagado'],
+    example: {
+      placa: 'ABC-1234',
+      conductor: 'LIC-0001',
+      periodo: 'semanal',
+      inicio: '2026-06-01',
+      fin: '2026-06-07',
+      monto: '1500',
+      pagado: '0',
+    },
+    validate(row, ctx) {
+      const errors = [];
+      if (!norm(row['placa'])) {
+        errors.push({ msg: 'falta la placa', fix: 'Escribe la placa del vehículo en la columna "placa".' });
+      } else if (ctx && !findVehicle(row, ctx)) {
+        errors.push({ msg: `no existe un vehículo con placa "${norm(row['placa'])}"`, fix: 'Verifica la placa, o crea/importa primero ese vehículo.' });
+      }
+      if (!norm(row['conductor'])) {
+        errors.push({ msg: 'falta el conductor', fix: 'Escribe la licencia o el nombre del conductor en la columna "conductor".' });
+      } else if (ctx && !findDriver(row, ctx)) {
+        errors.push({ msg: `no se encontró el conductor "${norm(row['conductor'])}"`, fix: 'Usa la licencia o el nombre exacto de un conductor existente.' });
+      }
+      const per = norm(row['periodo']).toLowerCase();
+      if (per && !['semanal', 'weekly', 'diaria', 'diario', 'daily'].includes(per)) {
+        errors.push({ msg: 'el periodo no es válido', fix: 'Usa "semanal" o "diaria", o deja la celda vacía.' });
+      }
+      if (!norm(row['inicio'])) {
+        errors.push({ msg: 'falta la fecha de inicio', fix: 'Escribe el inicio del periodo (AAAA-MM-DD) en "inicio".' });
+      } else if (!isDateish(row['inicio'])) {
+        errors.push({ msg: 'la fecha de inicio no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2026-06-01).' });
+      }
+      if (norm(row['fin']) && !isDateish(row['fin'])) {
+        errors.push({ msg: 'la fecha de fin no es válida', fix: 'Usa AAAA-MM-DD o deja la celda vacía.' });
+      }
+      const due = parseNum(row['monto']);
+      if (norm(row['monto']) === '') {
+        errors.push({ msg: 'falta el monto', fix: 'Escribe el monto de la renta (ej. 1500) en la columna "monto".' });
+      } else if (due === null || due <= 0) {
+        errors.push({ msg: 'el monto no es válido', fix: 'Escribe un número mayor a 0 en "monto".' });
+      }
+      if (norm(row['pagado']) && parseNum(row['pagado']) === null) {
+        errors.push({ msg: 'lo pagado no es un número', fix: 'Escribe el monto ya pagado (ej. 0, 500) o deja la celda vacía.' });
+      }
+      return errors;
+    },
+    buildPayload(row, tenantId, ctx) {
+      const v = findVehicle(row, ctx);
+      const d = findDriver(row, ctx);
+      const per = norm(row['periodo']).toLowerCase();
+      const period_type = per === 'diaria' || per === 'diario' || per === 'daily' ? 'daily' : 'weekly';
+      const amount_due = parseNum(row['monto']) ?? 0;
+      const amount_paid = parseNum(row['pagado']) ?? 0;
+      return {
+        tenant_id: tenantId,
+        vehicle_id: v?.id || null,
+        driver_id: d?.id || null,
+        period_type,
+        period_start: norm(row['inicio']) || null,
+        period_end: norm(row['fin']) || norm(row['inicio']) || null,
+        amount_due,
+        amount_paid,
+        status: rentStatus(amount_due, amount_paid),
+        // La importación migra el saldo del cargo; los pagos individuales se registran
+        // luego en Rentas (por eso no se llena el historial payments[]).
+        payments: [],
+      };
+    },
+    keyOfRow(row, ctx) {
+      const v = findVehicle(row, ctx);
+      const s = norm(row['inicio']);
+      if (!v || !s) return null;
+      return `rent:${v.id}|${s}`;
+    },
+    keyOfRecord(rec) {
+      if (!rec?.vehicle_id || !rec?.period_start) return null;
+      return `rent:${rec.vehicle_id}|${rec.period_start}`;
     },
   },
 

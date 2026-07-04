@@ -144,7 +144,7 @@ export default function Import() {
 
   return (
     <div className="p-4 lg:p-6 max-w-2xl">
-      <PageHeader title="Importar datos" subtitle="Migra tu operación (conductores, vehículos, combustible, multas, mantenimientos, refacciones y listas) desde archivos CSV" />
+      <PageHeader title="Importar datos" subtitle="Migra tu operación (conductores, vehículos, combustible, multas, mantenimientos, seguros, rentas, refacciones y listas) desde archivos CSV" />
 
       {/* Selector de tipo */}
       <div className="flex flex-wrap gap-1 bg-muted rounded-lg p-1 mb-5 w-fit">

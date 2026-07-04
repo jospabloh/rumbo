@@ -12,6 +12,7 @@ export const CATALOG_CATEGORIES = [
   { key: 'fine_type', label: 'Tipos de infracción', defaults: ['Exceso de velocidad', 'Semáforo en rojo', 'Estacionamiento indebido', 'Documentos vencidos', 'Otro'] },
   { key: 'payment_method', label: 'Métodos de pago', defaults: ['Efectivo', 'Transferencia', 'Depósito', 'Otro'] },
   { key: 'vehicle_make', label: 'Marcas de vehículo', defaults: ['Nissan', 'Renault', 'Chevrolet', 'Toyota', 'Volkswagen', 'Honda', 'Mazda'] },
+  { key: 'maintenance_type', label: 'Tipos de servicio (taller)', defaults: ['Cambio de aceite', 'Afinación', 'Frenos', 'Llantas', 'Suspensión', 'Alineación y balanceo', 'Batería', 'Verificación', 'Otro'] },
 ];
 
 export const defaultsFor = (category) => CATALOG_CATEGORIES.find((c) => c.key === category)?.defaults || [];

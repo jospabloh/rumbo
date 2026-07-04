@@ -245,10 +245,11 @@ On-demand location sharing — no continuous tracking.
 
 ### Import (Importar)
 
-Bulk import data via CSV files. Available types: **Drivers, Vehicles, Fuel logs, Fines, Maintenance, Parts, and Catalog lists**. The parser handles quoted fields (commas/line breaks inside quotes), escaped quotes, CRLF and BOM.
+Bulk import data via CSV files. Available types: **Drivers, Vehicles, Fuel logs, Fines, Maintenance, Insurance claims, Rent charges, Parts, and Catalog lists**. The parser handles quoted fields (commas/line breaks inside quotes), escaped quotes, CRLF and BOM.
 
 - **Templates with an example row:** each type offers a downloadable CSV template with the exact columns and a sample row marked with `#` that the importer ignores.
-- **Linked records (Fuel, Fines, Maintenance):** these reference an existing vehicle and driver. The **vehicle** is matched by `placa` (or `no_unidad`); the **driver** by the `conductor` column (their license number or exact full name). If the plate/driver does not exist in your fleet, that row is flagged with an actionable error — **no phantom vehicles/drivers are created**. Import the vehicles/drivers first.
+- **Linked records (Fuel, Fines, Maintenance, Insurance, Rent):** these reference an existing vehicle and driver. The **vehicle** is matched by `placa` (or `no_unidad`); the **driver** by the `conductor` column (their license number or exact full name). If the plate/driver does not exist in your fleet, that row is flagged with an actionable error — **no phantom vehicles/drivers are created**. Import the vehicles/drivers first.
+- **Rent charges:** you can include the amount already paid; the balance and status (pending/partial/paid) are computed automatically (individual payments are registered later in the Rentas section).
 - **Per-row validation:** before importing, Rumbo splits your file into **valid rows** (previewed) and **rows with problems** (listed with their line number, reason, and how to fix it). Only valid rows are imported.
 - **No duplicates:** each row is compared by its natural key against existing records and earlier rows in the same file, so re-uploading a file won't create duplicates.
 - **Partial success:** rows are imported one by one — if a single row fails to save, the rest still import, and the result summarizes how many were imported, skipped, or failed (with reasons).
