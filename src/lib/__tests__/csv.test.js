@@ -129,13 +129,14 @@ describe('importaciones con referencias (combustible/multas/mantenimiento)', () 
   });
 
   it('seguro: resuelve referencias, mapea estado ES→EN y deduplica', () => {
-    const rows = [{ placa: 'ABC-1234', conductor: 'LIC-0001', descripcion: 'Choque', monto: '8000', estado: 'aprobado', fecha: '2026-06-12' }];
+    const rows = [{ placa: 'ABC-1234', conductor: 'LIC-0001', aseguradora: 'GNP', descripcion: 'Choque', monto: '8000', estado: 'aprobado', fecha: '2026-06-12' }];
     const a = analyzeImport('insurance', rows, [], ctx);
     expect(a.toImport).toHaveLength(1);
     const payload = IMPORT_SPECS.insurance.buildPayload(a.toImport[0].row, 't1', ctx);
     expect(payload.vehicle_id).toBe('v1');
     expect(payload.status).toBe('approved');
     expect(payload.claim_amount).toBe(8000);
+    expect(payload.insurer).toBe('GNP');
 
     const dup = analyzeImport('insurance', rows, [{ vehicle_id: 'v1', incident_at: '2026-06-12', claim_amount: 8000 }], ctx);
     expect(dup.toImport).toHaveLength(0);

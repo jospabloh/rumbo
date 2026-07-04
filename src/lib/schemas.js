@@ -91,6 +91,7 @@ export const insuranceClaimSchema = z.object({
   driver_id: optionalString,
   description: optionalString,
   claim_amount: optionalNumber(0),
+  insurer: optionalString,
   status: z.enum(['open', 'approved', 'denied', 'closed']),
   incident_at: optionalString,
 });

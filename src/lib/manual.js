@@ -372,7 +372,7 @@ export const MANUAL_SECTIONS = [
       {
         title: 'Administrar listas',
         steps: [
-          'Entra a "Listas" (menú Configuración) y elige la categoría: tipos de multa, métodos de pago o marcas de vehículo.',
+          'Entra a "Listas" (menú Configuración) y elige la categoría: tipos de infracción, métodos de pago, marcas de vehículo, tipos de servicio (taller) o aseguradoras.',
           'Agrega elementos, actívalos/desactívalos o elimínalos.',
         ],
         notes: ['Si no defines elementos, se usan valores por defecto.'],

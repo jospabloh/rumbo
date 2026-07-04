@@ -22,6 +22,10 @@
       "type": "number",
       "title": "Monto del reclamo"
     },
+    "insurer": {
+      "type": "string",
+      "title": "Aseguradora"
+    },
     "status": {
       "type": "string",
       "enum": [
