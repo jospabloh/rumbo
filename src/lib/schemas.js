@@ -96,6 +96,19 @@ export const insuranceClaimSchema = z.object({
   incident_at: optionalString,
 });
 
+export const expenseSchema = z.object({
+  category: z.string().trim().min(1, 'Elige una categoría'),
+  amount: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.coerce.number({ invalid_type_error: 'Debe ser un número' }).positive('Ingresa un monto válido')
+  ),
+  expense_date: optionalString,
+  description: optionalString,
+  vehicle_id: optionalString,
+  payment_method: optionalString,
+  notes: optionalString,
+});
+
 export const maintenanceSchema = z.object({
   vehicle_id: z.string().min(1, 'Selecciona un vehículo'),
   kind: z.enum(['preventive', 'corrective']),

@@ -32,6 +32,7 @@ export const SUPPORT_SLA_HOURS = 48;
 // importa: la primera que coincida gana.
 const KEYWORD_SECTIONS = [
   { re: /(no puedo (entrar|acceder|iniciar)|no me deja entrar|inici\w*\s+(de\s+)?sesi[oó]n|contrase[nñ]a|olvid[eé].*contra|login)/i, section: 'Acceso y cuenta', tip: 'Si no puedes entrar, verifica que uses el correo correcto y usa «¿Olvidaste tu contraseña?» en la pantalla de acceso. Si el problema sigue, escálalo abajo.' },
+  { re: /(gasto|egreso|renta de local|sueldo|servicio de luz|papeler)/i, section: 'Gastos', tip: 'Registra egresos generales (renta, sueldos, servicios, peajes…) en la sección Gastos.' },
   { re: /(renta|cobro|pago|ingreso|adeudo)/i, section: 'Rentas', tip: 'Genera cobros por periodo y registra pagos desde la sección Rentas.' },
   { re: /(permiso|rol|acceso|no puedo (ver|entrar)|restring)/i, section: 'Admin y permisos', tip: 'Configura los permisos por rol en Admin → Permisos por rol.' },
   { re: /(licencia|venc|plan|factur|suscrip|cobr[oa] de licencia)/i, section: 'Mi licencia', tip: 'Revisa el estado de tu licencia y su renovación en la sección Mi licencia.' },

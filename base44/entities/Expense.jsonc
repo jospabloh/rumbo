@@ -1,0 +1,113 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
+    "category": {
+      "type": "string",
+      "title": "Categoría"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Monto"
+    },
+    "expense_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+    },
+    "description": {
+      "type": "string",
+      "title": "Descripción"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "title": "Vehículo"
+    },
+    "payment_method": {
+      "type": "string",
+      "title": "Método de pago"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notas"
+    }
+  },
+  "required": [
+    "amount"
+  ],
+  "rls": {
+    "create": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ],
+      "user_condition": {
+        "data.write_access": "enabled"
+      }
+    },
+    "read": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ],
+      "user_condition": {
+        "data.write_access": "enabled"
+      }
+    },
+    "delete": {
+      "data.tenant_id": "{{user.data.tenant_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ],
+      "user_condition": {
+        "data.write_access": "enabled"
+      }
+    }
+  }
+}

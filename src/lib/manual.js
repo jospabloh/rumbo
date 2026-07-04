@@ -9,7 +9,7 @@
 import {
   Rocket, Users, Truck, Wrench, Banknote, DollarSign, Bell, MessageSquare,
   MapPin, FileUp, List, Link2, CreditCard, Shield, Smartphone, LifeBuoy,
-  SlidersHorizontal, Building2,
+  SlidersHorizontal, Building2, Receipt,
 } from 'lucide-react';
 
 export const MANUAL_SECTIONS = [
@@ -267,6 +267,27 @@ export const MANUAL_SECTIONS = [
     notes: ['Acceso: Owner, Admin. El costo por km también para Dispatcher.'],
   },
   {
+    id: 'gastos',
+    title: 'Gastos',
+    icon: Receipt,
+    intro: 'Egresos generales de tu operación (renta, sueldos, servicios, peajes, papelería…) con categorías configurables.',
+    topics: [
+      {
+        title: 'Registrar un gasto',
+        steps: [
+          'Entra a "Gastos" (menú Gestión) y pulsa "Registrar".',
+          'Elige la categoría (de tu lista configurable), captura el monto y la fecha; opcionalmente descripción, método de pago y vehículo.',
+          'Guarda: el gasto aparece en la lista y suma a los "Egresos del mes" del Dashboard.',
+        ],
+        notes: [
+          'Personaliza las categorías en Configuración → Listas → "Categorías de gasto".',
+          'Filtra por categoría, edita o elimina cada gasto. También puedes importarlos en lote desde Importar → Gastos.',
+        ],
+      },
+    ],
+    notes: ['Acceso: Owner, Admin.'],
+  },
+  {
     id: 'alertas',
     title: 'Alertas',
     icon: Bell,
@@ -348,7 +369,7 @@ export const MANUAL_SECTIONS = [
       {
         title: 'Importar un archivo CSV',
         steps: [
-          'Entra a "Importar" y elige el tipo: Conductores, Vehículos, Combustible, Multas, Mantenimientos, Seguros, Rentas, Refacciones o Catálogos.',
+          'Entra a "Importar" y elige el tipo: Conductores, Vehículos, Combustible, Multas, Mantenimientos, Seguros, Rentas, Gastos, Refacciones o Catálogos.',
           'Descarga la plantilla para ver las columnas exactas y llénala (admite comillas, comas dentro de comillas y saltos de línea).',
           'Sube el archivo. Rumbo separa las filas válidas (con vista previa) de las que tienen problemas (listadas con su número de línea y motivo).',
           'Pulsa "Importar … registros válidos". Sólo se importan las filas válidas.',
@@ -372,7 +393,7 @@ export const MANUAL_SECTIONS = [
       {
         title: 'Administrar listas',
         steps: [
-          'Entra a "Listas" (menú Configuración) y elige la categoría: tipos de infracción, métodos de pago, marcas de vehículo, tipos de servicio (taller) o aseguradoras.',
+          'Entra a "Listas" (menú Configuración) y elige la categoría: tipos de infracción, métodos de pago, marcas de vehículo, tipos de servicio (taller), aseguradoras o categorías de gasto.',
           'Agrega elementos, actívalos/desactívalos o elimínalos.',
         ],
         notes: ['Si no defines elementos, se usan valores por defecto.'],

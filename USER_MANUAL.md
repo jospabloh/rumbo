@@ -203,6 +203,20 @@ Manage financial records for the fleet.
 
 ---
 
+### Expenses (Gastos)
+
+A general expenses ledger for operating costs not tied to a specific record type — rent, salaries, utilities, tolls, stationery, etc.
+
+- Register an expense with a **configurable category**, amount, and date; optionally a description, payment method, and vehicle.
+- Filter by category; edit or delete entries.
+- KPIs for **this month's** and **total** expenses.
+- Expenses feed the Dashboard's **"Egresos del mes"** card (alongside fuel, fines, maintenance and insurance).
+- Categories are configured in **Configuración → Listas → "Categorías de gasto"**; expenses can also be bulk-imported (Import → Gastos).
+
+**Accessible to:** Owner, Admin.
+
+---
+
 ### Alerts
 
 View and manage active fleet alerts.
@@ -245,7 +259,7 @@ On-demand location sharing — no continuous tracking.
 
 ### Import (Importar)
 
-Bulk import data via CSV files. Available types: **Drivers, Vehicles, Fuel logs, Fines, Maintenance, Insurance claims, Rent charges, Parts, and Catalog lists**. The parser handles quoted fields (commas/line breaks inside quotes), escaped quotes, CRLF and BOM.
+Bulk import data via CSV files. Available types: **Drivers, Vehicles, Fuel logs, Fines, Maintenance, Insurance claims, Rent charges, Expenses, Parts, and Catalog lists**. The parser handles quoted fields (commas/line breaks inside quotes), escaped quotes, CRLF and BOM.
 
 - **Templates with an example row:** each type offers a downloadable CSV template with the exact columns and a sample row marked with `#` that the importer ignores.
 - **Linked records (Fuel, Fines, Maintenance, Insurance, Rent):** these reference an existing vehicle and driver. The **vehicle** is matched by `placa` (or `no_unidad`); the **driver** by the `conductor` column (their license number or exact full name). If the plate/driver does not exist in your fleet, that row is flagged with an actionable error — **no phantom vehicles/drivers are created**. Import the vehicles/drivers first.
@@ -260,7 +274,7 @@ Bulk import data via CSV files. Available types: **Drivers, Vehicles, Fuel logs,
 
 ### Lists (Listas)
 
-Configurable value lists that populate the app's dropdowns (menu: **Configuración → Listas**). Categories include fine types, payment methods, and vehicle makes. Add, activate/deactivate, or remove values; if a tenant defines none, sensible defaults are used.
+Configurable value lists that populate the app's dropdowns (menu: **Configuración → Listas**). Categories include fine types, payment methods, vehicle makes, workshop service types, insurers, and expense categories. Add, activate/deactivate, or remove values; if a tenant defines none, sensible defaults are used.
 
 **Accessible to:** Owner, Admin.
 

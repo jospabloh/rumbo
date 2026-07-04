@@ -120,6 +120,25 @@ describe('importaciones con referencias (combustible/multas/mantenimiento)', () 
     expect(payload.vehicle_id).toBe('v1');
   });
 
+  it('gasto: importa con categoría/monto obligatorios y placa opcional', () => {
+    // Sin placa: gasto general válido, sin vehículo.
+    const a = analyzeImport('expenses', [{ categoria: 'Renta de local', monto: '12000', fecha: '2026-06-01', metodo_pago: 'Transferencia' }], [], ctx);
+    expect(a.toImport).toHaveLength(1);
+    const p = IMPORT_SPECS.expenses.buildPayload(a.toImport[0].row, 't1', ctx);
+    expect(p.category).toBe('Renta de local');
+    expect(p.amount).toBe(12000);
+    expect(p.vehicle_id).toBeNull();
+
+    // Con placa existente: se enlaza al vehículo.
+    const b = analyzeImport('expenses', [{ categoria: 'Lavado', monto: '150', fecha: '2026-06-02', placa: 'ABC-1234' }], [], ctx);
+    expect(IMPORT_SPECS.expenses.buildPayload(b.toImport[0].row, 't1', ctx).vehicle_id).toBe('v1');
+
+    // Falta categoría y monto ≤ 0 → inválido.
+    const c = analyzeImport('expenses', [{ categoria: '', monto: '0', fecha: '2026-06-01' }], [], ctx);
+    expect(c.toImport).toHaveLength(0);
+    expect(c.invalid[0].errors.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('cada tipo nuevo genera su plantilla con fila de ejemplo', () => {
     for (const t of ['fuel', 'fines', 'maintenance', 'insurance', 'rentas']) {
       const tpl = buildTemplate(t);

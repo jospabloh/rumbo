@@ -28,6 +28,7 @@ export default function Dashboard() {
   const fuelQ = useEntityList('FuelLog', { sort: '-logged_at', limit: 500 });
   const maintenanceQ = useEntityList('Maintenance', { sort: '-performed_at', limit: 500 });
   const claimsQ = useEntityList('InsuranceClaim', { sort: '-incident_at', limit: 500 });
+  const expensesQ = useEntityList('Expense', { sort: '-expense_date', limit: 500 });
 
   const vehicles = vehiclesQ.data ?? [];
   const drivers = driversQ.data ?? [];
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const fuel = fuelQ.data ?? [];
   const maintenance = maintenanceQ.data ?? [];
   const claims = claimsQ.data ?? [];
+  const generalExpenses = expensesQ.data ?? [];
   const loading = vehiclesQ.isLoading || driversQ.isLoading || alertsQ.isLoading || messagesQ.isLoading || rentChargesQ.isLoading;
 
   const activeVehicles = vehicles.filter(v => v.status === 'active').length;
@@ -55,7 +57,7 @@ export default function Dashboard() {
 
   // Centro de mando: métricas agregadas del mes en curso (funciones puras y testeadas).
   const incomeMonth = monthlyIncome(rentCharges);
-  const expenses = monthlyExpenses({ fuel, fines, maintenance, claims });
+  const expenses = monthlyExpenses({ fuel, fines, maintenance, claims, expenses: generalExpenses });
   const fineStatus = pendingFines(fines);
   const maintDue = maintenanceDue(maintenance);
 
