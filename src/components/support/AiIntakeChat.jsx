@@ -44,9 +44,10 @@ export default function AiIntakeChat({ kind, subject, description, onComplete, o
         setBrief(res.brief);
         pushAi('¡Listo! Preparé el resumen para el equipo. Revísalo y escálalo. 👇');
       } else {
-        pushAi(res.question.text, res.question.suggestions);
+        const text = res.question?.text || 'Cuéntame un poco más para poder ayudarte.';
+        pushAi(text, res.question?.suggestions);
         // Guardamos el texto de la pregunta pendiente para emparejarla con la respuesta.
-        setPendingQuestion(res.question.text);
+        setPendingQuestion(text);
       }
     } catch {
       setError('La IA no está disponible en este momento. Puedes escalar tu solicitud sin el asistente.');

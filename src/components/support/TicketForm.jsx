@@ -59,6 +59,7 @@ export default function TicketForm({ onClose }) {
     setSaving(true);
     setError('');
     try {
+      /** @type {Record<string, any>} */
       const payload = {
         ...form,
         suggested_section: suggestion?.section,

@@ -140,11 +140,43 @@ function conversationBlock(subject, description, history) {
 }
 
 /**
+ * @typedef {Object} IntakeQuestion
+ * @property {string} text
+ * @property {string} [hint]
+ * @property {string[]} [suggestions]
+ */
+/**
+ * @typedef {Object} IntakeBrief
+ * @property {'feature'|'bug'} [kind]
+ * @property {string} [title]
+ * @property {string} [summary]
+ * @property {string} [affected_area]
+ * @property {string} [user_story]
+ * @property {string[]} [acceptance_criteria]
+ * @property {string[]} [scope_in]
+ * @property {string[]} [scope_out]
+ * @property {string[]} [repro_steps]
+ * @property {string} [expected_behavior]
+ * @property {string} [actual_behavior]
+ * @property {string} [severity]
+ * @property {string} [impact]
+ * @property {string} [priority_suggestion]
+ * @property {string[]} [open_questions]
+ */
+/**
+ * @typedef {Object} IntakeTurnResult
+ * @property {boolean} done
+ * @property {IntakeQuestion} [question]
+ * @property {IntakeBrief} [brief]
+ */
+
+/**
  * Ejecuta un turno de la entrevista. Devuelve el objeto validado por TURN_SCHEMA:
  *   { done:false, question:{text,hint,suggestions} }  ó  { done:true, brief:{…} }.
  *
  * @param {'feature'|'bug'} kind
- * @param {{subject:string, description:string, history:Array<{question:string,answer:string}>}} ctx
+ * @param {{subject?:string, description?:string, history?:Array<{question:string,answer:string}>}} [ctx]
+ * @returns {Promise<IntakeTurnResult>}
  */
 export async function intakeTurn(kind, { subject = '', description = '', history = [] } = {}) {
   const forceClose = history.length >= MAX_QUESTIONS;
@@ -158,13 +190,11 @@ ${forceClose
 
 Responde SOLO el JSON del esquema.`;
 
-  const res = await base44.integrations.Core.InvokeLLM({
+  const out = /** @type {IntakeTurnResult} */ (await base44.integrations.Core.InvokeLLM({
     prompt,
     add_context_from_internet: false,
     response_json_schema: TURN_SCHEMA,
-  });
-
-  const out = res || {};
+  })) || /** @type {IntakeTurnResult} */ ({ done: false });
   // Salvaguarda: si el modelo se pasa del límite sin cerrar, forzamos cierre en
   // el siguiente turno vía forceClose; aquí normalizamos la forma.
   if (out.done && out.brief) {
