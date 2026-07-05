@@ -21,7 +21,7 @@ const COUNT_CAP = 5000; // Base44 caps list at 5,000 — usage counts are capped
 // radius of a leaked/guessed INGEST_HMAC_SECRET or a replayed request to just
 // these two entities, instead of unrestricted service-role access to the whole
 // multi-tenant database.
-const ALLOWED_ENTITIES = new Set(['TenantLicense', 'SupportTicket']);
+const ALLOWED_ENTITIES = new Set(['TenantLicense', 'SupportTicket', 'AppSession']);
 
 class HttpError extends Error {
   status: number;
@@ -318,6 +318,32 @@ Deno.serve(async (req) => {
         }
         const updated = Object.keys(patch).length ? await sr.entities[entity].update(id, patch) : null;
         return Response.json({ ok: true, updated });
+      }
+
+      case 'sessions.list': {
+        // List this app's end-user sessions for Mission Control (service-role).
+        // MC computes idle/state from last_active_at; here we just return the raw
+        // rows, most-recently-active first. Read-only.
+        if (!params.entity) return Response.json({ error: 'params.entity required' }, { status: 400 });
+        const entity = assertAllowedEntity(params.entity);
+        const records = await sr.entities[entity].list('-last_active_at', COUNT_CAP);
+        return Response.json({ ok: true, records });
+      }
+
+      case 'sessions.revoke': {
+        // Force-logout: mark the given sessions revoked (service-role, HMAC-gated).
+        // The app's client checks its own row each heartbeat and logs out when
+        // revoked_at is set. `actorEmail` is recorded for the in-app audit trail.
+        const ids = Array.isArray(params.ids) ? params.ids : [];
+        const revokedBy = typeof params.actorEmail === 'string' ? params.actorEmail : null;
+        if (!params.entity || ids.length === 0) return Response.json({ error: 'params.entity/ids required' }, { status: 400 });
+        const entity = assertAllowedEntity(params.entity);
+        const revoked_at = new Date().toISOString();
+        let revoked = 0;
+        for (const id of ids) {
+          try { await sr.entities[entity].update(id, { revoked_at, revoked_by: revokedBy }); revoked++; } catch { /* skip missing */ }
+        }
+        return Response.json({ ok: true, revoked });
       }
 
       // Fase 6 — writes land here, e.g. 'license.activate' / 'license.suspend'.
