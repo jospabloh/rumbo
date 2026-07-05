@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { BookOpen, CheckCircle2, LifeBuoy } from 'lucide-react';
+import { BookOpen, CheckCircle2, LifeBuoy, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,14 +8,22 @@ import { Label } from '@/components/ui/label';
 import { FormError } from '@/components/ui/form-error';
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { TICKET_CATEGORIES, TICKET_PRIORITIES, validateTicket, suggestSolution, SUPPORT_SLA_HOURS } from '@/lib/support';
+import { composeTicketBody } from '@/lib/aiIntake';
+import AiIntakeChat from '@/components/support/AiIntakeChat';
 import { useInvalidateEntity } from '@/hooks/useEntities';
 
+// Categorías donde entra el asistente BA/PO experto: nueva funcionalidad (feature)
+// e incidencias (bug). El resto (dudas, facturación, otro) conserva el desvío
+// directo al manual — no necesita levantar requisitos.
+const AI_CATEGORIES = new Set(['feature', 'bug']);
+
 /**
- * Formulario de soporte con desvío al manual antes de escalar:
- *  1. form        — el usuario describe su problema.
- *  2. suggestion  — le mostramos la sección del manual que podría resolverlo.
- *  3. done        — si aún necesita ayuda, escalamos a soporte y confirmamos el
- *                   SLA de 48 h hábiles (también se le envía por correo).
+ * Formulario de soporte:
+ *  1. form        — el usuario describe su solicitud.
+ *  2a. ai         — (feature / incidencia) un BA/PO experto entrevista al usuario
+ *                   y arma un brief accionable para el desarrollador.
+ *  2b. suggestion — (resto) le mostramos la sección del manual que podría resolverlo.
+ *  3. done        — escalamos a soporte y confirmamos el SLA de 48 h hábiles.
  *
  * @param {{ onClose: () => void }} props
  */
@@ -28,19 +36,38 @@ export default function TicketForm({ onClose }) {
   const [error, setError] = useState('');
   const [folio, setFolio] = useState('');
 
+  const usesAi = AI_CATEGORIES.has(form.category);
+
   const review = () => {
     const validation = validateTicket(form);
     if (validation) { setError(validation); return; }
     setError('');
+    if (usesAi) {
+      setStep('ai');
+      return;
+    }
     setSuggestion(suggestSolution(form.category, `${form.subject} ${form.body}`));
     setStep('suggestion');
   };
 
-  const escalate = async () => {
+  /**
+   * Escala el ticket. Si viene un `brief` de la IA, el cuerpo se enriquece con la
+   * especificación en Markdown (para que llegue a todos lados) y se adjunta el
+   * brief estructurado en `ai_brief` (render enriquecido en Mission Control).
+   */
+  const escalate = async (brief) => {
     setSaving(true);
     setError('');
     try {
-      const res = await base44.functions.invoke('submitTicket', { ...form, suggested_section: suggestion?.section });
+      const payload = {
+        ...form,
+        suggested_section: suggestion?.section,
+      };
+      if (brief) {
+        payload.body = composeTicketBody(form.body, brief);
+        payload.ai_brief = brief;
+      }
+      const res = await base44.functions.invoke('submitTicket', payload);
       const data = res?.data || res;
       if (data?.error) { setError(data.error); setSaving(false); return; }
       setFolio(data?.ticket?.ticket_number || '');
@@ -53,7 +80,11 @@ export default function TicketForm({ onClose }) {
     }
   };
 
-  const title = step === 'done' ? 'Solicitud escalada' : step === 'suggestion' ? 'Posible solución' : 'Abrir ticket de soporte';
+  const title = step === 'done'
+    ? 'Solicitud escalada'
+    : step === 'ai'
+      ? (form.category === 'bug' ? 'Reporte de incidencia' : 'Nueva funcionalidad')
+      : step === 'suggestion' ? 'Posible solución' : 'Abrir ticket de soporte';
 
   return (
     <ResponsiveModal title={title} onClose={onClose} maxWidth="md">
@@ -81,12 +112,31 @@ export default function TicketForm({ onClose }) {
             <Label>Describe tu solicitud *</Label>
             <Textarea value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} className="mt-1 bg-background min-h-28" placeholder="Cuéntanos qué pasó, en qué pantalla y qué esperabas que sucediera." />
           </div>
+          {usesAi && (
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Sparkles className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+              Un asistente experto te hará unas preguntas para dejar tu solicitud lista para el equipo.
+            </p>
+          )}
           <FormError>{error}</FormError>
           <div className="flex gap-3 pt-1">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-            <Button onClick={review} className="flex-1 gap-2"><BookOpen className="w-4 h-4" /> Buscar solución</Button>
+            <Button onClick={review} className="flex-1 gap-2">
+              {usesAi ? <><Sparkles className="w-4 h-4" /> Continuar con el asistente</> : <><BookOpen className="w-4 h-4" /> Buscar solución</>}
+            </Button>
           </div>
         </div>
+      )}
+
+      {step === 'ai' && (
+        <AiIntakeChat
+          kind={form.category === 'bug' ? 'bug' : 'feature'}
+          subject={form.subject}
+          description={form.body}
+          saving={saving}
+          onBack={() => { setError(''); setStep('form'); }}
+          onComplete={(brief) => escalate(brief)}
+        />
       )}
 
       {step === 'suggestion' && (
@@ -105,7 +155,7 @@ export default function TicketForm({ onClose }) {
           <FormError>{error}</FormError>
           <div className="flex flex-col gap-2">
             <Button variant="outline" onClick={onClose} className="gap-2"><CheckCircle2 className="w-4 h-4" /> Esto resolvió mi problema</Button>
-            <Button onClick={escalate} disabled={saving} className="gap-2"><LifeBuoy className="w-4 h-4" /> {saving ? 'Escalando...' : 'Aún necesito ayuda — escalar a soporte'}</Button>
+            <Button onClick={() => escalate()} disabled={saving} className="gap-2"><LifeBuoy className="w-4 h-4" /> {saving ? 'Escalando...' : 'Aún necesito ayuda — escalar a soporte'}</Button>
           </div>
         </div>
       )}
