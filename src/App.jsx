@@ -43,6 +43,7 @@ import Landing from './pages/Landing';
 import RequireAppOwner from './components/RequireAppOwner';
 import RequireAccess from './components/RequireAccess';
 import ErrorBoundary from './components/ErrorBoundary';
+import SessionHeartbeat from '@/lib/SessionHeartbeat';
 import { PageLoader, Spinner } from '@/components/ui/spinner';
 // Add page imports here
 
@@ -158,6 +159,7 @@ function App() {
         <QueryClientProvider client={queryClientInstance}>
           <Router>
             <TenantProvider>
+              <SessionHeartbeat />
               <ErrorBoundary>
                 <AppShell />
               </ErrorBoundary>
