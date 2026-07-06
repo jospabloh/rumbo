@@ -4,6 +4,97 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.26.0] — 2026-07-06 — Automated security, code quality, tenant-isolation, permissions, and release-readiness audit
+
+### Security audit result — no code-level vulnerabilities found
+
+Full automated security, tenant-isolation, permissions, code quality, and release-readiness audit at v1.26.0 covering all modules added since v1.25.0.
+
+- No hardcoded secrets, API keys, tokens, or credentials found.
+- All 24 entity RLS rules verified correct (`data.tenant_id == {{user.data.tenant_id}}`); `validate:rls` passes.
+- `audit:tenant-scope` passes — no unscoped read/update/delete branches found.
+- Tenant isolation confirmed clean: Expense, AppSession, VehicleDocument entities all tenant- or self-scoped.
+- `Expense` entity: owner/admin only read/write, write-gated by `write_access`. CLEAN.
+- `AppSession` entity: user self-scoped (created_by_id) for read/create/update; delete admin only; no tenant_id leakage. CLEAN.
+- `VehicleDocument` entity: tenant-scoped, owner/admin/dispatcher write, mechanic read. CLEAN.
+- `aiIntake` (AI intake assistant): sanitizes user input before LLM call; no backend call; uses Base44 SDK InvokeLLM. CLEAN.
+- Route protection: `/expenses` wrapped in `RequireAccess page="expenses"` (owner/admin only). CLEAN.
+- Alert generation: tenant-scoped. CLEAN.
+- Cost-per-km calculation: tenant-scoped, role-gated (owner/admin/dispatcher). CLEAN.
+- Admin users list: filtered by `data.tenant_id`. CLEAN.
+- PermissionsPanel save: persists to `TenantLicense.permissions_config` with error feedback. CLEAN.
+- TenantContext fallback: no `all[0]` fallback risk. CLEAN.
+- All 424 unit tests pass; lint, typecheck, build, validate:rls, audit:tenant-scope all clean.
+
+### Documentation updates
+
+- `docs/permissions_matrix.md` updated to v1.26.0: added `Expense` and `AppSession` entities to RLS summary, added `/expenses` page to page access table, updated version header, added audit findings A24–A32.
+- `USER_MANUAL.md` updated: added Active Sessions section (Admin), updated Help & Support with AI intake assistant description, updated version date.
+- `CHANGELOG.md` updated with v1.26.0 release entry.
+- `APP_VERSION` bumped to v1.26.0 in `src/lib/version.js` and `package.json`.
+
+### Features added since v1.25.0 (documented on this branch)
+
+#### Active sessions (SessionHeartbeat + AppSession + force-logout)
+
+- New entity **`AppSession`**: one row per end-user login/device. The client heartbeat (`SessionHeartbeat.jsx`) creates a row on login and refreshes `last_active_at` every ~60 s.
+- ACACIA Mission Control can list active sessions and **force-logout** a specific session by setting `revoked_at`. The heartbeat checks its own row and calls `logout()` when revoked.
+- RLS: each user owns their own rows (via `created_by_id`); platform admin (service role) has full access for the Mission Control bridge.
+
+#### AI intake assistant (support questionnaire)
+
+- A conversational **BA/PO assistant** (`aiIntake.js`, `AiIntakeChat.jsx`) interviews the user before a support ticket is escalated.
+- Up to 6 structured questions; the model returns a structured `brief` (type, module, user story, acceptance criteria, priority, context). The brief travels inside the ticket body (Markdown) and as a structured `ai_brief` field for rich rendering in Mission Control.
+- Input is sanitized to neutralize prompt-injection attempts before being sent to the LLM.
+
+#### Expenses module (Gastos)
+
+- New entity **`Expense`** (tenant-scoped, owner/admin only, write-gated by license).
+- New page **`/expenses`** with category filter, month/total KPIs, and CSV import support.
+- Expenses feed the Dashboard's "Egresos del mes" card.
+- Categories configurable via **Configuración → Listas → "Categorías de gasto"**.
+
+#### Insurance: configurable insurer name
+
+- `InsuranceClaim.insurance_company` field: the insurer name is now configurable per claim via a dropdown populated from the **Catalog** (Configuración → Listas → Aseguradoras) instead of being freeform.
+
+#### Import improvements
+
+- CSV import extended to: **Fuel logs, Fines, Maintenance** (matched by vehicle plate/license), **Insurance claims**, **Rent charges**, **Expenses**, and **Catalog lists**.
+- Rows that reference a vehicle/driver resolved by natural key (plate or license); phantom records are never created — a clear row-level error is shown instead.
+- No-duplicate check: existing records matched by natural key are skipped.
+
+#### Dashboard — command center
+
+- New KPI tiles: **Egresos del mes** (fuel + fines + maintenance + insurance + general expenses), **Infracciones del mes**, **Taller (maintenances this month)**, **Licencia** status badge.
+- App owner with their own fleet lands on their tenant Dashboard (not the Licencias console) — the Licencias link remains a single click away in the sidebar.
+
+#### Business settings panel
+
+- Admin → **Configuración del negocio** panel: configurable cost-per-km window (days), custom categories.
+- `calculateCostPerKm` reads `TenantLicense.settings.cost_per_km_window_days`; defaults to 90 days if not set.
+
+#### Bug fixes and hardening
+
+- **ITSM folio:** support tickets now carry a human-readable sequential folio (`RUM-000001`), robust to deletions (derives from max folio, not row count).
+- **Cross-tenant SupportTicket fix:** closed RLS branch that allowed any `admin` to read all tenants' support tickets; each branch is now scoped to `data.tenant_id` or `data.requester_id == user.id`.
+- **`audit:tenant-scope` CI guard:** new script (`scripts/audit-tenant-scope.mjs`) added to CI to statically detect unscoped read/update/delete branches in every entity schema.
+- **App build with custom domain:** `VITE_BASE44_APP_ID` baked into the bundle from `base44/.app.jsonc` so the app authenticates correctly on custom domains where Base44 doesn't inject `?app_id`.
+- **Email validation:** `submitTicket` validates the requester's email format server-side before sending; strips HTML from subject/description to prevent email injection.
+- **Dashboard app-owner routing:** fixed — an app owner with their own fleet no longer lands on `/licenses` but on their tenant dashboard.
+
+### Remaining acknowledged vulnerabilities (dev-only)
+
+| Vulnerability | Severity | Package | Risk | Status |
+|--------------|----------|---------|------|--------|
+| GHSA-f5bl-6b05-xchv (esbuild dev server) | Moderate | esbuild | Dev server only | Accepted |
+| GHSA-67mh-4wv8-2f99 (esbuild) | Moderate | esbuild | Dev server only | Accepted |
+| vite dev server | Moderate | vite | Dev server only | Accepted |
+| GHSA-mw96-cpmx-2vgc (rollup path traversal) | High | rollup | Build time only | Accepted |
+| vitest UI server | Critical | vitest | Only with `--ui` flag; not used in CI | Accepted |
+
+---
+
 ## [1.25.0] — 2026-06-29 — Autenticación personalizada (diseño propio)
 
 ### Pantallas de inicio de sesión propias

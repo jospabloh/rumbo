@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Updated 2026-07-04**
+**Updated 2026-07-06**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -301,9 +301,17 @@ Also reachable from **Ayuda y soporte** at the bottom of the sidebar.
 
 **Accessible to:** all roles, including Drivers.
 
+#### AI intake assistant (questionnaire before escalating)
+
+When you open a support ticket, an **AI assistant** runs a structured interview (up to 6 questions) to gather the context your request needs: affected module, expected behavior, steps to reproduce, and priority. Once the assistant has enough information it produces a brief that travels inside your ticket — this ensures the team receives a ready-to-act specification and can respond faster.
+
+- You can answer as little or as much as you like; the assistant closes the interview when it has sufficient information.
+- **Only your answers are sent** — the assistant cannot read your fleet data.
+- Input is sanitized to prevent prompt injection.
+
 #### Support inbox (app owner)
 
-The app owner has a **Soporte** dashboard (`/tickets`, under the Plataforma group) that lists support tickets across all organizations. From there they can filter by status, change a ticket's status, and reply — replies are emailed to the person who opened the ticket.
+The app owner has a **Soporte** dashboard (`/tickets`, under the Plataforma group) that lists support tickets across all organizations. From there they can filter by status, change a ticket's status, and reply — replies are emailed to the person who opened the ticket. Tickets enriched with an AI brief show the structured summary alongside the description.
 
 Support email recipient is configured via the `Support_email` secret (also accepts `SUPPORT_EMAIL` / `APP_OWNER_EMAIL`); if none is set it defaults to `soporte@acaciaco.com.mx`.
 
@@ -347,6 +355,16 @@ View your current plan, usage, and members (menu: **Configuración → Mi licenc
 Contact sales to upgrade your plan.
 
 **Accessible to:** Owner, Admin.
+
+---
+
+### Active Sessions (Sesiones activas)
+
+Rumbo logs one record per login/device. The **ACACIA Mission Control** dashboard (accessed by the platform owner, not tenant admins) can list active sessions and **revoke any session** to force an immediate logout of that user/device — useful when a device is lost or an account is compromised.
+
+Session records are created automatically on each login and kept alive by a background heartbeat. When a session is revoked, the user is signed out the next time the heartbeat fires (within ~60 seconds).
+
+**Note:** Tenant admins do not have access to the active-sessions view — this is a platform-level control only.
 
 ---
 

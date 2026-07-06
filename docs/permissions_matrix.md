@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.24.0 | Updated 2026-06-29**
+**Version 1.26.0 | Updated 2026-07-06**
 
 ---
 
@@ -29,6 +29,7 @@ All pages except the driver portal and help are protected by `RequireAccess` (wh
 | Maintenance (`/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | `RequireAccess page="maintenance"` |
 | Parts/Inventory (embedded in `/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | Same as maintenance |
 | Financial (`/financial`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="financial"` |
+| Expenses (`/expenses`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="expenses"` + `Expense.jsonc` RLS |
 | Alerts (`/alerts`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="alerts"` |
 | Location (`/location`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="location"` |
 | Messages (`/messages`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="messages"` |
@@ -163,7 +164,9 @@ Admin has full view, create, edit, delete access to every module within their te
 | LocationRequest | owner, admin, dispatcher | same tenant_id + role/driver/requester | owner, admin, dispatcher, own driver | owner, admin |
 | Catalog | owner, admin | same tenant_id | owner, admin | owner, admin |
 | UsefulLink | owner, admin | same tenant_id | owner, admin | owner, admin |
-| SupportTicket | any tenant user (via `submitTicket` server fn) | own tenant (admin/owner) or own ticket | owner, admin | owner, admin |
+| SupportTicket | any tenant user (via `submitTicket` server fn) | own tenant (admin/owner) or own ticket (requester_id) | owner, admin | owner, admin |
+| Expense | owner, admin (write-gated by `write_access`) | same tenant_id (owner, admin) | owner, admin (write-gated) | owner, admin (write-gated) |
+| AppSession | any authenticated user (own row via `created_by_id`) | own row or service-role admin | own row or service-role admin | service-role admin only |
 
 ---
 
@@ -180,6 +183,24 @@ Admin has full view, create, edit, delete access to every module within their te
 ---
 
 ## Audit History
+
+### v1.26.0 Audit (2026-07-06)
+
+Security, code quality, tenant isolation, permissions, and release-readiness audit covering all modules added since v1.25.0: Expense, AppSession, VehicleDocument, AI intake, active sessions, dashboard improvements, import extensions, and business settings.
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A24 | `Expense` entity RLS: tenant-scoped, owner/admin only, write-gated. Route `/expenses` guarded by `RequireAccess page="expenses"`. | — | **CONFIRMED CLEAN** |
+| A25 | `AppSession` entity RLS: self-scoped (created_by_id). No cross-tenant exposure — entity has no `tenant_id`. Service-role admin access is the Mission Control bridge only. | — | **CONFIRMED CLEAN** |
+| A26 | `VehicleDocument` entity RLS: tenant-scoped, owner/admin/dispatcher write, mechanic read. Already in matrix v1.24.0. | — | **CONFIRMED CLEAN** |
+| A27 | AI intake (`aiIntake.js`): sanitizes user input (strips HTML, controls unicode) before sending to LLM. No backend server function added; uses existing Base44 SDK `InvokeLLM`. | — | **CONFIRMED CLEAN** |
+| A28 | `audit:tenant-scope` script added to CI (v1.26.0): statically detects unscoped read/update/delete branches in entity schemas. Cross-tenant SupportTicket leak (admin branch without tenant scope) fixed and prevented from regressing. | — | **FIXED and GUARDED** |
+| A29 | `validate:rls` passes for all 24 entities. `audit:tenant-scope` passes for all multi-tenant entities. | — | **CONFIRMED CLEAN** |
+| A30 | No hardcoded secrets, API keys, tokens, or credentials in source code. | — | **CONFIRMED CLEAN** |
+| A31 | Permissions matrix: added `/expenses` to page access table, `Expense` and `AppSession` to RLS summary. No other gaps found vs v1.24.0 for new modules. | — | **UPDATED** |
+| A32 | All 424 unit tests pass. Lint (direct), typecheck, build, validate:rls, audit:tenant-scope — all clean at HEAD. | — | **CONFIRMED PASSING** |
+
+---
 
 ### v1.24.0 Audit (2026-06-29)
 
