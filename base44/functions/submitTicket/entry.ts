@@ -109,6 +109,12 @@ Deno.serve(async (req) => {
     const category = CATEGORIES.includes(body.category) ? body.category : 'question';
     const priority = PRIORITIES.includes(body.priority) ? body.priority : 'normal';
     const suggestedSection = (body.suggested_section || '').toString().trim();
+    // Brief estructurado del asistente BA/PO (opcional). Se guarda tal cual para
+    // el render enriquecido en Mission Control; el cuerpo del ticket ya incluye
+    // el mismo brief en Markdown, así que este campo es puramente aditivo.
+    const aiBrief = (body.ai_brief && typeof body.ai_brief === 'object' && !Array.isArray(body.ai_brief))
+      ? body.ai_brief
+      : null;
 
     const svc = base44.asServiceRole;
 
@@ -141,6 +147,7 @@ Deno.serve(async (req) => {
       requester_email: user.email || '',
       responses: [],
       last_activity_at: nowIso,
+      ...(aiBrief ? { ai_brief: aiBrief } : {}),
     });
 
     // 0) Push en tiempo real a ACACIA Mission Control. Si Mission Control acusa
