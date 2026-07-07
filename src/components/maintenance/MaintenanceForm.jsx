@@ -20,6 +20,7 @@ export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
     defaultValues: {
       vehicle_id: record?.vehicle_id || '',
       kind: record?.kind || 'preventive',
+      category: record?.category || 'general',
       description: record?.description || '',
       odometer: record?.odometer ?? '',
       cost: record?.cost ?? '',
@@ -78,7 +79,7 @@ export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
               />
               <FormError className="mt-1">{errors.vehicle_id?.message}</FormError>
             </div>
-            <div className="col-span-2">
+            <div>
               <Label>Tipo</Label>
               <Controller
                 name="kind"
@@ -89,6 +90,28 @@ export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
                     <SelectContent>
                       <SelectItem value="preventive">Preventivo</SelectItem>
                       <SelectItem value="corrective">Correctivo</SelectItem>
+                      <SelectItem value="major_repair">Arreglo mayor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div>
+              <Label>Categoría</Label>
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="engine">Motor</SelectItem>
+                      <SelectItem value="brakes">Frenos</SelectItem>
+                      <SelectItem value="electrical">Eléctrico</SelectItem>
+                      <SelectItem value="tires">Llantas</SelectItem>
+                      <SelectItem value="body">Carrocería</SelectItem>
+                      <SelectItem value="other">Otro</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

@@ -114,7 +114,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
           {maintenance.map(m => (
             <div key={m.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
               <div>
-                <p className="text-sm font-medium">{m.description || (m.kind === 'preventive' ? 'Preventivo' : 'Correctivo')}</p>
+                <p className="text-sm font-medium">{m.description || (m.kind === 'preventive' ? 'Preventivo' : m.kind === 'major_repair' ? 'Arreglo mayor' : 'Correctivo')}</p>
                 <p className="text-xs text-muted-foreground">{m.performed_at} · ${m.cost?.toFixed(2) || '0'}</p>
               </div>
               {m.next_due_at && <p className="text-xs text-muted-foreground">Próx: {m.next_due_at}</p>}

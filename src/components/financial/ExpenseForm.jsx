@@ -44,7 +44,7 @@ export default function ExpenseForm({ record, vehicles = [], onSave, onClose }) 
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md bg-card border border-border rounded-t-2xl lg:rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-lg">{record ? 'Editar gasto' : 'Registrar gasto'}</h2>
+          <h2 className="font-bold text-lg">{record?.id ? 'Editar gasto' : 'Registrar gasto'}</h2>
           <button onClick={onClose} className="text-muted-foreground"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit(onValid)} className="space-y-3">

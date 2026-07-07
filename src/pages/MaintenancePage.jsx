@@ -120,11 +120,11 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
                   <div key={r.id} className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${r.kind === 'preventive' ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${r.kind === 'preventive' ? 'bg-primary/10 text-primary' : r.kind === 'major_repair' ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'}`}>
                           <Wrench className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">{r.description || (r.kind === 'preventive' ? 'Mantenimiento preventivo' : 'Mantenimiento correctivo')}</p>
+                          <p className="text-sm font-semibold">{r.description || (r.kind === 'preventive' ? 'Mantenimiento preventivo' : r.kind === 'major_repair' ? 'Arreglo mayor' : 'Mantenimiento correctivo')}</p>
                           <p className="text-xs text-muted-foreground">{v?.plate || 'Vehículo'} · {r.performed_at}</p>
                         </div>
                       </div>
