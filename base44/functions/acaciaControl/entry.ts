@@ -347,6 +347,7 @@ Deno.serve(async (req) => {
       }
 
       // Fase 6 — writes land here, e.g. 'license.activate' / 'license.suspend'.
+      // sessions.list / sessions.revoke handled above.
 
       default:
         return Response.json({ error: `unknown action: ${action}` }, { status: 400 });
