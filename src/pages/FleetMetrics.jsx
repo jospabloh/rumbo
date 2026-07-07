@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListSkeleton } from '@/components/ui/list-skeleton';
@@ -35,6 +35,23 @@ export default function FleetMetrics() {
 
   const [selectedCell, setSelectedCell] = useState(null); // { vehicleId, bucket }
   const [selectedUnitId, setSelectedUnitId] = useState(null);
+  const detailRef = useRef(null);
+
+  // Deep-link desde la vista previa del Dashboard (?vehicle=&date=): abre
+  // directamente el detalle de esa unidad/día en cuanto llegan los datos.
+  useEffect(() => {
+    if (selectedCell || !data) return;
+    const vehicleId = searchParams.get('vehicle');
+    const dateParam = searchParams.get('date');
+    if (!vehicleId || !dateParam) return;
+    const bucket = bucketRangeDates(range).find((b) => b.dates.includes(dateParam));
+    if (bucket) setSelectedCell({ vehicleId, bucket });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  useEffect(() => {
+    if (selectedCell) detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selectedCell]);
 
   const driverById = (id) => drivers.find((d) => d.id === id);
 
@@ -99,7 +116,7 @@ export default function FleetMetrics() {
       </div>
 
       {selectedCell && selectedCellVehicle && (
-        <div className="mb-4">
+        <div className="mb-4" ref={detailRef}>
           <UnitDayCellDetail
             vehicle={selectedCellVehicle}
             bucket={selectedCell.bucket}

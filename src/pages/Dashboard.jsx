@@ -5,18 +5,20 @@ import { es } from 'date-fns/locale';
 import StatCard from '@/components/dashboard/StatCard';
 import AlertBadge from '@/components/dashboard/AlertBadge';
 import RevenueTrend from '@/components/dashboard/RevenueTrend';
+import FleetProfitMatrixCard from '@/components/dashboard/FleetProfitMatrixCard';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
+import { isAdminOrOwner } from '@/lib/permissions';
 import { monthlyExpenses, monthlyIncome, pendingFines, maintenanceDue } from '@/lib/dashboard';
 import { useVehicles, useDrivers, useAlerts, useMessages, useRentCharges, useEntityList } from '@/hooks/useEntities';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { readOnly, licenseInfo } = useTenant();
+  const { readOnly, licenseInfo, userRole } = useTenant();
   const { can } = useModulePerms();
   const vehiclesQ = useVehicles();
   const driversQ = useDrivers();
@@ -142,6 +144,10 @@ export default function Dashboard() {
 
       {/* Revenue trend */}
       <RevenueTrend charges={rentCharges} />
+
+      {/* Utilidad por unidad (vista previa de /reports) — solo owner/admin: la
+          función fleetUnitMetrics devuelve 403 para dispatcher/mechanic. */}
+      {isAdminOrOwner(userRole) && <FleetProfitMatrixCard />}
 
       {/* Fleet status */}
       <div className="grid lg:grid-cols-2 gap-4">
