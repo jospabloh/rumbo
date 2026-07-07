@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
 import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
@@ -9,6 +9,13 @@ import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
  * servidor `fleetUnitMetrics` con React Query en vez de un `useState` manual
  * (como hace CostPerKm.jsx) porque aquí el rango y la selección de unidades
  * cambian mucho más seguido que un cálculo "on demand" de un solo botón.
+ *
+ * `placeholderData: keepPreviousData` es necesario porque `vehicleIds`/`range`
+ * son parte del queryKey: sin esto, cada toggle de "unidades visibles" o
+ * cambio de rango cuenta como una query NUEVA (sin datos aún) y la página
+ * entera se desmonta a un skeleton mientras llega la respuesta — lo que además
+ * resetea el scroll a 0. Con `keepPreviousData` se sigue mostrando el
+ * resultado anterior (stale) hasta que llega el nuevo, sin desmontar nada.
  *
  * @param {{ type: string, start: string, end: string }} range
  * @param {string[]|null} vehicleIds  Unidades visibles (null = todas).
@@ -28,6 +35,7 @@ export function useFleetUnitMetrics(range, vehicleIds, { trailingPeriods = 4 } =
       return res.data;
     },
     enabled: !!tenantId && !!range?.start && !!range?.end,
+    placeholderData: keepPreviousData,
   });
 }
 
