@@ -8,6 +8,9 @@
 // Same file deploys to every app.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+// Build marker — bumped to force a fresh deploy artifact. No functional effect.
+const ACACIA_CONTROL_BUILD = 2;
+
 // Ventana de tolerancia de reloj entre Mission Control y esta función. Se ajusta
 // a 2 min (antes 5): reduce la superficie temporal para reproducir (replay) una
 // petición firmada capturada, manteniendo margen razonable de deriva de reloj.
