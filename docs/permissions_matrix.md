@@ -29,6 +29,7 @@ All pages except the driver portal and help are protected by `RequireAccess` (wh
 | Maintenance (`/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | `RequireAccess page="maintenance"` |
 | Parts/Inventory (embedded in `/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | Same as maintenance |
 | Financial (`/financial`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="financial"` |
+| Reportes (`/reports`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="reports"` + `fleetUnitMetrics` server function (owner/admin only) |
 | Expenses (`/expenses`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="expenses"` + `Expense.jsonc` RLS |
 | Alerts (`/alerts`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="alerts"` |
 | Location (`/location`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="location"` |
@@ -121,6 +122,8 @@ Admin has full view, create, edit, delete access to every module within their te
 | Delegate tenant ownership | admin, owner | `Admin.jsx` DangerZone | Updates `owner_email` |
 | Generate alerts | admin, owner | `generateAlerts` server function | 403 for other roles |
 | Calculate cost-per-km | admin, owner, dispatcher | `calculateCostPerKm` server function | 403 for driver/mechanic |
+| Fleet unit metrics (utilidad/ranking/pronóstico) | admin, owner | `fleetUnitMetrics` server function | 403 for dispatcher/mechanic/driver — surfaces `Expense`/revenue data, stricter than cost-per-km |
+| Rent balance carryover | admin, owner, dispatcher | `Rentas.jsx` `generatePeriodCharges` client logic + `RentCharge`/`Alert` RLS | Rolls a unit's unpaid rent into the next period's charge; raises an `Alert` (`entity_type: 'rent_balance'`) |
 | Submit support ticket | any authenticated tenant user | `submitTicket` server function | Creates SupportTicket + sends email confirmation; runs with service role so write-blocked tenants can still submit |
 | View/manage all support tickets | app owner only | `ticketsAdmin` server function + `/tickets` page (`RequireAppOwner`) | Cross-tenant; gated on `APP_OWNER_EMAIL` |
 | View all tenants (SuperAdmin) | app owner only | `Admin.jsx` `isOwner()` check | SuperAdminPanel visible only to owner |
@@ -167,6 +170,8 @@ Admin has full view, create, edit, delete access to every module within their te
 | SupportTicket | any tenant user (via `submitTicket` server fn) | own tenant (admin/owner) or own ticket (requester_id) | owner, admin | owner, admin |
 | Expense | owner, admin (write-gated by `write_access`) | same tenant_id (owner, admin) | owner, admin (write-gated) | owner, admin (write-gated) |
 | AppSession | any authenticated user (own row via `created_by_id`) | own row or service-role admin | own row or service-role admin | service-role admin only |
+| DashboardUnitPref | own row (`created_by_id`, tenant-scoped) | own row only | own row only | own row only |
+| UnitDayNote | owner, admin, dispatcher (write-gated) | same tenant_id (+ mechanic read) | owner, admin (write-gated) | owner, admin (write-gated) |
 
 ---
 
@@ -279,6 +284,7 @@ Security, code quality, tenant isolation, permissions, and release-readiness aud
 | `base44/functions/resolveTenant/entry.ts` | Source of truth for tenant binding, write_access, driver_profile_id |
 | `base44/functions/generateAlerts/entry.ts` | Role guard: admin/owner only; tenant-scoped |
 | `base44/functions/calculateCostPerKm/entry.ts` | Role guard: owner/admin/dispatcher; tenant-scoped |
+| `base44/functions/fleetUnitMetrics/entry.ts` | Role guard: owner/admin only; tenant-scoped; powers `/reports` (utilidad, ranking, matriz día×unidad, pronóstico) |
 | `base44/functions/manageMember/entry.ts` | Suspend/reactivate/remove — same-tenant validation; protects owner emails |
 | `base44/functions/licensesAdmin/entry.ts` | Cross-tenant license management — gated on `APP_OWNER_EMAIL` |
 | `base44/functions/submitTicket/entry.ts` | Support ticket creation — any authenticated tenant user |

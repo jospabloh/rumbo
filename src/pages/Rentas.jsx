@@ -79,7 +79,7 @@ export default function Rentas() {
     setGenerating(true);
     setBanner('');
     try {
-      let created = 0, skipped = 0, credited = 0;
+      let created = 0, skipped = 0, credited = 0, carried = 0;
       // Créditos de bono de referido pendientes por conductor (se consumen al generar sus cobros).
       const creditLeft = {};
       for (const d of drivers) creditLeft[d.id] = Number(d.referral_credit) || 0;
@@ -94,15 +94,21 @@ export default function Rentas() {
         const exists = charges.some(c => c.vehicle_id === v.id && periodsOverlap(c.period_start, c.period_end, period_start, period_end));
         if (exists) { skipped++; continue; }
 
-        let amount_due = Number(v.rent_amount);
+        // Saldo pendiente de cobros anteriores de ESTA unidad: se traslada a la renta
+        // de esta semana en vez de quedar como un cobro vencido aparte (que además
+        // seguiría sumándose semana tras semana sin que nadie lo note).
+        const priorOpen = charges.filter(c => c.vehicle_id === v.id && ((c.amount_due || 0) - (c.amount_paid || 0)) > 0);
+        const priorBalance = Math.round(priorOpen.reduce((s, c) => s + ((c.amount_due || 0) - (c.amount_paid || 0)), 0) * 100) / 100;
+
+        let amount_due = Math.round((Number(v.rent_amount) + priorBalance) * 100) / 100;
         const driverId = v.assigned_driver_id;
-        let note = '';
+        let note = priorBalance > 0 ? `Incluye $${priorBalance.toLocaleString()} de saldo anterior` : '';
         const credit = creditLeft[driverId] || 0;
         if (credit > 0) {
           const applied = Math.min(credit, amount_due);
           amount_due = Math.round((amount_due - applied) * 100) / 100;
           creditLeft[driverId] = Math.round((credit - applied) * 100) / 100;
-          note = `Crédito de bono aplicado (-$${applied.toLocaleString()})`;
+          note = [note, `Crédito de bono aplicado (-$${applied.toLocaleString()})`].filter(Boolean).join(' · ');
           credited++;
         }
 
@@ -118,8 +124,40 @@ export default function Rentas() {
           status: statusOf({ amount_due, amount_paid: 0 }),
           payments: [],
           notes: note,
+          carried_over_amount: priorBalance,
         });
         created++;
+
+        if (priorBalance > 0) {
+          carried++;
+          // Cierra el saldo de los cobros anteriores: ya quedó incluido en el nuevo.
+          // Se reduce su amount_due a lo ya pagado (balance queda en 0, status pasa a
+          // 'paid' de forma natural) en vez de dejarlo como deuda duplicada.
+          for (const c of priorOpen) {
+            await base44.entities.RentCharge.update(c.id, {
+              amount_due: c.amount_paid || 0,
+              carried_forward: true,
+              notes: [c.notes, 'Saldo trasladado a la semana siguiente'].filter(Boolean).join(' · '),
+            }).catch(() => {});
+          }
+          // Alerta al admin: resuelve la anterior de esta unidad (si sigue abierta) y
+          // crea una nueva con el monto actualizado — no se van acumulando alertas viejas.
+          try {
+            const openAlerts = await base44.entities.Alert.filter({ tenant_id: tenantId, entity_type: 'rent_balance', entity_id: v.id, resolved: false });
+            for (const a of openAlerts) await base44.entities.Alert.update(a.id, { resolved: true }).catch(() => {});
+            await base44.entities.Alert.create({
+              tenant_id: tenantId,
+              entity_type: 'rent_balance',
+              entity_id: v.id,
+              vehicle_id: v.id,
+              driver_id: driverId,
+              message: `${v.plate || 'Unidad'} arrastra $${priorBalance.toLocaleString()} de la semana anterior`,
+              severity: 'warning',
+              due_date: period_end,
+              resolved: false,
+            });
+          } catch (_e) { /* no bloquea la generación de cobros si falla la alerta */ }
+        }
       }
 
       // Persiste el crédito restante por conductor (lo que no se consumió esta vez).
@@ -130,9 +168,9 @@ export default function Rentas() {
         }
       }
 
-      setBanner(`${created} cobro(s) generado(s)${skipped ? `, ${skipped} ya existían` : ''}${credited ? `, ${credited} con crédito de referido` : ''}.`);
+      setBanner(`${created} cobro(s) generado(s)${skipped ? `, ${skipped} ya existían` : ''}${credited ? `, ${credited} con crédito de referido` : ''}${carried ? `, ${carried} con saldo trasladado` : ''}.`);
       refresh();
-      if (credited) invalidate('Driver');
+      if (credited || carried) invalidate('Driver', 'Alert');
     } catch (e) {
       setBanner('No se pudieron generar los cobros. Inténtalo de nuevo.');
     } finally {

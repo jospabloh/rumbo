@@ -54,11 +54,11 @@ export default function TestDataPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg">
                 <Truck className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">5 Vehículos</span>
+                <span className="text-sm font-medium">10 Vehículos</span>
               </div>
               <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg">
                 <Users className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">5 Conductores</span>
+                <span className="text-sm font-medium">8 Conductores</span>
               </div>
               <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg">
                 <Bell className="w-4 h-4 text-primary" />
@@ -66,7 +66,7 @@ export default function TestDataPage() {
               </div>
               <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg">
                 <Wrench className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">Mantenimientos, multas, viajes</span>
+                <span className="text-sm font-medium">5 semanas de rentas, combustible y mantenimiento</span>
               </div>
             </div>
 

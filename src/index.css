@@ -35,6 +35,16 @@
     --critical: 0 72% 48%;
     --success: 142 71% 38%;
 
+    /* Rampa secuencial (magnitud) para la matriz día×unidad de /reports: un solo
+       matiz (el de --primary, 217°) claro→oscuro. Nunca se usa como paleta
+       categórica ni se reutiliza success/warning/critical, que quedan reservados
+       para estado. */
+    --seq-1: 217 85% 95%;
+    --seq-2: 217 85% 84%;
+    --seq-3: 217 80% 68%;
+    --seq-4: 217 90% 50%;
+    --seq-5: 217 90% 33%;
+
     --sidebar-background: 210 40% 96%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 217 91% 50%;
@@ -71,6 +81,14 @@
     --warning-foreground: 0 0% 100%;
     --critical: 0 72% 51%;
     --success: 142 71% 45%;
+
+    /* Misma rampa secuencial que en light, con pasos ajustados para contraste
+       sobre el fondo oscuro (222 20% 7%). */
+    --seq-1: 217 30% 18%;
+    --seq-2: 217 45% 28%;
+    --seq-3: 217 65% 40%;
+    --seq-4: 217 85% 55%;
+    --seq-5: 217 95% 70%;
 
     --sidebar-background: 222 20% 5%;
     --sidebar-foreground: 210 40% 96%;
