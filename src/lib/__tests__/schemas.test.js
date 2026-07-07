@@ -93,6 +93,12 @@ describe('maintenanceSchema', () => {
     expect(maintenanceSchema.safeParse({ vehicle_id: '', kind: 'preventive' }).success).toBe(false);
     expect(maintenanceSchema.safeParse({ vehicle_id: 'v1', kind: 'other' }).success).toBe(false);
   });
+
+  it('accepts major_repair and an optional category', () => {
+    expect(maintenanceSchema.safeParse({ vehicle_id: 'v1', kind: 'major_repair' }).success).toBe(true);
+    expect(maintenanceSchema.safeParse({ vehicle_id: 'v1', kind: 'preventive', category: 'tires' }).success).toBe(true);
+    expect(maintenanceSchema.safeParse({ vehicle_id: 'v1', kind: 'preventive', category: 'not-a-category' }).success).toBe(false);
+  });
 });
 
 describe('channelSchema', () => {
