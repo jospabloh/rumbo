@@ -22,6 +22,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import Financial from './pages/Financial';
 import Expenses from './pages/Expenses';
 import Rentas from './pages/Rentas';
+import FleetMetrics from './pages/FleetMetrics';
 import Alerts from './pages/Alerts';
 import Location from './pages/Location';
 import Messages from './pages/Messages';
@@ -124,6 +125,7 @@ const AppShell = () => {
           <Route path="/maintenance" element={<RequireAccess page="maintenance"><MaintenancePage /></RequireAccess>} />
           <Route path="/rentas" element={<RequireAccess page="rentas"><Rentas /></RequireAccess>} />
           <Route path="/financial" element={<RequireAccess page="financial"><Financial /></RequireAccess>} />
+          <Route path="/reports" element={<RequireAccess page="reports"><FleetMetrics /></RequireAccess>} />
           <Route path="/expenses" element={<RequireAccess page="expenses"><Expenses /></RequireAccess>} />
           <Route path="/alerts" element={<RequireAccess page="alerts"><Alerts /></RequireAccess>} />
           <Route path="/location" element={<RequireAccess page="location"><Location /></RequireAccess>} />

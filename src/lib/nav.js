@@ -10,7 +10,7 @@
 import {
   LayoutDashboard, Users, Truck, Wrench, DollarSign,
   MapPin, MessageSquare, Bell, FileText, CreditCard,
-  Shield, Banknote, List, Link2, HelpCircle, LifeBuoy, Receipt,
+  Shield, Banknote, List, Link2, HelpCircle, LifeBuoy, Receipt, BarChart3,
 } from 'lucide-react';
 import { can, isDriver } from '@/lib/permissions';
 
@@ -42,6 +42,7 @@ export const NAV_GROUPS = [
       { path: '/rentas',    icon: Banknote,   label: 'Rentas',     page: 'rentas' },
       { path: '/financial', icon: DollarSign, label: 'Financiero', page: 'financial' },
       { path: '/expenses',  icon: Receipt,    label: 'Gastos',     page: 'expenses' },
+      { path: '/reports',   icon: BarChart3,  label: 'Reportes',   page: 'reports' },
     ],
   },
   {

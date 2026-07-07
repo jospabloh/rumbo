@@ -14,7 +14,8 @@
         "maintenance",
         "insurance",
         "fine",
-        "part"
+        "part",
+        "rent_balance"
       ],
       "title": "Tipo de entidad"
     },

@@ -1,0 +1,30 @@
+{
+  // DashboardUnitPref — per-user preference for the /reports fleet dashboard:
+  // which vehicles this user has chosen to hide from the day×unit matrix and
+  // unit grid (up to ~100 units per tenant, most users only care about a
+  // subset). Stores the HIDDEN set, not a visible allow-list, so a newly
+  // added vehicle is visible by default without any migration.
+  //
+  // RLS: self-scoped by the built-in created_by_id (Base44 sets it on create,
+  // cannot be spoofed by a forged data.user_id) — same pattern as
+  // AppSession.jsonc. No admin override branch: this is pure per-user view
+  // state, not fleet data, so nothing else needs to read/write another
+  // user's row.
+  "name": "DashboardUnitPref",
+  "type": "object",
+  "properties": {
+    "tenant_id": { "type": "string", "title": "Tenant" },
+    "hidden_vehicle_ids": {
+      "type": "array",
+      "title": "Unidades ocultas",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["tenant_id"],
+  "rls": {
+    "create": { "data.tenant_id": "{{user.data.tenant_id}}", "created_by_id": "{{user.id}}" },
+    "read":   { "data.tenant_id": "{{user.data.tenant_id}}", "created_by_id": "{{user.id}}" },
+    "update": { "data.tenant_id": "{{user.data.tenant_id}}", "created_by_id": "{{user.id}}" },
+    "delete": { "data.tenant_id": "{{user.data.tenant_id}}", "created_by_id": "{{user.id}}" }
+  }
+}

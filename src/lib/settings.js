@@ -40,6 +40,18 @@ export const SETTINGS_SCHEMA = /** @type {SettingDef[]} */ ([
     type: 'number', default: 0, min: 0,
     help: 'Días después del fin del periodo antes de marcar una renta como vencida.',
   },
+  {
+    key: 'maintenance_interval_km',
+    label: 'Intervalo de mantenimiento preventivo (km)',
+    type: 'number', default: 5000, min: 1,
+    help: 'Cada cuántos kilómetros se estima el próximo mantenimiento preventivo cuando no hay una fecha capturada a mano.',
+  },
+  {
+    key: 'tire_life_km',
+    label: 'Vida útil estimada de llantas (km)',
+    type: 'number', default: 40000, min: 1,
+    help: 'Kilometraje promedio entre cambios de llantas, usado como estimado cuando una unidad no tiene suficiente historial propio.',
+  },
 ]);
 
 /** Mapa key → default, para lecturas rápidas y para el backend. */

@@ -81,6 +81,16 @@
     "notes": {
       "type": "string",
       "title": "Notas"
+    },
+    "carried_over_amount": {
+      "type": "number",
+      "title": "Saldo trasladado de la semana anterior",
+      "default": 0
+    },
+    "carried_forward": {
+      "type": "boolean",
+      "title": "Saldo trasladado a la siguiente semana",
+      "default": false
     }
   },
   "required": [

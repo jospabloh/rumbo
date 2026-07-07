@@ -14,10 +14,25 @@
       "type": "string",
       "enum": [
         "preventive",
-        "corrective"
+        "corrective",
+        "major_repair"
       ],
       "title": "Tipo",
       "default": "preventive"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "general",
+        "engine",
+        "brakes",
+        "electrical",
+        "tires",
+        "body",
+        "other"
+      ],
+      "title": "Categor\u00eda",
+      "default": "general"
     },
     "description": {
       "type": "string",
