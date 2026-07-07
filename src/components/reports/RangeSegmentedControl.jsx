@@ -46,7 +46,7 @@ export default function RangeSegmentedControl({ type, custom, onChange, range })
             <CalendarRange className="w-3.5 h-3.5" />{rangeLabel(range)}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0" align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
           <Calendar
             mode="range"
             selected={selected}
