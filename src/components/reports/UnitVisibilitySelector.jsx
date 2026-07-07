@@ -26,7 +26,7 @@ export default function UnitVisibilitySelector({ vehicles, hiddenIds, onToggle, 
           <ListChecks className="w-3.5 h-3.5" />{visibleCount} de {vehicles.length} unidades visibles
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-3" align="end">
+      <PopoverContent className="w-80 p-3" align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
         <div className="relative mb-2">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input placeholder="Buscar unidad..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm bg-background" />

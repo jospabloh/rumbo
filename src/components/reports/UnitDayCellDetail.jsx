@@ -1,26 +1,22 @@
 import { useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { MessageSquarePlus, Plus, DollarSign, Receipt, Wrench, StickyNote, MapPin } from 'lucide-react';
+import { MessageSquarePlus, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cellsForVehicle } from '@/lib/fleetMetricsRange';
 import { useTenant } from '@/lib/TenantContext';
 import { useInvalidateEntity } from '@/hooks/useEntities';
 import { useUnitDayNotes } from '@/hooks/useFleetMetrics';
-import ExpenseForm from '@/components/financial/ExpenseForm';
-import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
-import QuickIncomeModal from '@/components/reports/QuickIncomeModal';
+import RegistrarMenu from '@/components/reports/RegistrarMenu';
 
 /**
  * Detalle de una celda de la matriz día × unidad: ingreso/gasto/utilidad del
  * bucket seleccionado, comentarios (UnitDayNote propios + notas de pago y
  * mantenimiento que cayeron ese día) e insights calculados en cliente a
  * partir de los mismos datos que ya trae fleetUnitMetrics (sin lógica de
- * "insight" en el servidor). También permite registrar en el momento un
- * ingreso, gasto o mantenimiento para esta unidad y este día, reutilizando
- * los formularios ya existentes de Gastos/Mantenimiento.
+ * "insight" en el servidor). El botón "Registrar" (RegistrarMenu, compartido
+ * con UnitCardGrid) permite dar de alta un ingreso/gasto/mantenimiento para
+ * esta unidad en este día exacto.
  *
  * @param {{
  *   vehicle: any, bucket: {key:string,label:string,dates:string[]}, buckets: any[],
@@ -31,14 +27,10 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
   const { tenantId } = useTenant();
   const { data: notes = [] } = useUnitDayNotes(vehicle.vehicle_id);
   const invalidate = useInvalidateEntity();
-  const qc = useQueryClient();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [openForm, setOpenForm] = useState(null); // null | 'expense' | 'maintenance' | 'income'
 
   const date = bucket.dates[0];
-  const singleVehicleList = [{ id: vehicle.vehicle_id, plate: vehicle.plate || `#${vehicle.unit_number}` }];
 
   const cell = useMemo(() => cellsForVehicle(vehicle, [bucket])[0], [vehicle, bucket]);
   const ownCells = useMemo(() => cellsForVehicle(vehicle, buckets), [vehicle, buckets]);
@@ -87,35 +79,14 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
     }
   };
 
-  // Refresca tanto las listas de entidades (Gastos/Mantenimiento/Rentas usan
-  // las mismas) como la matriz de /reports (fleetUnitMetrics), que no vive
-  // bajo la misma queryKey que useEntityList.
-  const afterQuickSave = (entityName) => {
-    invalidate(entityName);
-    qc.invalidateQueries({ queryKey: ['fleetUnitMetrics'] });
-    setOpenForm(null);
-  };
-
   const registrarMenu = (
-    <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5 shrink-0"><Plus className="w-3.5 h-3.5" />Registrar</Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-52 p-1" align="end">
-        <button onClick={() => { setOpenForm('income'); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-2.5 py-2 text-sm rounded-md hover:bg-accent text-left">
-          <DollarSign className="w-4 h-4 text-success" />Ingreso
-        </button>
-        <button onClick={() => { setOpenForm('expense'); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-2.5 py-2 text-sm rounded-md hover:bg-accent text-left">
-          <Receipt className="w-4 h-4 text-destructive" />Gasto
-        </button>
-        <button onClick={() => { setOpenForm('maintenance'); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-2.5 py-2 text-sm rounded-md hover:bg-accent text-left">
-          <Wrench className="w-4 h-4 text-warning" />Mantenimiento
-        </button>
-        <button onClick={() => { setMenuOpen(false); document.getElementById(`note-input-${vehicle.vehicle_id}`)?.focus(); }} className="w-full flex items-center gap-2 px-2.5 py-2 text-sm rounded-md hover:bg-accent text-left">
-          <StickyNote className="w-4 h-4 text-muted-foreground" />Evento / nota
-        </button>
-      </PopoverContent>
-    </Popover>
+    <RegistrarMenu
+      vehicleId={vehicle.vehicle_id}
+      plate={vehicle.plate}
+      unitNumber={vehicle.unit_number}
+      driverId={vehicle.assigned_driver_id}
+      date={date}
+    />
   );
 
   const gpsPlaceholder = (
@@ -125,43 +96,6 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
     >
       <MapPin className="w-3.5 h-3.5" />GPS (Rainde) · Próximamente
     </span>
-  );
-
-  const quickForms = (
-    <>
-      {openForm === 'expense' && (
-        <ExpenseForm
-          record={{ vehicle_id: vehicle.vehicle_id, expense_date: date }}
-          vehicles={singleVehicleList}
-          onClose={() => setOpenForm(null)}
-          onSave={async (data) => {
-            await base44.entities.Expense.create({ ...data, tenant_id: tenantId });
-            afterQuickSave('Expense');
-          }}
-        />
-      )}
-      {openForm === 'maintenance' && (
-        <MaintenanceForm
-          record={{ vehicle_id: vehicle.vehicle_id, performed_at: date }}
-          vehicles={singleVehicleList}
-          onClose={() => setOpenForm(null)}
-          onSave={async (data) => {
-            await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId });
-            afterQuickSave('Maintenance');
-          }}
-        />
-      )}
-      {openForm === 'income' && (
-        <QuickIncomeModal
-          tenantId={tenantId}
-          vehicleId={vehicle.vehicle_id}
-          driverId={vehicle.assigned_driver_id}
-          date={date}
-          onClose={() => setOpenForm(null)}
-          onSaved={() => afterQuickSave('RentCharge')}
-        />
-      )}
-    </>
   );
 
   if (vehicle.status !== 'active') {
@@ -174,7 +108,6 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
         <p className="text-xs text-muted-foreground">
           Esta unidad no tuvo actividad registrada en este periodo. El resumen de flota (mediana y ranking) ya la excluye mientras esté fuera de servicio.
         </p>
-        {quickForms}
       </div>
     );
   }
@@ -201,7 +134,7 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
           ? <p className="text-sm text-muted-foreground">Sin comentarios en este periodo.</p>
           : allNotes.map((n) => <p key={n.id} className="text-sm py-1.5 border-b border-border last:border-0">{n.text}</p>)}
         <div className="flex gap-2 mt-2">
-          <Input id={`note-input-${vehicle.vehicle_id}`} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Agregar nota para esta unidad..." className="h-8 text-sm bg-background" />
+          <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Agregar nota para esta unidad..." className="h-8 text-sm bg-background" />
           <Button size="sm" variant="outline" onClick={addNote} disabled={saving || !draft.trim()} className="gap-1 shrink-0">
             <MessageSquarePlus className="w-3.5 h-3.5" />
           </Button>
@@ -221,8 +154,6 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
           {highCost && <p className="text-warning">⚠ Gasto inusualmente alto — revisa si hubo un mantenimiento no planeado</p>}
         </div>
       </div>
-
-      {quickForms}
     </div>
   );
 }
