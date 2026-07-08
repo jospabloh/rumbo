@@ -136,4 +136,43 @@ describe('buildPayload — normalization', () => {
     const off = IMPORT_SPECS.catalog.buildPayload({ categoria: 'c', etiqueta: 'l', activo: 'false' }, 'T1');
     expect(off.active).toBe(false);
   });
+
+  it('round-trips a driver\'s aval, background-check date and rating', () => {
+    const payload = IMPORT_SPECS.drivers.buildPayload(
+      { nombre: 'Ana', aval: 'María López', fecha_antecedentes: '2024-01-10', calificacion: '4.8' },
+      'T1',
+    );
+    expect(payload.aval_name).toBe('María López');
+    expect(payload.background_check_date).toBe('2024-01-10');
+    expect(payload.rating).toBe(4.8);
+  });
+
+  it('maps vehicle dia_cobro (ES) to the English rent_day enum, and estado to status', () => {
+    const payload = IMPORT_SPECS.vehicles.buildPayload({ placa: 'ABC-1', dia_cobro: 'miercoles', estado: 'mantenimiento' }, 'T1');
+    expect(payload.rent_day).toBe('wednesday');
+    expect(payload.status).toBe('maintenance');
+    expect(rowErrors('vehicles', { placa: 'ABC-1', dia_cobro: 'not-a-day' })).toContain('día de cobro inválido');
+  });
+
+  it('carries the new vehicle insurance/odometer columns through unchanged', () => {
+    const payload = IMPORT_SPECS.vehicles.buildPayload(
+      { placa: 'ABC-1', no_poliza_seguro: 'POL-1', aseguradora: 'GNP', costo_anual_seguro: '1894', odometro: '107874' },
+      'T1',
+    );
+    expect(payload.insurance_policy_no).toBe('POL-1');
+    expect(payload.insurance_company).toBe('GNP');
+    expect(payload.insurance_annual_cost).toBe(1894);
+    expect(payload.odometer).toBe(107874);
+  });
+
+  it('maps maintenance categoria (ES) to the English category enum', () => {
+    const payload = IMPORT_SPECS.maintenance.buildPayload({ placa: 'ABC-1', categoria: 'llantas' }, 'T1');
+    expect(payload.category).toBe('tires');
+    expect(rowErrors('maintenance', { placa: 'ABC-1', categoria: 'not-a-category' })).toContain('la categoría no es válida');
+  });
+
+  it('maps maintenance tipo "arreglo_mayor" to kind "major_repair"', () => {
+    const payload = IMPORT_SPECS.maintenance.buildPayload({ placa: 'ABC-1', tipo: 'arreglo_mayor' }, 'T1');
+    expect(payload.kind).toBe('major_repair');
+  });
 });

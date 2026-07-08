@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.27.0 | Updated 2026-07-07**
+**Version 1.28.0 | Updated 2026-07-08**
 
 ---
 

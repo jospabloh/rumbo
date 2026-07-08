@@ -14,7 +14,19 @@
     "tenant_id": { "type": "string", "title": "Tenant" },
     "vehicle_id": { "type": "string", "title": "Vehículo" },
     "note_date": { "type": "string", "format": "date", "title": "Fecha" },
-    "text": { "type": "string", "title": "Comentario" }
+    "text": { "type": "string", "title": "Comentario" },
+    "attachments": {
+      "type": "array",
+      "title": "Adjuntos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": { "type": "string", "title": "Archivo" },
+          "file_name": { "type": "string", "title": "Nombre" },
+          "file_type": { "type": "string", "title": "Tipo" }
+        }
+      }
+    }
   },
   "required": ["vehicle_id", "note_date", "text"],
   "rls": {

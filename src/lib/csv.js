@@ -151,6 +151,27 @@ const INSURANCE_STATUS = {
   cerrado: 'closed', closed: 'closed',
 };
 
+/** Día de cobro semanal aceptado en el CSV (ES) → valor de la entidad (EN). */
+const DAY_MAP = {
+  lunes: 'monday', martes: 'tuesday', miercoles: 'wednesday', jueves: 'thursday',
+  viernes: 'friday', sabado: 'saturday', domingo: 'sunday',
+  monday: 'monday', tuesday: 'tuesday', wednesday: 'wednesday', thursday: 'thursday',
+  friday: 'friday', saturday: 'saturday', sunday: 'sunday',
+};
+
+/** Estado del vehículo aceptado en el CSV (ES/EN) → valor de la entidad. */
+const VEHICLE_STATUS = {
+  activo: 'active', mantenimiento: 'maintenance', inactivo: 'inactive',
+  active: 'active', maintenance: 'maintenance', inactive: 'inactive',
+};
+
+/** Categoría de mantenimiento aceptada en el CSV (ES/EN) → valor de la entidad. */
+const CATEGORY_MAP = {
+  general: 'general', motor: 'engine', frenos: 'brakes', electrico: 'electrical',
+  llantas: 'tires', carroceria: 'body', otro: 'other',
+  engine: 'engine', brakes: 'brakes', electrical: 'electrical', tires: 'tires', body: 'body', other: 'other',
+};
+
 /**
  * Estado de un cargo de renta según lo debido vs. lo pagado. Espejo de statusOf()
  * en components/rentas/rentUtils (comparación en centavos; due<=0 cuenta como pagado).
@@ -180,13 +201,16 @@ export const IMPORT_SPECS = {
     entity: 'Driver',
     label: 'Conductores',
     keyLabel: 'licencia (o nombre + teléfono)',
-    columns: ['nombre', 'licencia', 'vencimiento_licencia', 'telefono', 'fecha_contratacion'],
+    columns: ['nombre', 'licencia', 'vencimiento_licencia', 'telefono', 'fecha_contratacion', 'fecha_antecedentes', 'calificacion', 'aval'],
     example: {
       nombre: 'Juan Pérez',
       licencia: 'LIC-0001',
       vencimiento_licencia: '2027-05-30',
       telefono: '55-1234-5678',
       fecha_contratacion: '2024-01-15',
+      fecha_antecedentes: '2024-01-10',
+      calificacion: '4.8',
+      aval: 'María López',
     },
     validate(row) {
       const errors = [];
@@ -195,6 +219,13 @@ export const IMPORT_SPECS = {
       }
       if (norm(row['vencimiento_licencia']) && !isDateish(row['vencimiento_licencia'])) {
         errors.push({ msg: 'la fecha de vencimiento no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2027-05-30) o deja la celda vacía.' });
+      }
+      if (norm(row['fecha_antecedentes']) && !isDateish(row['fecha_antecedentes'])) {
+        errors.push({ msg: 'la fecha de antecedentes no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2024-01-10) o deja la celda vacía.' });
+      }
+      const rating = parseNum(row['calificacion']);
+      if (norm(row['calificacion']) && (rating === null || rating < 0 || rating > 5)) {
+        errors.push({ msg: 'la calificación no es válida', fix: 'Escribe un número entre 0 y 5 (ej. 4.8) o deja la celda vacía.' });
       }
       return errors;
     },
@@ -206,6 +237,9 @@ export const IMPORT_SPECS = {
         license_expiry: norm(row['vencimiento_licencia']) || null,
         phone: norm(row['telefono']) || null,
         hire_date: norm(row['fecha_contratacion']) || null,
+        background_check_date: norm(row['fecha_antecedentes']) || null,
+        rating: parseNum(row['calificacion']),
+        aval_name: norm(row['aval']) || null,
         status: 'active',
       };
     },
@@ -230,7 +264,7 @@ export const IMPORT_SPECS = {
     label: 'Vehículos',
     keyLabel: 'placa (o VIN, o número de unidad)',
     // Incluye vencimientos de documentos/permisos para migrarlos junto al vehículo.
-    columns: ['no_unidad', 'placa', 'marca', 'modelo', 'año', 'vin', 'vencimiento_seguro', 'vencimiento_registro', 'vencimiento_inspeccion', 'tarifa_renta', 'frecuencia_renta'],
+    columns: ['no_unidad', 'placa', 'marca', 'modelo', 'año', 'vin', 'vencimiento_seguro', 'vencimiento_registro', 'vencimiento_inspeccion', 'tarifa_renta', 'frecuencia_renta', 'no_poliza_seguro', 'aseguradora', 'costo_anual_seguro', 'vencimiento_holograma', 'odometro', 'dia_cobro', 'estado'],
     example: {
       no_unidad: 'U-01',
       placa: 'ABC-1234',
@@ -243,6 +277,13 @@ export const IMPORT_SPECS = {
       vencimiento_inspeccion: '2026-10-15',
       tarifa_renta: '1500',
       frecuencia_renta: 'weekly',
+      no_poliza_seguro: 'POL-0001',
+      aseguradora: 'GNP',
+      costo_anual_seguro: '1800',
+      vencimiento_holograma: '2026-08-31',
+      odometro: '85000',
+      dia_cobro: 'miercoles',
+      estado: 'activo',
     },
     validate(row) {
       const errors = [];
@@ -259,6 +300,23 @@ export const IMPORT_SPECS = {
       if (freq && freq !== 'weekly' && freq !== 'daily' && freq !== 'semanal' && freq !== 'diaria') {
         errors.push({ msg: 'frecuencia_renta inválida', fix: 'Usa "weekly" (semanal) o "daily" (diaria), o deja la celda vacía.' });
       }
+      if (norm(row['costo_anual_seguro']) && parseNum(row['costo_anual_seguro']) === null) {
+        errors.push({ msg: 'el costo anual de seguro no es un número', fix: 'Escribe solo el monto (ej. 1800) sin símbolos, o deja la celda vacía.' });
+      }
+      if (norm(row['vencimiento_holograma']) && !isDateish(row['vencimiento_holograma'])) {
+        errors.push({ msg: 'el vencimiento de holograma no es válido', fix: 'Usa el formato AAAA-MM-DD o deja la celda vacía.' });
+      }
+      if (norm(row['odometro']) && parseNum(row['odometro']) === null) {
+        errors.push({ msg: 'el odómetro no es un número', fix: 'Escribe solo el kilometraje (ej. 85000) sin símbolos.' });
+      }
+      const day = norm(row['dia_cobro']).toLowerCase();
+      if (day && !DAY_MAP[day]) {
+        errors.push({ msg: 'día de cobro inválido', fix: 'Usa lunes, martes, miércoles, jueves, viernes, sábado o domingo, o deja la celda vacía.' });
+      }
+      const status = norm(row['estado']).toLowerCase();
+      if (status && !VEHICLE_STATUS[status]) {
+        errors.push({ msg: 'estado inválido', fix: 'Usa activo, mantenimiento o inactivo, o deja la celda vacía.' });
+      }
       return errors;
     },
     buildPayload(row, tenantId) {
@@ -273,12 +331,18 @@ export const IMPORT_SPECS = {
         model: norm(row['modelo']) || null,
         year: parseNum(row['año']),
         vin: upper(row['vin']) || null,
+        insurance_policy_no: norm(row['no_poliza_seguro']) || null,
+        insurance_company: norm(row['aseguradora']) || null,
+        insurance_annual_cost: parseNum(row['costo_anual_seguro']),
+        hologram_expiry: norm(row['vencimiento_holograma']) || null,
+        odometer: parseNum(row['odometro']) ?? 0,
+        rent_day: DAY_MAP[norm(row['dia_cobro']).toLowerCase()] || null,
+        status: VEHICLE_STATUS[norm(row['estado']).toLowerCase()] || 'active',
         insurance_expiry: norm(row['vencimiento_seguro']) || null,
         registration_expiry: norm(row['vencimiento_registro']) || null,
         inspection_expiry: norm(row['vencimiento_inspeccion']) || null,
         rent_amount: parseNum(row['tarifa_renta']),
         rent_frequency: frequency,
-        status: 'active',
       };
     },
     keyOfRow(row) {
@@ -431,7 +495,7 @@ export const IMPORT_SPECS = {
     label: 'Mantenimientos',
     keyLabel: 'placa + fecha + descripción',
     needsRefs: true,
-    columns: ['placa', 'tipo', 'descripcion', 'costo', 'fecha', 'proximo_servicio', 'odometro'],
+    columns: ['placa', 'tipo', 'descripcion', 'costo', 'fecha', 'proximo_servicio', 'odometro', 'categoria'],
     example: {
       placa: 'ABC-1234',
       tipo: 'preventivo',
@@ -440,6 +504,7 @@ export const IMPORT_SPECS = {
       fecha: '2026-06-01',
       proximo_servicio: '2026-09-01',
       odometro: '85000',
+      categoria: 'general',
     },
     validate(row, ctx) {
       const errors = [];
@@ -449,14 +514,18 @@ export const IMPORT_SPECS = {
         errors.push({ msg: `no existe un vehículo con placa "${norm(row['placa'])}"`, fix: 'Verifica la placa, o crea/importa primero ese vehículo.' });
       }
       const tipo = norm(row['tipo']).toLowerCase();
-      if (tipo && !['preventivo', 'correctivo', 'preventive', 'corrective'].includes(tipo)) {
-        errors.push({ msg: 'el tipo no es válido', fix: 'Usa "preventivo" o "correctivo", o deja la celda vacía.' });
+      if (tipo && !['preventivo', 'correctivo', 'arreglo_mayor', 'mayor', 'preventive', 'corrective', 'major_repair'].includes(tipo)) {
+        errors.push({ msg: 'el tipo no es válido', fix: 'Usa "preventivo", "correctivo" o "arreglo_mayor", o deja la celda vacía.' });
       }
       if (norm(row['costo']) && parseNum(row['costo']) === null) {
         errors.push({ msg: 'el costo no es un número', fix: 'Escribe solo el monto (ej. 1200) sin símbolos.' });
       }
       if (norm(row['fecha']) && !isDateish(row['fecha'])) {
         errors.push({ msg: 'la fecha no es válida', fix: 'Usa el formato AAAA-MM-DD (ej. 2026-06-01).' });
+      }
+      const cat = norm(row['categoria']).toLowerCase();
+      if (cat && !CATEGORY_MAP[cat]) {
+        errors.push({ msg: 'la categoría no es válida', fix: 'Usa general, motor, frenos, electrico, llantas, carroceria u otro, o deja la celda vacía.' });
       }
       if (norm(row['proximo_servicio']) && !isDateish(row['proximo_servicio'])) {
         errors.push({ msg: 'la fecha de próximo servicio no es válida', fix: 'Usa AAAA-MM-DD o deja la celda vacía.' });
@@ -466,11 +535,14 @@ export const IMPORT_SPECS = {
     buildPayload(row, tenantId, ctx) {
       const v = findVehicle(row, ctx);
       const tipo = norm(row['tipo']).toLowerCase();
-      const kind = tipo === 'correctivo' || tipo === 'corrective' ? 'corrective' : 'preventive';
+      const kind = tipo === 'correctivo' || tipo === 'corrective' ? 'corrective'
+        : tipo === 'arreglo_mayor' || tipo === 'mayor' || tipo === 'major_repair' ? 'major_repair'
+        : 'preventive';
       return {
         tenant_id: tenantId,
         vehicle_id: v?.id || null,
         kind,
+        category: CATEGORY_MAP[norm(row['categoria']).toLowerCase()] || 'general',
         description: norm(row['descripcion']) || null,
         cost: parseNum(row['costo']),
         performed_at: norm(row['fecha']) || null,

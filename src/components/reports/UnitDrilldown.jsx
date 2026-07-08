@@ -3,6 +3,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { ArrowLeft, Banknote, Wrench, Fuel, AlertTriangle } from 'lucide-react';
 import { useEntityList } from '@/hooks/useEntities';
 import { EmptyState } from '@/components/ui/empty-state';
+import MaintenanceFundCard from '@/components/reports/MaintenanceFundCard';
 
 const KIND_LABEL = { preventive: 'Preventivo', corrective: 'Correctivo', major_repair: 'Arreglo mayor' };
 const CATEGORY_LABEL = { general: 'General', engine: 'Motor', brakes: 'Frenos', electrical: 'Eléctrico', tires: 'Llantas', body: 'Carrocería', other: 'Otro' };
@@ -100,7 +101,9 @@ export default function UnitDrilldown({ vehicle, driverName, onBack }) {
       )}
 
       {tab === 'mantenimiento' && (
-        maintenance.length === 0 ? <EmptyState icon={Wrench} title="Sin mantenimientos" className="py-8" /> : (
+        <>
+        <MaintenanceFundCard vehicle={vehicle} />
+        {maintenance.length === 0 ? <EmptyState icon={Wrench} title="Sin mantenimientos" className="py-8" /> : (
           <div className="space-y-1.5">
             {maintenance.map((m) => (
               <div key={m.id} className="flex items-center justify-between py-2 border-b border-border last:border-0 text-sm">
@@ -112,7 +115,8 @@ export default function UnitDrilldown({ vehicle, driverName, onBack }) {
               </div>
             ))}
           </div>
-        )
+        )}
+        </>
       )}
 
       {tab === 'combustible' && (

@@ -4,6 +4,40 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.28.0] — 2026-07-08 — Bitácora attachments, aval/insurer fields, fondo de mantenimiento
+
+### Bitácora attachments (`UnitDayNote`)
+
+- Unit-day notes in `/reports` now support **multiple mixed-type attachments** per note — images, PDFs, Word docs, and plain text files. Attach by uploading a file, **pasting an image directly from the clipboard** (first such interaction in the app), or linking by URL.
+- New `NoteComposer` component (`src/components/reports/NoteComposer.jsx`) replaces the old single-line note input; attachments render inline (image thumbnails, file-icon links for everything else) in the cell-detail "Comentarios" list.
+- New `UnitDayNote.attachments` field (array of `{file_url, file_name, file_type}` objects) — additive, no RLS changes.
+
+### New fields: aval, insurer details, maintenance reserve
+
+- `Driver.aval_name` — guarantor/aval name, editable in the driver form and importable via CSV (`aval` column).
+- `Vehicle.insurance_company` and `Vehicle.insurance_annual_cost` — complement the existing policy number/expiry fields, editable in the vehicle form and importable via CSV (`aseguradora`, `costo_anual_seguro`).
+- `Vehicle.maintenance_reserve_weekly` — an optional weekly amount reserved toward a maintenance fund per unit, feeding the new **Fondo de mantenimiento** card (see below).
+
+### Fondo de mantenimiento (Reportes)
+
+- `fleetUnitMetrics` now computes, per unit and per selected range, how much would have been reserved at the configured weekly rate vs. actual `Maintenance` spend in that range, and the resulting balance.
+- New `MaintenanceFundCard` (`src/components/reports/MaintenanceFundCard.jsx`), shown in a unit's drill-down "Mantenimiento" tab only when a weekly reserve is configured — most units won't have one yet, and the card simply doesn't render for them.
+
+### CSV import: closed gaps vs. the full entity schema
+
+- `drivers` import now also accepts `fecha_antecedentes`, `calificacion`, `aval`.
+- `vehicles` import now also accepts `no_poliza_seguro`, `aseguradora`, `costo_anual_seguro`, `vencimiento_holograma`, `odometro`, `dia_cobro` (rent collection day), `estado`. Driver assignment is deliberately not part of this import (kept a manual post-import step) so vehicles and drivers stay import-order-independent.
+- `maintenance` import now also accepts `categoria`, and `tipo` accepts `arreglo_mayor` (mapped to `major_repair`, previously unreachable via import).
+- All additions are new trailing optional columns — existing templates, dedup keys, and phantom-record prevention are unchanged.
+
+### Documentation updates
+
+- `USER_MANUAL.md`: documented bitácora attachments, fondo de mantenimiento, the new driver/vehicle fields, and the extended import columns.
+- `CHANGELOG.md` updated with this v1.28.0 entry.
+- `APP_VERSION` bumped to v1.28.0 in `src/lib/version.js` and `package.json`.
+
+---
+
 ## [1.27.0] — 2026-07-07 — Fleet unit metrics dashboard (Reportes) + mobile UX fixes
 
 ### Fleet unit metrics dashboard (`/reports`)

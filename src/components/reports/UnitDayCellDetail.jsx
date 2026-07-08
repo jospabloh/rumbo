@@ -1,13 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { MessageSquarePlus, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { MapPin, FileText } from 'lucide-react';
 import { cellsForVehicle } from '@/lib/fleetMetricsRange';
 import { useTenant } from '@/lib/TenantContext';
 import { useInvalidateEntity } from '@/hooks/useEntities';
 import { useUnitDayNotes } from '@/hooks/useFleetMetrics';
 import RegistrarMenu from '@/components/reports/RegistrarMenu';
+import NoteComposer from '@/components/reports/NoteComposer';
 
 /**
  * Detalle de una celda de la matriz día × unidad: ingreso/gasto/utilidad del
@@ -27,8 +26,6 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
   const { tenantId } = useTenant();
   const { data: notes = [] } = useUnitDayNotes(vehicle.vehicle_id);
   const invalidate = useInvalidateEntity();
-  const [draft, setDraft] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const date = bucket.dates[0];
 
@@ -52,31 +49,26 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
   const highCost = cell.revenue > 0 && cell.cost > cell.revenue * 0.35;
 
   const dateNotes = notes.filter((n) => bucket.dates.includes(n.note_date))
-    .map((n) => ({ id: n.id, text: `"${n.text}"` }));
+    .map((n) => ({ id: n.id, text: `"${n.text}"`, attachments: n.attachments || [] }));
   const maintNotes = (maintenance || [])
     .filter((m) => m.vehicle_id === vehicle.vehicle_id && bucket.dates.includes(String(m.performed_at).slice(0, 10)) && m.description)
-    .map((m) => ({ id: m.id, text: `"${m.description}" — nota de mantenimiento` }));
+    .map((m) => ({ id: m.id, text: `"${m.description}" — nota de mantenimiento`, attachments: [] }));
   const paymentNotes = (rentCharges || [])
     .filter((c) => c.vehicle_id === vehicle.vehicle_id)
     .flatMap((c) => (c.payments || []).filter((p) => p.note && bucket.dates.includes(p.paid_at)))
-    .map((p, i) => ({ id: `pay-${i}`, text: `"${p.note}" — nota de pago` }));
+    .map((p, i) => ({ id: `pay-${i}`, text: `"${p.note}" — nota de pago`, attachments: [] }));
   const allNotes = [...dateNotes, ...maintNotes, ...paymentNotes];
 
-  const addNote = async () => {
-    if (!draft.trim() || !tenantId) return;
-    setSaving(true);
-    try {
-      await base44.entities.UnitDayNote.create({
-        tenant_id: tenantId,
-        vehicle_id: vehicle.vehicle_id,
-        note_date: date,
-        text: draft.trim(),
-      });
-      setDraft('');
-      invalidate('UnitDayNote');
-    } finally {
-      setSaving(false);
-    }
+  const addNote = async (text, attachments) => {
+    if (!text || !tenantId) return;
+    await base44.entities.UnitDayNote.create({
+      tenant_id: tenantId,
+      vehicle_id: vehicle.vehicle_id,
+      note_date: date,
+      text,
+      attachments,
+    });
+    invalidate('UnitDayNote');
   };
 
   const registrarMenu = (
@@ -132,13 +124,27 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Comentarios</h4>
         {allNotes.length === 0
           ? <p className="text-sm text-muted-foreground">Sin comentarios en este periodo.</p>
-          : allNotes.map((n) => <p key={n.id} className="text-sm py-1.5 border-b border-border last:border-0">{n.text}</p>)}
-        <div className="flex gap-2 mt-2">
-          <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Agregar nota para esta unidad..." className="h-8 text-sm bg-background" />
-          <Button size="sm" variant="outline" onClick={addNote} disabled={saving || !draft.trim()} className="gap-1 shrink-0">
-            <MessageSquarePlus className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+          : allNotes.map((n) => (
+            <div key={n.id} className="py-1.5 border-b border-border last:border-0">
+              <p className="text-sm">{n.text}</p>
+              {n.attachments?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {n.attachments.map((a, i) => (
+                    a.file_type?.startsWith('image/') ? (
+                      <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer">
+                        <img src={a.file_url} alt={a.file_name} className="w-12 h-12 rounded-md object-cover border border-border" />
+                      </a>
+                    ) : (
+                      <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline bg-secondary rounded-full px-2 py-1">
+                        <FileText className="w-3 h-3" />{a.file_name}
+                      </a>
+                    )
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        <NoteComposer onSave={addNote} />
       </div>
 
       <div>
