@@ -83,6 +83,10 @@
     "profile_id": {
       "type": "string",
       "title": "ID de perfil vinculado"
+    },
+    "aval_name": {
+      "type": "string",
+      "title": "Nombre del aval"
     }
   },
   "required": [

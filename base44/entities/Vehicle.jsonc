@@ -98,6 +98,18 @@
         "sunday"
       ],
       "title": "D\u00eda de cobro (semanal)"
+    },
+    "insurance_company": {
+      "type": "string",
+      "title": "Aseguradora"
+    },
+    "insurance_annual_cost": {
+      "type": "number",
+      "title": "Costo anual de seguro"
+    },
+    "maintenance_reserve_weekly": {
+      "type": "number",
+      "title": "Reserva semanal para fondo de mantenimiento"
     }
   },
   "required": [],

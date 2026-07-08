@@ -37,6 +37,7 @@ export default function DriverForm({ driver, drivers = [], onSave, onClose }) {
       license_file_url: driver?.license_file_url || '',
       ine_file_url: driver?.ine_file_url || '',
       address_proof_file_url: driver?.address_proof_file_url || '',
+      aval_name: driver?.aval_name || '',
     },
   });
   const photoUrl = useWatch({ control, name: 'photo_url' });
@@ -132,6 +133,10 @@ export default function DriverForm({ driver, drivers = [], onSave, onClose }) {
                   </Select>
                 )}
               />
+            </div>
+            <div className="col-span-2">
+              <Label>Aval / fiador</Label>
+              <Input {...register('aval_name')} className="mt-1 bg-background" placeholder="Nombre del aval" />
             </div>
             <div className="col-span-2">
               <Label>Referido por (conductor)</Label>

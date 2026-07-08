@@ -31,6 +31,9 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
       rent_amount: vehicle?.rent_amount ?? '',
       rent_frequency: vehicle?.rent_frequency || 'weekly',
       rent_day: vehicle?.rent_day || 'monday',
+      insurance_company: vehicle?.insurance_company || '',
+      insurance_annual_cost: vehicle?.insurance_annual_cost ?? '',
+      maintenance_reserve_weekly: vehicle?.maintenance_reserve_weekly ?? '',
     },
   });
   const rentFrequency = useWatch({ control, name: 'rent_frequency' });
@@ -43,6 +46,8 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
         odometer: data.odometer ?? 0,
         rent_amount: data.rent_amount ?? null,
         assigned_driver_id: data.assigned_driver_id || null,
+        insurance_annual_cost: data.insurance_annual_cost ?? null,
+        maintenance_reserve_weekly: data.maintenance_reserve_weekly ?? null,
       });
     } catch (err) {
       setError('root', { message: err?.message || 'No se pudo guardar el vehículo. Revisa tu conexión e inténtalo de nuevo.' });
@@ -126,6 +131,15 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
               <Input {...register('insurance_policy_no')} className="mt-1 bg-background" />
             </div>
             <div>
+              <Label>Aseguradora</Label>
+              <Input {...register('insurance_company')} className="mt-1 bg-background" placeholder="Ej. GNP" />
+            </div>
+            <div>
+              <Label>Costo anual de seguro ($)</Label>
+              <Input type="number" step="0.01" {...register('insurance_annual_cost')} className="mt-1 bg-background" />
+              <FormError className="mt-1">{errors.insurance_annual_cost?.message}</FormError>
+            </div>
+            <div>
               <Label>Odómetro (km)</Label>
               <Input type="number" {...register('odometer')} className="mt-1 bg-background" />
               <FormError className="mt-1">{errors.odometer?.message}</FormError>
@@ -150,6 +164,11 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
               <Label>Tarifa de renta ($)</Label>
               <Input type="number" step="0.01" {...register('rent_amount')} className="mt-1 bg-background" placeholder="Ej. 2800" />
               <FormError className="mt-1">{errors.rent_amount?.message}</FormError>
+            </div>
+            <div>
+              <Label>Reserva semanal — fondo de mantenimiento ($)</Label>
+              <Input type="number" step="0.01" {...register('maintenance_reserve_weekly')} className="mt-1 bg-background" placeholder="Opcional" />
+              <FormError className="mt-1">{errors.maintenance_reserve_weekly?.message}</FormError>
             </div>
             <div>
               <Label>Frecuencia de renta</Label>

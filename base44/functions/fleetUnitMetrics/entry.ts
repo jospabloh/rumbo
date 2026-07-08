@@ -109,7 +109,15 @@ Deno.serve(async (req) => {
       const activeDays = (vehicle.status === 'maintenance' || vehicle.status === 'inactive') ? 0 : daysBetween(ws, we) + 1;
       const profitPerActiveDay = activeDays > 0 ? profit / activeDays : null;
 
-      return { revenue, cost, profit, kmTraveled, costPerKm, activeDays, profitPerActiveDay, vPayments, vFuel, vMaint, vFines, vExpenses };
+      // Fondo de mantenimiento: reserva semanal configurada por unidad × semanas
+      // activas del rango, menos lo realmente gastado en Maintenance en ese mismo
+      // rango — mismo activeDays que ya usa profit_per_active_day, para que la
+      // noción de "unidad en servicio" no se desincronice entre ambas métricas.
+      const weeklyReserve = parseFloat(vehicle.maintenance_reserve_weekly) || 0;
+      const maintenanceFundReserved = weeklyReserve * (activeDays / 7);
+      const maintenanceFundBalance = maintenanceFundReserved - maintenanceCost;
+
+      return { revenue, cost, maintenanceCost, profit, kmTraveled, costPerKm, activeDays, profitPerActiveDay, maintenanceFundReserved, maintenanceFundBalance, vPayments, vFuel, vMaint, vFines, vExpenses };
     }
 
     // ---- Periodo actual, para todas las unidades del tenant (la mediana de flota
@@ -177,6 +185,10 @@ Deno.serve(async (req) => {
         active_days: cur.activeDays,
         profit_per_active_day: cur.profitPerActiveDay,
         below_range: belowRange,
+        maintenance_cost: cur.maintenanceCost,
+        maintenance_reserve_weekly: v.maintenance_reserve_weekly || 0,
+        maintenance_fund_reserved: cur.maintenanceFundReserved,
+        maintenance_fund_balance: cur.maintenanceFundBalance,
         daily,
       };
 

@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Updated 2026-07-07**
+**Updated 2026-07-08**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -139,7 +139,7 @@ Manage your driver catalog.
 
 - View all drivers with status (Active, Suspended, Inactive), phone, rating, and license number.
 - Search by name or license.
-- Add a new driver with personal information, license details, and photo.
+- Add a new driver with personal information, license details, photo, and **aval/guarantor name**.
 - View driver detail: documents, notes, and app account linking.
 - Edit or delete a driver record.
 
@@ -155,7 +155,7 @@ Manage the vehicle fleet.
 
 - View all vehicles with plate, make, model, year, odometer, and assigned driver.
 - Search by plate, make, or model.
-- Add, edit, or delete vehicles.
+- Add, edit, or delete vehicles — including insurer name and annual insurance cost, and an optional weekly maintenance-reserve amount (see Reportes → Fondo de mantenimiento).
 - View vehicle detail: documents, maintenance history, and assigned driver.
 
 **Accessible to:** Owner, Admin, Dispatcher, Mechanic.
@@ -229,6 +229,8 @@ Fleet profitability, ranking, and forecasting — everything needed to answer "w
 - **Rent arrears banner:** when a unit carries an unpaid rent balance into the current period (see Rentas below), it's flagged here with a link back to Rentas.
 - **KPI row:** fleet profit/revenue, active unit count, most productive unit, units below range, most productive driver.
 - **Utilidad por periodo × unidad matrix:** rows are time buckets (day of week for Week, week-of-month for Month, month for Year), columns are your visible units; each cell shows that unit's profit for that period, with row/column totals. Click any cell to open its detail panel: revenue/cost breakdown, free-text comments (yours and any linked payment/maintenance notes), and computed insights (best day for that unit, % vs. fleet average, above-average streaks, unusually high cost days).
+- **Bitácora (comentarios):** add a free-text note to any unit/day with **attachments** — photos, PDFs, Word docs, or plain text files. Upload a file, **paste an image straight from your clipboard**, or attach a link by URL; a note can carry several attachments at once. This is the place to log things like an incident photo, a scanned receipt, or an odometer checkpoint that doesn't fit a specific maintenance/expense record.
+- **Fondo de mantenimiento:** if a unit has a weekly maintenance-reserve amount configured (Vehículos → editar → "Reserva semanal — fondo de mantenimiento"), its drill-down page shows how much has been reserved for the selected range vs. actually spent on maintenance, and the resulting balance. Units without a reserve configured simply don't show this card.
 - **Rankings:** top/bottom unit and driver by profit per active day.
 - **Cost per km** comparison chart across visible units, and a **maintenance by type/category** breakdown (preventive, corrective, major repair; general, engine, brakes, electrical, tires, body).
 - **Analítica predictiva:** a trend projection (simple linear regression over recent periods, not AI) per unit with a stability pill (Estable / Riesgo / Bajo rango), plus estimated next preventive-maintenance date and next tire-change date/km (from the unit's own history, or tenant defaults when history is insufficient).
@@ -286,6 +288,9 @@ Bulk import data via CSV files. Available types: **Drivers, Vehicles, Fuel logs,
 
 - **Templates with an example row:** each type offers a downloadable CSV template with the exact columns and a sample row marked with `#` that the importer ignores.
 - **Linked records (Fuel, Fines, Maintenance, Insurance, Rent):** these reference an existing vehicle and driver. The **vehicle** is matched by `placa` (or `no_unidad`); the **driver** by the `conductor` column (their license number or exact full name). If the plate/driver does not exist in your fleet, that row is flagged with an actionable error — **no phantom vehicles/drivers are created**. Import the vehicles/drivers first.
+- **Driver columns** also accept `fecha_antecedentes` (background-check date), `calificacion` (0–5 rating), and `aval` (guarantor name).
+- **Vehicle columns** also accept `no_poliza_seguro`, `aseguradora`, `costo_anual_seguro` (insurer name/annual cost), `vencimiento_holograma`, `odometro` (current odometer), `dia_cobro` (rent collection day, e.g. `miercoles`), and `estado` (`activo`/`mantenimiento`/`inactivo`). Driver assignment isn't part of the vehicle import — assign it afterward from the vehicle's edit form, so vehicles and drivers can be imported in either order.
+- **Maintenance columns** also accept `categoria` (general/motor/frenos/electrico/llantas/carroceria/otro), and `tipo` now also accepts `arreglo_mayor` for major repairs.
 - **Rent charges:** you can include the amount already paid; the balance and status (pending/partial/paid) are computed automatically (individual payments are registered later in the Rentas section).
 - **Per-row validation:** before importing, Rumbo splits your file into **valid rows** (previewed) and **rows with problems** (listed with their line number, reason, and how to fix it). Only valid rows are imported.
 - **No duplicates:** each row is compared by its natural key against existing records and earlier rows in the same file, so re-uploading a file won't create duplicates.
