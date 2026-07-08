@@ -5,16 +5,20 @@ import StatCard from '@/components/dashboard/StatCard';
  * Fila de KPIs de flota — composición delgada sobre StatCard (mismo tile que
  * usa el Dashboard), sin un componente de tarjeta nuevo.
  *
- * @param {{ fleet: any }} props  `data.fleet` de fleetUnitMetrics.
+ * @param {{ fleet: any, vehicles?: any[] }} props  `data.fleet`/`data.vehicles` de fleetUnitMetrics.
  */
-export default function KpiRow({ fleet }) {
+export default function KpiRow({ fleet, vehicles = [] }) {
   if (!fleet) return null;
 
+  const costRows = vehicles.filter((v) => v.cost_per_km != null);
+  const avgCostPerKm = costRows.length ? costRows.reduce((s, v) => s + v.cost_per_km, 0) / costRows.length : null;
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-5">
       <StatCard icon={TrendingUp} label="Utilidad de flota" value={`$${Math.round(fleet.total_profit).toLocaleString()}`} sub={`${fleet.vehicle_count} unidades`} color="green" />
       <StatCard icon={DollarSign} label="Ingreso de flota" value={`$${Math.round(fleet.total_revenue).toLocaleString()}`} sub={`$${Math.round(fleet.total_cost).toLocaleString()} en costos`} color="blue" />
       <StatCard icon={Gauge} label="Unidades activas" value={fleet.active_vehicle_count} sub={`de ${fleet.vehicle_count} en total`} color="gray" />
+      <StatCard icon={Gauge} label="Costo / km promedio" value={avgCostPerKm != null ? `$${avgCostPerKm.toFixed(2)}` : '—'} sub={`${costRows.length} unidades con dato`} color="gray" />
       <StatCard
         icon={Award}
         label="Unidad más productiva"

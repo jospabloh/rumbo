@@ -67,11 +67,11 @@ export default function PredictiveAnalytics({ vehicles }) {
               <p className="text-xs text-muted-foreground py-2">Sin proyección mientras la unidad esté fuera de servicio.</p>
             )}
             <p className="text-xs text-muted-foreground mt-2">
-              🔧 Próximo preventivo: <b className="text-foreground">{v.next_preventive_estimate?.date || 'sin estimar'}</b>
+              🔧 Próximo preventivo: <b className="text-foreground font-mono">{v.next_preventive_estimate?.date || 'sin estimar'}</b>
               {v.next_preventive_estimate?.source === 'km_projection' && ' (por kilometraje)'}
             </p>
             <p className="text-xs text-muted-foreground">
-              🛞 Próx. cambio de llantas: <b className="text-foreground">
+              🛞 Próx. cambio de llantas: <b className="text-foreground font-mono">
                 {v.next_tire_estimate?.km_remaining != null ? `~${Math.round(v.next_tire_estimate.km_remaining).toLocaleString()} km` : 'sin estimar'}
               </b>
               {v.next_tire_estimate?.date && ` (${v.next_tire_estimate.date})`}
