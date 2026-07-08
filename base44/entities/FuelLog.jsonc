@@ -108,26 +108,19 @@
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
+          "user_condition": {
+            "role": "owner"
+          }
         },
         {
-          "created_by_id": "{{user.id}}"
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "dispatcher"
+          }
         }
       ],
       "user_condition": {
