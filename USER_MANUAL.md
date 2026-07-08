@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Updated 2026-07-06**
+**Updated 2026-07-07**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -123,6 +123,7 @@ The main overview page — a command center showing:
 - **Maintenance due** (overdue and due-soon counts, from each record's next-service date).
 - **License status** (days until renewal, color-coded by urgency).
 - **Revenue trend:** a 7-day chart of collected rent income.
+- **Utilidad por unidad · esta semana** (Owner/Admin only): a preview of the Reportes profit matrix for the current week; click a cell to jump to its full detail on Reportes.
 - Vehicle fleet table with assigned drivers.
 - Recent alerts panel.
 
@@ -165,9 +166,10 @@ Manage the vehicle fleet.
 
 Track maintenance records and parts.
 
-- Log maintenance events: type, cost, date, next service date.
+- Log maintenance events: kind (preventive, corrective, or major repair), category (general, engine, brakes, electrical, tires, body, other), cost, date, next service date.
 - View pending and completed maintenance records.
 - Automatic alerts when maintenance is due within 14 days.
+- Tire-change (`category: tires`) and major-repair records feed the Reportes maintenance breakdown and tire-life forecast.
 
 **Parts inventory:** Track parts by name, brand, SKU, stock count, and unit cost. Set a **minimum stock** per part to get a **low-stock badge** in the list and an automatic **alert** (warning when at/below the minimum, critical when out of stock) the next time alerts are generated. Edit a part by tapping its name; adjust stock with the +/− buttons.
 
@@ -182,6 +184,7 @@ Manage rental charges and collections per vehicle/driver.
 - Generate the period's charges (daily/weekly) for active rentals.
 - Register a payment against a charge (full or partial), with method and date; a charge covered by a $0 bonus counts as paid.
 - See collected vs. outstanding balances, and register a manual charge.
+- **Balance carryover:** if a unit doesn't fully cover its rent by the time the next period is generated, the unpaid remainder is added on top of that unit's next charge (rather than sitting as a separate open balance), and an alert is raised for the admin. This carryover also surfaces as a banner on the Reportes page.
 
 **Accessible to:** Owner, Admin, Dispatcher.
 
@@ -214,6 +217,26 @@ A general expenses ledger for operating costs not tied to a specific record type
 - Categories are configured in **Configuración → Listas → "Categorías de gasto"**; expenses can also be bulk-imported (Import → Gastos).
 
 **Accessible to:** Owner, Admin.
+
+---
+
+### Reportes
+
+Fleet profitability, ranking, and forecasting — everything needed to answer "which unit/driver is underperforming, and why."
+
+- **Range control:** Week (default), Month, Year, or a custom date range; every KPI, the matrix, and the rankings below update together.
+- **Unit visibility selector:** pick which vehicles to follow out of a large fleet (up to ~100); the choice is saved per user, not shared with the rest of your team.
+- **Rent arrears banner:** when a unit carries an unpaid rent balance into the current period (see Rentas below), it's flagged here with a link back to Rentas.
+- **KPI row:** fleet profit/revenue, active unit count, most productive unit, units below range, most productive driver.
+- **Utilidad por periodo × unidad matrix:** rows are time buckets (day of week for Week, week-of-month for Month, month for Year), columns are your visible units; each cell shows that unit's profit for that period, with row/column totals. Click any cell to open its detail panel: revenue/cost breakdown, free-text comments (yours and any linked payment/maintenance notes), and computed insights (best day for that unit, % vs. fleet average, above-average streaks, unusually high cost days).
+- **Rankings:** top/bottom unit and driver by profit per active day.
+- **Cost per km** comparison chart across visible units, and a **maintenance by type/category** breakdown (preventive, corrective, major repair; general, engine, brakes, electrical, tires, body).
+- **Analítica predictiva:** a trend projection (simple linear regression over recent periods, not AI) per unit with a stability pill (Estable / Riesgo / Bajo rango), plus estimated next preventive-maintenance date and next tire-change date/km (from the unit's own history, or tenant defaults when history is insufficient).
+- **Registrar:** every unit card — and each matrix cell's detail panel — has a **Registrar** button to log an ingreso, gasto, or mantenimiento for that unit directly, without leaving the page.
+- **GPS placeholder:** a "GPS (Rainde) · Próximamente" badge appears per unit — live positioning via the Rainde integration is planned but not yet wired up.
+- A compact preview of this week's matrix also appears on the **Dashboard** ("Utilidad por unidad · esta semana"); clicking a cell there jumps straight to that unit/day's detail on Reportes.
+
+**Accessible to:** Owner, Admin (the underlying `fleetUnitMetrics` calculation is restricted to these two roles).
 
 ---
 
