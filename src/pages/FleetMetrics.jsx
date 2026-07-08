@@ -101,7 +101,7 @@ export default function FleetMetrics() {
       />
 
       <RentArrearsBanner />
-      <KpiRow fleet={data.fleet} />
+      <KpiRow fleet={data.fleet} vehicles={vehiclesOut} />
 
       <div className="mb-1 flex items-baseline justify-between">
         <h2 className="font-semibold text-sm">Utilidad por periodo × unidad</h2>

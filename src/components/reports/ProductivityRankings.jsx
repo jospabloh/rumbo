@@ -1,8 +1,9 @@
-function RankRow({ label, sub, value, max, tone }) {
+function RankRow({ position, label, sub, value, max, tone }) {
   const pct = max > 0 ? Math.max(4, Math.round((Math.abs(value) / max) * 100)) : 0;
   const barColor = tone === 'best' ? 'hsl(var(--success))' : tone === 'worst' ? 'hsl(var(--critical))' : 'hsl(var(--primary))';
   return (
     <li className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+      <span className="w-5 text-xs font-bold text-muted-foreground shrink-0">{position}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate">
           {label}
@@ -42,11 +43,11 @@ export default function ProductivityRankings({ title, sub, rows }) {
         <p className="text-sm text-muted-foreground py-4 text-center">Sin datos suficientes en este rango.</p>
       ) : (
         <ul>
-          {top.map((r) => <RankRow key={r.id} label={r.label} sub={r.sub} value={r.value} max={max} tone={r === top[0] ? 'best' : undefined} />)}
+          {top.map((r) => <RankRow key={r.id} position={sorted.indexOf(r) + 1} label={r.label} sub={r.sub} value={r.value} max={max} tone={r === top[0] ? 'best' : undefined} />)}
           {sorted.length > top.length + bottom.length && (
             <li className="text-xs text-muted-foreground py-1.5 text-center">{sorted.length - top.length - bottom.length} más</li>
           )}
-          {bottom.map((r) => <RankRow key={r.id} label={r.label} sub={r.sub} value={r.value} max={max} tone={r.belowRange ? 'worst' : undefined} />)}
+          {bottom.map((r) => <RankRow key={r.id} position={sorted.indexOf(r) + 1} label={r.label} sub={r.sub} value={r.value} max={max} tone={r.belowRange ? 'worst' : undefined} />)}
         </ul>
       )}
     </div>

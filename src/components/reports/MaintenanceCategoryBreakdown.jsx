@@ -4,6 +4,15 @@ import { Wrench } from 'lucide-react';
 const KIND_LABEL = { preventive: 'Preventivo', corrective: 'Correctivo', major_repair: 'Arreglo mayor' };
 const KIND_COLOR = { preventive: 'hsl(var(--primary))', corrective: 'hsl(var(--warning))', major_repair: 'hsl(var(--critical))' };
 const CATEGORY_LABEL = { general: 'General', engine: 'Motor', brakes: 'Frenos', electrical: 'Eléctrico', tires: 'Llantas', body: 'Carrocería', other: 'Otro' };
+const CATEGORY_COLOR = {
+  general: 'hsl(var(--seq-3))',
+  engine: 'hsl(var(--seq-5))',
+  brakes: 'hsl(var(--critical))',
+  electrical: 'hsl(var(--seq-4))',
+  tires: 'hsl(var(--muted-foreground)/.5)',
+  body: 'hsl(var(--seq-2))',
+  other: 'hsl(var(--seq-1))',
+};
 
 function Stack({ rows, colorOf, labelOf }) {
   const total = rows.reduce((s, r) => s + r.cost, 0);
@@ -59,7 +68,7 @@ export default function MaintenanceCategoryBreakdown({ byKind = [], byCategory =
         <h3 className="font-semibold text-sm mb-2">Por categoría</h3>
         <Stack
           rows={byCategory.map((r) => ({ key: r.category, cost: r.cost }))}
-          colorOf={(k) => (k === 'tires' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground)/.5)')}
+          colorOf={(k) => CATEGORY_COLOR[k] || 'hsl(var(--muted-foreground)/.5)'}
           labelOf={(k) => CATEGORY_LABEL[k] || k}
         />
       </div>

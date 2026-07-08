@@ -4,9 +4,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Gauge } from 'lucide-react';
 
 /**
- * Costo por km por unidad, un solo eje (nunca dual-eje) — barra ámbar cuando
- * la unidad está por encima del promedio de flota, azul primario si está
- * por debajo (color de estado, no una paleta categórica nueva).
+ * Costo por km por unidad, un solo eje (nunca dual-eje) — barra roja si la
+ * unidad está notablemente sobre el promedio de flota (>15%), verde si está
+ * notablemente por debajo (<15%), azul primario (neutro) si está cerca del
+ * promedio.
  *
  * @param {{ vehicles: any[] }} props  `data.vehicles` de fleetUnitMetrics.
  */
@@ -47,7 +48,7 @@ export default function CostPerKmComparison({ vehicles }) {
             />
             <Bar dataKey="cost_per_km" radius={[0, 4, 4, 0]}>
               {rows.map((r) => (
-                <Cell key={r.plate} fill={r.cost_per_km > avg ? 'hsl(var(--warning))' : 'hsl(var(--primary))'} />
+                <Cell key={r.plate} fill={r.cost_per_km > avg * 1.15 ? 'hsl(var(--critical))' : r.cost_per_km < avg * 0.85 ? 'hsl(var(--success))' : 'hsl(var(--primary))'} />
               ))}
             </Bar>
           </BarChart>
