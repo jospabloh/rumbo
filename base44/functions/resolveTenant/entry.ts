@@ -119,7 +119,16 @@ Deno.serve(async (req) => {
     const patch: Record<string, unknown> = {};
     if (user.data?.tenant_id !== tenant.id) patch.tenant_id = tenant.id;
     if ((user.data?.driver_profile_id || null) !== driverProfileId) patch.driver_profile_id = driverProfileId;
-    if ((user.data?.write_access || 'enabled') !== writeAccess) patch.write_access = writeAccess;
+    // Sin `|| 'enabled'`: si el campo nunca se persistió (undefined), debe escribirse
+    // explícitamente en cuanto writeAccess computa 'enabled' — de lo contrario el campo
+    // se queda ausente para siempre (el fallback hacía que 'enabled' === 'enabled' y el
+    // patch nunca se disparaba), y las RLS que exigen el string literal "enabled" en
+    // `data.write_access` (RentCharge, Alert, …) rechazan cualquier escritura directa del
+    // cliente aunque la licencia esté activa. Bug real: bloqueaba a todo usuario cuyo
+    // write_access jamás se hubiera fijado antes (ej. un app owner probando por primera
+    // vez "Generar cobros del periodo" — los datos de prueba se crean vía service role,
+    // que no pasa por RLS, así que esto nunca se había ejercitado).
+    if (user.data?.write_access !== writeAccess) patch.write_access = writeAccess;
     // El rol invitado solo se aplica en el primer enganche al tenant; después lo maneja el admin.
     if (!alreadyAssigned && member?.role && member.role !== user.role) patch.role = member.role;
     if (Object.keys(patch).length) {
