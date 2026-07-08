@@ -4,6 +4,44 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.27.0] — 2026-07-07 — Fleet unit metrics dashboard (Reportes) + mobile UX fixes
+
+### Fleet unit metrics dashboard (`/reports`)
+
+- New **Reportes** page: profitability, ranking, and forecasting per unit/driver.
+  - **Utilidad por periodo × unidad matrix** — rows are time buckets (day of week / week of month / month depending on the selected range), columns are visible units; each cell shows that unit's profit with row/column totals. Clicking a cell opens a detail panel: revenue/cost breakdown, merged comments (own notes plus linked payment/maintenance notes), and client-computed insights (best day, % vs. fleet average, above-average streaks, unusually high cost).
+  - **Range control** (Week default / Month / Year / custom range), a per-user **unit visibility selector** (saved per user, not per tenant, for fleets up to ~100 units), KPI row, productivity rankings (unit and driver), cost-per-km comparison chart, and maintenance-by-type/category breakdown.
+  - **Predictive analytics per unit**: a simple linear-regression trend projection (not AI) with a stability pill, plus estimated next preventive-maintenance date and next tire-change date/km — from the unit's own history, falling back to new tenant settings `maintenance_interval_km` (default 5000) / `tire_life_km` (default 40000) when history is insufficient.
+  - **Registrar** quick-add (ingreso / gasto / mantenimiento) directly from every unit card and every matrix cell's detail panel.
+  - **GPS placeholder** ("GPS (Rainde) · Próximamente") per unit — no live integration yet, by design.
+  - New backend function `fleetUnitMetrics` (owner/admin only) computes revenue/cost/profit/km/cost-per-km over one consistent date window shared by every metric, to avoid the window-mismatch bug class `calculateCostPerKm` previously documented.
+- **Dashboard**: new "Utilidad por unidad · esta semana" preview card (Owner/Admin only) showing the current week's matrix; clicking a cell deep-links to that exact unit/day's detail on Reportes.
+- **Rent balance carryover** (`Rentas.jsx`): an unpaid weekly rent balance now rolls into the unit's next period charge (instead of sitting as a separate open balance) and raises an admin alert (new `Alert.entity_type: 'rent_balance'`); surfaced as a banner on Reportes.
+- New entities: `DashboardUnitPref` (per-user hidden-units list) and `UnitDayNote` (ad-hoc per-unit/day comments).
+- Extended `Maintenance` with a `major_repair` kind and a `category` field (general/engine/brakes/electrical/tires/body/other); extended `RentCharge` with `carried_over_amount`/`carried_forward`.
+- New route `/reports`, gated `RequireAccess page="reports"` (Owner/Admin), added to the Gestión nav group and the permissions matrix.
+
+### Mobile UX fixes
+
+- **Fixed: the mobile hamburger menu button was untappable app-wide.** The global toast-notification viewport sat at `fixed top-0 z-[100] w-full` with padding, leaving an invisible ~32px strip across the top of the screen — covering the menu icon — even with no toast showing. Added `pointer-events-none` to the viewport (individual toasts already opt back in via `pointer-events-auto`) and removed a dead duplicate viewport render that was never given any content.
+- **Fixed: `/reports` overflowed horizontally on mobile** (measured 238px of overflow at a 390px viewport). `PageHeader`'s action slot now stacks below the title on narrow screens instead of squeezing it into a single-word column — a shared-component fix that's safe for every other page's smaller action slots. `RentArrearsBanner`'s "Ver en Rentas" button now stacks below the (possibly multi-line) warning message on mobile instead of floating mid-paragraph.
+- **Fixed: toggling the Reportes range or unit-visibility reset scroll to the top.** The underlying query now keeps previously-loaded data visible while refetching (`placeholderData: keepPreviousData`), so a range/visibility change no longer drops the page to a loading skeleton and back.
+
+### Other fixes bundled with this work
+
+- `MaintenanceForm` now exposes the `major_repair` kind and the `category` field (previously only in the schema/list view, not enterable from the form).
+- Fixed hardcoded preventive/corrective-only labels (in `MaintenancePage` and `VehicleDetail`) that would have mislabeled a `major_repair` record.
+- Fixed `ExpenseForm`'s title showing "Editar gasto" for a prefilled-but-new record (used by Reportes' Registrar quick-add) instead of "Registrar gasto".
+
+### Documentation updates
+
+- `USER_MANUAL.md`: added the Reportes module section, noted the Dashboard preview card, rent carryover behavior (Rentas), and the maintenance kind/category options.
+- `docs/permissions_matrix.md`: added the `/reports` page row, `fleetUnitMetrics` and rent-carryover guard rows, and RLS summary rows for `DashboardUnitPref`/`UnitDayNote` (done alongside the feature build).
+- `CHANGELOG.md` updated with this v1.27.0 entry.
+- `APP_VERSION` bumped to v1.27.0 in `src/lib/version.js` and `package.json`.
+
+---
+
 ## [1.26.0] — 2026-07-06 — Automated security, code quality, tenant-isolation, permissions, and release-readiness audit
 
 ### Security audit result — no code-level vulnerabilities found

@@ -1,2 +1,2 @@
 /** Versión de la app, mostrada en el Centro de ayuda. Mantener en sync con package.json. */
-export const APP_VERSION = '1.26.0';
+export const APP_VERSION = '1.27.0';
