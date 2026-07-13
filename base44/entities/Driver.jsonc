@@ -8,27 +8,132 @@
     },
     "full_name": {
       "type": "string",
-      "title": "Nombre completo"
+      "title": "Nombre completo",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "license_no": {
       "type": "string",
-      "title": "No. de licencia"
+      "title": "No. de licencia",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "license_expiry": {
       "type": "string",
       "format": "date",
-      "title": "Vencimiento de licencia"
+      "title": "Vencimiento de licencia",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "background_check_date": {
       "type": "string",
       "format": "date",
-      "title": "Fecha de antecedentes"
+      "title": "Fecha de antecedentes",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "rating": {
       "type": "number",
       "minimum": 0,
       "maximum": 5,
-      "title": "Calificaci\u00f3n"
+      "title": "Calificación",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "status": {
       "type": "string",
@@ -38,55 +143,286 @@
         "inactive"
       ],
       "title": "Estado",
-      "default": "active"
+      "default": "active",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "hire_date": {
       "type": "string",
       "format": "date",
-      "title": "Fecha de contrataci\u00f3n"
+      "title": "Fecha de contratación",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "phone": {
       "type": "string",
-      "title": "Tel\u00e9fono"
+      "title": "Teléfono"
     },
     "photo_url": {
       "type": "string",
-      "title": "Foto"
+      "title": "Foto",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "license_file_url": {
       "type": "string",
-      "title": "Archivo de licencia"
+      "title": "Archivo de licencia",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "ine_file_url": {
       "type": "string",
-      "title": "Archivo de INE"
+      "title": "Archivo de INE",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "address_proof_file_url": {
       "type": "string",
-      "title": "Comprobante de domicilio"
+      "title": "Comprobante de domicilio",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "referred_by_driver_id": {
       "type": "string",
-      "title": "Referido por (conductor)"
+      "title": "Referido por (conductor)",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "referral_bonus_paid": {
       "type": "boolean",
       "title": "Bono de referido aplicado",
-      "default": false
+      "default": false,
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "referral_credit": {
       "type": "number",
       "title": "Crédito de bono por aplicar",
       "default": 0,
-      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta automáticamente de los próximos cobros generados para este conductor."
+      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta automáticamente de los próximos cobros generados para este conductor.",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "profile_id": {
       "type": "string",
-      "title": "ID de perfil vinculado"
+      "title": "ID de perfil vinculado",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "aval_name": {
       "type": "string",
-      "title": "Nombre del aval"
+      "title": "Nombre del aval",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "required": [

@@ -60,7 +60,7 @@ function PermCell({ value, locked, onChange }) {
 }
 
 export default function PermissionsPanel() {
-  const { tenant, tenantId } = useTenant();
+  const { tenant, tenantId, reload } = useTenant();
   const [activeRole, setActiveRole] = useState('admin');
   const isLocked = LOCKED_ROLES.includes(activeRole);
   const [perms, setPerms] = useState(DEFAULT_PERMISSIONS);
@@ -109,6 +109,7 @@ export default function PermissionsPanel() {
     setSaveError(null);
     try {
       await base44.entities.TenantLicense.update(tenantId, { permissions_config: perms });
+      await reload?.();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {

@@ -4,6 +4,32 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.29.0] — 2026-07-13 — Automated security, tenant-isolation, permissions, and release-readiness audit
+
+### Security audit result — one High and one Medium finding fixed
+
+Full automated security, tenant-isolation, permissions, code quality, and release-readiness audit covering all changes since v1.28.0.
+
+- **[HIGH] Cross-tenant privilege-escalation gap in `TenantLicense.update` — FIXED.** The rule that lets a tenant's own admin/owner update their license (billing plan, `permissions_config`, `join_code`, `members`) checked the actor's *global* role but not whether the record being updated was the tenant they are actually bound to. A user who is owner/admin of their own tenant, but whose email had also been added to a *different* tenant's member roster (e.g. a shared consultant/dispatcher invited by that tenant's admin), could call the update API directly against that other tenant's license and it would succeed — bypassing the app entirely, since the UI never exposes another tenant's license to begin with. Fixed by additionally requiring the record's own id to match the caller's bound `tenant_id` (server-authoritative, cannot be forged), so this update path only ever applies to the one tenant a user is legitimately bound to.
+- **[MEDIUM] `Driver` record fields writable by a self-linked driver beyond their intended scope — FIXED.** A driver whose account is linked to their own `Driver` record could write to it via the entity's self-match update rule. The only field the app itself ever lets a driver edit on their own record is `phone` (`DriverProfile.jsx`). Everything else — `rating`, `license_expiry`, `background_check_date`, `hire_date`, `status`, `referral_bonus_paid`/`referral_credit`, license/INE/address files, `profile_id` — had no field-level protection, so a direct API call could let a driver inflate their own rating, mask an expired license from `generateAlerts`, or edit referral-bonus bookkeeping. All of these fields are now field-level restricted to owner/admin/dispatcher; `phone` remains self-editable.
+- **[LOW] `SupportTicket` server-authoritative fields writable on direct create — FIXED.** `ticket_number`, `requester_id`, `requester_email`, and `tenant_name` are meant to be set only by the `submitTicket` server function (service role), but had no field-level write restriction, so a client could spoof them on a direct create call within their own tenant. Now `write:false` — server-authoritative, matching the pattern already used elsewhere (e.g. `User.tenant_id`).
+- **SDK version drift — FIXED (recurrence of a previously-fixed issue).** The frontend `@base44/sdk` had moved to `^0.8.37` while all 14 backend Deno functions remained pinned to `@0.8.31`. Re-aligned all functions to `@0.8.37`.
+- **`PermissionsPanel` stale-state bug — FIXED.** Saving role permissions persisted correctly to `TenantLicense.permissions_config` but never refreshed the shared tenant context, so the rest of the app (other open tabs, or this same session before the next 15-minute revalidation) kept using the pre-save permissions until a manual reload. Now calls the same `reload()` used by `BusinessSettingsPanel` after a successful save.
+- **`DangerZone` "Delegar ownership" had no validation — FIXED.** The admin/owner-only ownership-transfer field accepted any typed string with no check that it belonged to an existing tenant member, risking an accidental transfer to a non-existent or mistyped email that would lock the tenant's admins out of managing it. Now validates the target against the tenant's own `members[]` list before enabling the action, and both delegate and delete now surface save errors instead of failing silently.
+- Live-verified: all three updated entity schemas (`TenantLicense`, `Driver`, `SupportTicket`) deployed to Base44 and confirmed byte-for-byte identical to the repo via `list_entity_schemas`.
+- Re-confirmed clean: no hardcoded secrets/API keys/tokens; `resolveTenant` tenant-binding fallback (no `all[0]` risk); `generateAlerts` and `calculateCostPerKm` tenant scoping and role gating; Admin users list tenant filtering; route/page protection backed by independent server-side/RLS enforcement, not just UI hiding.
+- Re-affirmed accepted risk: 5 dev-only transitive vulnerabilities in `vite`/`vitest`/`esbuild` (test tooling only, no production exposure, fix requires a breaking `vitest@4` upgrade) — unchanged since v1.24.0 (`A17`).
+- `validate:rls` (26 entities), `audit:tenant-scope`, lint, typecheck, all 440 unit tests, and the production build all pass.
+
+### Documentation updates
+
+- `docs/permissions_matrix.md` updated to v1.29.0: recorded this audit's findings (A33–A40), updated the `TenantLicense`/`Driver`/`SupportTicket` RLS summary rows, and clarified the G1 note.
+- `USER_MANUAL.md`: no user-facing behavior changed (all fixes tighten existing, documented rules to match their own intent) — version/date reference updated.
+- `CHANGELOG.md` updated with this v1.29.0 entry.
+- `APP_VERSION` bumped to v1.29.0 in `src/lib/version.js` and `package.json`.
+
+---
+
 ## [1.28.0] — 2026-07-08 — Bitácora attachments, aval/insurer fields, fondo de mantenimiento
 
 ### Bitácora attachments (`UnitDayNote`)

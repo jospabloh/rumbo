@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.37';
 
 /**
  * createTenant — crea la organización (TenantLicense) de un usuario y lo convierte en su owner.

@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.28.0 | Updated 2026-07-08**
+**Version 1.29.0 | Updated 2026-07-13**
 
 ---
 
@@ -147,10 +147,10 @@ Admin has full view, create, edit, delete access to every module within their te
 
 | Entity | Create | Read | Update | Delete |
 |--------|--------|------|--------|--------|
-| TenantLicense | owner only | creator / owner_email / member | creator / owner_email / member(owner,admin) | creator / owner_email |
+| TenantLicense | owner only | creator / owner_email / member | owner_email, or (own bound tenant + member + owner/admin)¹ | creator / owner_email |
 | User | owner/admin (via server fn) | own record / same tenant_id (owner,admin) | own record / same-tenant owner,admin | same-tenant owner,admin |
 | Vehicle | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher | owner, admin |
-| Driver | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher | owner, admin |
+| Driver | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher (entity-level); self (`profile_id`) limited to `phone` only, field-level² | owner, admin |
 | Trip | (per RLS) | same tenant_id | (per RLS) | owner, admin |
 | RentCharge | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | Alert | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
@@ -168,6 +168,9 @@ Admin has full view, create, edit, delete access to every module within their te
 | Catalog | owner, admin | same tenant_id | owner, admin | owner, admin |
 | UsefulLink | owner, admin | same tenant_id | owner, admin | owner, admin |
 | SupportTicket | any tenant user (via `submitTicket` server fn) | own tenant (admin/owner) or own ticket (requester_id) | owner, admin | owner, admin |
+
+¹ **Fixed v1.29.0 (A33):** the member+role update branch now also requires the record's own `id` to equal the caller's bound `data.tenant_id` — closes a cross-tenant escalation where a user who is owner/admin of their own tenant, but also listed in another tenant's `members[]`, could update that other tenant's license via a direct API call.
+² **Fixed v1.29.0 (A34):** `full_name`, `license_no`, `license_expiry`, `background_check_date`, `rating`, `status`, `hire_date`, `photo_url`, license/INE/address-proof files, `referred_by_driver_id`, `referral_bonus_paid`, `referral_credit`, `profile_id`, `aval_name` are now field-level restricted to owner/admin/dispatcher; `ticket_number`/`requester_id`/`requester_email`/`tenant_name` on `SupportTicket` are now `write:false` (server-authoritative via `submitTicket`).
 | Expense | owner, admin (write-gated by `write_access`) | same tenant_id (owner, admin) | owner, admin (write-gated) | owner, admin (write-gated) |
 | AppSession | any authenticated user (own row via `created_by_id`) | own row or service-role admin | own row or service-role admin | service-role admin only |
 | DashboardUnitPref | own row (`created_by_id`, tenant-scoped) | own row only | own row only | own row only |
@@ -188,6 +191,25 @@ Admin has full view, create, edit, delete access to every module within their te
 ---
 
 ## Audit History
+
+### v1.29.0 Audit (2026-07-13)
+
+Security, code quality, tenant-isolation, permissions, and release-readiness audit covering all changes since v1.26.0 (v1.27.0 Reportes/fleet-metrics dashboard, v1.28.0 bitácora/aval/insurer/maintenance-reserve fields, and the unreleased FuelLog RLS fix/base44 package bump that landed on `main` without a version bump).
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A33 | `TenantLicense.update`: member+role branch checked the caller's *global* role but not whether the target record was the tenant they're actually bound to — a user who is owner/admin of their own tenant, also listed in a different tenant's `members[]`, could update that other tenant's license via a direct API call (billing plan, `permissions_config`, `join_code`, `members`), bypassing the UI entirely. | HIGH | **FIXED — added `id == {{user.data.tenant_id}}` guard; deployed live and verified via `list_entity_schemas`** |
+| A34 | `Driver` entity: no field-level write protection — a self-linked driver (`profile_id` match) could write any field via the entity-level update rule, though the app only ever lets them edit `phone` (`DriverProfile.jsx`). Real risk: masking an expired license from `generateAlerts`, inflating own `rating`, editing referral-bonus fields. `SupportTicket`: `ticket_number`/`requester_id`/`requester_email`/`tenant_name` had no field lock despite being meant as server-authoritative (set by `submitTicket`). | MEDIUM / LOW | **FIXED — field-level `write` restricted to owner/admin/dispatcher on `Driver` (phone stays self-editable); `write:false` on the four `SupportTicket` fields; deployed live and verified** |
+| A35 | SDK version drift recurrence: frontend `@base44/sdk@^0.8.37` vs. all 14 backend Deno functions pinned to `@0.8.31` (previously fixed in v1.0.1/`F3`, drifted again after subsequent frontend-only SDK bumps). | LOW/MEDIUM | **FIXED — all 14 functions re-pinned to `@0.8.37`** |
+| A36 | `PermissionsPanel` save persisted to `TenantLicense.permissions_config` correctly but never refreshed shared `TenantContext`, leaving stale permissions visible elsewhere in the app until the next 15-min revalidation. | LOW | **FIXED — calls `reload()` after save, matching the existing `BusinessSettingsPanel` pattern** |
+| A37 | `DangerZone` "Delegar ownership" accepted any typed email with no check it belonged to an existing tenant member, and had no error handling on failed save/delete. | LOW | **FIXED — validates target against `tenant.members[]` before enabling the action; both delegate and delete now surface save errors** |
+| A38 | `resolveTenant`/`TenantContext` fallback logic: confirmed no `all[0]`-style fallback in either the server function or the client's degraded-mode discovery path; `tenant_id`/`role`(post-bind)/`driver_profile_id`/`write_access` all server-authoritative (`write:false`) on `User`. | — | **CONFIRMED CLEAN** |
+| A39 | `generateAlerts` and `calculateCostPerKm`: tenant scoping via `user.data.tenant_id` only (never client-supplied), correct role gates (admin/owner; owner/admin/dispatcher respectively). Admin users list (`Admin.jsx`) filtered by `data.tenant_id`, backed by `User.jsonc` read RLS independently. Route/page protection (`RequireAccess`/`RequireAppOwner`) backed by independent server-side checks (role-gated functions, entity RLS) — not UI-hiding alone. | — | **CONFIRMED CLEAN** |
+| A40 | No hardcoded secrets, API keys, tokens, or credentials found. `validate:rls` (26 entities), `audit:tenant-scope`, lint, typecheck, all 440 unit tests, and the production build all pass at HEAD. 5 dev-only `vite`/`vitest`/`esbuild` transitive vulnerabilities re-confirmed as accepted risk (unchanged since v1.24.0/`A17` — no production exposure, fix requires breaking `vitest@4` upgrade). | — | **CONFIRMED CLEAN / CONFIRMED PASSING** |
+
+**Known, not independently re-verified this pass:** the granular `PermissionsPanel`/`permissions_config` UI-only enforcement gap (**G1**, unchanged) and the broad `TenantLicense.read` exposure to any listed `members[]` entry regardless of per-tenant role (full license record — billing, `notes`, `settings`, `join_code` — visible to a same-tenant driver via direct SDK call, or to anyone another tenant's admin adds to their roster). The latter shares A33's root cause but restricting it risks breaking the invite-acceptance and degraded-mode tenant-discovery flows (`TenantContext.jsx` fallback), which legitimately need to read a not-yet-bound member's prospective tenant. Flagged for owner review before any read-side change — not modified in this pass.
+
+---
 
 ### v1.26.0 Audit (2026-07-06)
 

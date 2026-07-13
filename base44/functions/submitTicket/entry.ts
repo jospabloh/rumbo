@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.37';
 
 /**
  * submitTicket — alta de un ticket de soporte desde cualquier usuario autenticado.

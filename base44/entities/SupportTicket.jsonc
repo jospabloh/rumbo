@@ -5,7 +5,10 @@
     "ticket_number": {
       "type": "string",
       "title": "Folio",
-      "description": "Folio legible del ticket (ITSM), p. ej. RUM-000001. Lo asigna submitTicket del lado servidor; el cliente no lo escribe."
+      "description": "Folio legible del ticket (ITSM), p. ej. RUM-000001. Lo asigna submitTicket del lado servidor; el cliente no lo escribe.",
+      "rls": {
+        "write": false
+      }
     },
     "tenant_id": {
       "type": "string",
@@ -13,7 +16,10 @@
     },
     "tenant_name": {
       "type": "string",
-      "title": "Organización"
+      "title": "Organización",
+      "rls": {
+        "write": false
+      }
     },
     "subject": {
       "type": "string",
@@ -58,7 +64,10 @@
     },
     "requester_id": {
       "type": "string",
-      "title": "Solicitante (ID)"
+      "title": "Solicitante (ID)",
+      "rls": {
+        "write": false
+      }
     },
     "requester_name": {
       "type": "string",
@@ -66,7 +75,10 @@
     },
     "requester_email": {
       "type": "string",
-      "title": "Correo del solicitante"
+      "title": "Correo del solicitante",
+      "rls": {
+        "write": false
+      }
     },
     "responses": {
       "type": "array",
@@ -74,10 +86,18 @@
       "items": {
         "type": "object",
         "properties": {
-          "author_name": { "type": "string" },
-          "author_role": { "type": "string" },
-          "body": { "type": "string" },
-          "created_at": { "type": "string" }
+          "author_name": {
+            "type": "string"
+          },
+          "author_role": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
         }
       },
       "default": []
@@ -104,11 +124,15 @@
       "$or": [
         {
           "data.tenant_id": "{{user.data.tenant_id}}",
-          "user_condition": { "role": "owner" }
+          "user_condition": {
+            "role": "owner"
+          }
         },
         {
           "data.tenant_id": "{{user.data.tenant_id}}",
-          "user_condition": { "role": "admin" }
+          "user_condition": {
+            "role": "admin"
+          }
         },
         {
           "data.requester_id": "{{user.id}}"
@@ -118,18 +142,30 @@
     "update": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
-        { "user_condition": { "role": "owner" } },
-        { "user_condition": { "role": "admin" } }
+        {
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
       ]
     },
     "delete": {
       "data.tenant_id": "{{user.data.tenant_id}}",
       "$or": [
         {
-          "user_condition": { "role": "owner" }
+          "user_condition": {
+            "role": "owner"
+          }
         },
         {
-          "user_condition": { "role": "admin" }
+          "user_condition": {
+            "role": "admin"
+          }
         }
       ]
     }

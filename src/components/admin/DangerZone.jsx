@@ -10,22 +10,44 @@ export default function DangerZone({ tenant, onDeleted, onDelegated }) {
   const [loadingDelegate, setLoadingDelegate] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
   const [doneDelegate, setDoneDelegate] = useState(false);
+  const [delegateError, setDelegateError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const members = Array.isArray(tenant?.members) ? tenant.members : [];
+  const normalizedTarget = delegateEmail.trim().toLowerCase();
+  // Delegation must land on an existing member of this tenant — free-typing an arbitrary
+  // address risks locking every current user out of a tenant they can no longer own/manage.
+  const targetIsMember = normalizedTarget && members.some(m => (m.email || '').toLowerCase() === normalizedTarget);
 
   const handleDelegate = async () => {
-    if (!delegateEmail.trim() || !tenant?.id) return;
+    if (!targetIsMember || !tenant?.id) return;
     setLoadingDelegate(true);
-    await base44.entities.TenantLicense.update(tenant.id, { owner_email: delegateEmail.trim() });
-    setDoneDelegate(true);
-    setLoadingDelegate(false);
-    setTimeout(() => { setDoneDelegate(false); setDelegateEmail(''); onDelegated(); }, 2000);
+    setDelegateError(null);
+    try {
+      await base44.entities.TenantLicense.update(tenant.id, { owner_email: normalizedTarget });
+      setDoneDelegate(true);
+      setTimeout(() => { setDoneDelegate(false); setDelegateEmail(''); onDelegated(); }, 2000);
+    } catch (e) {
+      setDelegateError('Error al delegar. Intenta de nuevo.');
+      console.error('Delegate ownership failed:', e);
+    } finally {
+      setLoadingDelegate(false);
+    }
   };
 
   const handleDelete = async () => {
     if (confirmDelete !== 'ELIMINAR' || !tenant?.id) return;
     setLoadingDelete(true);
-    await base44.entities.TenantLicense.delete(tenant.id);
-    setLoadingDelete(false);
-    onDeleted();
+    setDeleteError(null);
+    try {
+      await base44.entities.TenantLicense.delete(tenant.id);
+      onDeleted();
+    } catch (e) {
+      setDeleteError('Error al eliminar. Intenta de nuevo.');
+      console.error('Delete tenant failed:', e);
+    } finally {
+      setLoadingDelete(false);
+    }
   };
 
   return (
@@ -41,7 +63,7 @@ export default function DangerZone({ tenant, onDeleted, onDelegated }) {
           <ArrowRightLeft className="w-4 h-4 text-warning mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium text-foreground">Delegar ownership</p>
-            <p className="text-xs text-muted-foreground">Transfiere el control del tenant a otro usuario. Ingresa el email del nuevo owner.</p>
+            <p className="text-xs text-muted-foreground">Transfiere el control del tenant a otro miembro. Debe ser el email de un usuario que ya pertenece a este tenant.</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -55,13 +77,17 @@ export default function DangerZone({ tenant, onDeleted, onDelegated }) {
             size="sm"
             variant="outline"
             className="h-9 gap-2 border-warning text-warning hover:bg-warning/10"
-            disabled={loadingDelegate || doneDelegate || !delegateEmail.trim()}
+            disabled={loadingDelegate || doneDelegate || !targetIsMember}
             onClick={handleDelegate}
           >
             {doneDelegate ? <CheckCircle2 className="w-4 h-4" /> : <ArrowRightLeft className="w-4 h-4" />}
             {doneDelegate ? 'Delegado' : 'Delegar'}
           </Button>
         </div>
+        {delegateEmail.trim() && !targetIsMember && (
+          <p className="text-xs text-destructive">Ese email no pertenece a ningún miembro de este tenant.</p>
+        )}
+        {delegateError && <p className="text-xs text-destructive">{delegateError}</p>}
       </div>
 
       {/* Eliminar tenant */}
@@ -92,6 +118,7 @@ export default function DangerZone({ tenant, onDeleted, onDelegated }) {
               {loadingDelete ? 'Eliminando...' : 'Eliminar'}
             </Button>
           </div>
+          {deleteError && <p className="text-xs text-destructive">{deleteError}</p>}
         </div>
       )}
     </section>
