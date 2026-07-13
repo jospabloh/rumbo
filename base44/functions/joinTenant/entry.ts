@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.37';
 
 /**
  * joinTenant — un usuario autenticado se une a un tenant existente con su código de unión.
