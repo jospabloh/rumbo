@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.37';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 /**
  * fleetUnitMetrics — utilidad, ranking y pronóstico por unidad para /reports.
