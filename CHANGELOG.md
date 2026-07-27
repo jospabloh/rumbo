@@ -4,6 +4,30 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.29.1] — 2026-07-27 — Automated security, tenant-isolation, permissions, and release-readiness audit
+
+### Security audit result — no High/Critical findings; one recurring drift fixed, one documentation gap closed, dependencies patched
+
+Full automated security, tenant-isolation, permissions, code quality, and release-readiness audit covering all changes since v1.29.0 (a `@base44/sdk` package bump and a `.gitignore`/repo-housekeeping commit — no application code had changed).
+
+- **SDK version drift — FIXED (recurrence).** Frontend `@base44/sdk` had moved to `^0.8.40` while all 14 backend Deno functions remained pinned to `@0.8.37`. Re-aligned all functions to `@0.8.40`.
+- **Dependency vulnerabilities — PATCHED where safe.** `npm audit fix` applied non-breaking patch updates (no `package.json` range changes) resolving `postcss`, `dompurify`, and `brace-expansion` advisories.
+- **`react-router`/`react-router-dom` — accepted risk (no exploitable path found).** A moderate open-redirect advisory requires a major version bump to fully resolve; reviewed every navigation call site in the app and found none construct a redirect target from URL/query input, so there is no exploitable path today. Deferred as a future major-version upgrade rather than an automated breaking change.
+- **Remaining dev-tooling vulnerabilities (vitest/vite/esbuild/eslint and their transitive deps) — reconfirmed dev-only**, no production exposure; unchanged accepted-risk lineage since v1.24.0.
+- **Permissions matrix documentation gap — FIXED.** The `AcaciaReplayKey` entity and `acaciaControl` server function (an HMAC-signature-gated admin bridge used by external platform operations tooling, not part of the in-app role model) existed in the codebase but weren't documented in `docs/permissions_matrix.md`. Code review confirmed the implementation itself was already sound (signature verification, persistent anti-replay store, entity allowlist, no hardcoded secrets) — this was a documentation-only gap, now closed.
+- Re-confirmed clean: no hardcoded secrets/API keys/tokens; tenant-isolation scoping across all server functions and entity RLS; route/page protection independent of UI hiding; admin users list tenant filtering.
+- No open, draft, or disconnected pull requests found. No unresolved GitHub issues. CI green on `main` at HEAD.
+- `validate:rls` (26 entities), `audit:tenant-scope`, lint, typecheck, all 440 unit tests, and the production build all pass.
+
+### Documentation updates
+
+- `docs/permissions_matrix.md` updated to v1.29.1: recorded this audit's findings (A41–A46), added the ACACIA Mission Control bridge section and RLS summary row.
+- `USER_MANUAL.md`: no user-facing behavior changed — date reference updated.
+- `CHANGELOG.md` updated with this v1.29.1 entry.
+- `APP_VERSION` bumped to v1.29.1 in `src/lib/version.js` and `package.json`.
+
+---
+
 ## [1.29.0] — 2026-07-13 — Automated security, tenant-isolation, permissions, and release-readiness audit
 
 ### Security audit result — one High and one Medium finding fixed

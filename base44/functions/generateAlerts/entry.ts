@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.37';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;

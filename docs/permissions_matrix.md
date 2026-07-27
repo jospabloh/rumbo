@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.29.0 | Updated 2026-07-13**
+**Version 1.29.1 | Updated 2026-07-27**
 
 ---
 
@@ -133,6 +133,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | Manage catalogs | admin, owner | `RequireAccess page="catalogs"` + `Catalog.jsonc` RLS | Entity RLS enforces owner/admin create/update/delete |
 | Manage useful links | admin, owner | `UsefulLink.jsonc` RLS | Entity RLS; `/links` page visible to dispatcher and mechanic (read) |
 | View Supabase/GitHub/TestData | app owner only | `RequireAppOwner` + server functions gated on `APP_OWNER_EMAIL` | Platform-level admin tools |
+| ACACIA Mission Control bridge | no in-app user (external platform-ops caller) | `acaciaControl` server function — HMAC-signature-gated (`INGEST_HMAC_SECRET`), not tied to any app role/session | Not user-facing; see "ACACIA Mission Control bridge" section below |
 | View Help / Centro de ayuda | all roles | `RequireAccess page="help"` | Manual guide and support ticket form accessible to all |
 | In-app manual search | all roles | `Help.jsx` + `ManualGuide.jsx` | `src/lib/manual.js` — 19 sections, tenant-neutral content |
 
@@ -175,6 +176,36 @@ Admin has full view, create, edit, delete access to every module within their te
 | AppSession | any authenticated user (own row via `created_by_id`) | own row or service-role admin | own row or service-role admin | service-role admin only |
 | DashboardUnitPref | own row (`created_by_id`, tenant-scoped) | own row only | own row only | own row only |
 | UnitDayNote | owner, admin, dispatcher (write-gated) | same tenant_id (+ mechanic read) | owner, admin (write-gated) | owner, admin (write-gated) |
+| AcaciaReplayKey | service role only | service role only | service role only | service role only | Anti-replay nonce store for `acaciaControl`; no tenant_id (not tenant data), no app user (owner/admin/etc.) can read/write it — see below |
+
+---
+
+## ACACIA Mission Control Bridge (Platform-Ops, Not User-Facing)
+
+`base44/functions/acaciaControl/entry.ts` is a separate admin channel used by the external
+ACACIA Mission Control system to manage this app's tenants (license sync, usage counts,
+support-ticket handling, session revocation). It is **not part of the in-app role/permission
+model** — it has no user session at all — and is deliberately excluded from `USER_MANUAL.md`
+since it is never seen or used by tenant users or admins.
+
+- **Auth:** HMAC-SHA256 signature over `{ts}.{action}.{stableStringify(params)}`, verified
+  against the `INGEST_HMAC_SECRET` app secret (`Deno.env.get`, never hardcoded) with a
+  timing-safe comparison. No app user token is involved.
+- **Anti-replay:** every verified request's signature (+ optional `nonce`/`jti`) is checked
+  against, then persisted to, the `AcaciaReplayKey` entity (service-role-only RLS — no app
+  role can read or write it) so a captured signed request can't be re-sent within the clock-skew
+  window. Stale keys are pruned on each call.
+- **Entity allowlist (defense-in-depth):** even with a valid signature, the function only
+  ever touches `TenantLicense`, `SupportTicket`, and `AppSession` (`ALLOWED_ENTITIES`) via
+  `params.entity` — an arbitrary or built-in entity name (e.g. `User`) is rejected with 403.
+  This bounds the blast radius of a leaked/guessed secret to those three entities instead of
+  unrestricted service-role access to the whole multi-tenant database.
+- **Email-relay guard:** `emails.sendFollowup` validates the recipient against an email regex
+  and caps subject/body size before calling `SendEmail`, so the bridge can't become an open
+  phishing relay even when correctly authenticated.
+- Tenant isolation is not applicable in the usual sense — this is a cross-tenant platform-ops
+  tool by design (same category as `licensesAdmin`/`ticketsAdmin`), gated on a secret instead
+  of `APP_OWNER_EMAIL` because the caller has no app user at all.
 
 ---
 
@@ -191,6 +222,23 @@ Admin has full view, create, edit, delete access to every module within their te
 ---
 
 ## Audit History
+
+### v1.29.1 Audit (2026-07-27)
+
+Security, code quality, tenant-isolation, permissions, and release-readiness audit covering all changes since v1.29.0 (a `@base44/sdk` package bump and a `.gitignore`/`base44/.app.jsonc` housekeeping commit — no application code changed).
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A41 | SDK version drift recurrence: frontend `@base44/sdk` moved to `^0.8.40` (via an unreleased "Update base44 packages" commit) while all 14 backend Deno functions remained pinned to `@0.8.37`. Same root cause as A35/F3 — a frontend-only SDK bump not mirrored to backend functions. | LOW/MEDIUM | **FIXED — all 14 functions re-pinned to `@0.8.40`** |
+| A42 | Permissions matrix documentation gap: the `AcaciaReplayKey` entity and `acaciaControl` server function (ACACIA Mission Control admin bridge — HMAC-signature-gated, entity-allowlisted, service-role-only) existed in the codebase but were not documented in this matrix. Code review found the implementation itself sound (timing-safe HMAC check, persistent anti-replay store, entity allowlist, email-relay validation, secret read only via `Deno.env.get` — no hardcoded credential). | LOW | **FIXED — documented in "ACACIA Mission Control Bridge" section, RLS summary, and Files Implementing Permissions table** |
+| A43 | `npm audit`: 10 dependency vulnerabilities found (1 low, 5 moderate, 3 high, 1 critical) at HEAD before this audit. Split by production exposure: `postcss` (high, path-traversal in sourcemap loading — build-time only), `dompurify` (low, custom-element sanitize bypass) and `brace-expansion` (high, ReDoS) were all transitive dev/build-tool dependencies with non-breaking patch fixes available. | LOW/HIGH (dev-only) | **FIXED — `npm audit fix` applied (postcss→8.5.23, dompurify→3.4.12, brace-expansion→1.1.16), no `package.json` range changes** |
+| A44 | `npm audit --omit=dev` (production-only tree) after A43's fix: `react-router`/`react-router-dom` (moderate) — open redirect via backslash in `<Link>`/`useNavigate`, and an SSR-hydration constructor-injection issue. Fix requires a v6→v7 major bump (breaking). Verified no exploitable path in this app: grepped every `navigate(...)`/`<Link to={...}>` call site — none construct a target from URL query params, `location.search`, or other externally-controlled input; the one dynamic case (`FleetProfitMatrixCard.jsx`) builds an internal `/reports` path from the record's own `vehicleId`/date. The SSR-hydration advisory doesn't apply — this app is client-side-rendered only (Vite SPA, no SSR). | MODERATE | **Accepted risk — no exploitable path found; major-version bump deferred as out of scope for an automated pass (would need full route-by-route regression testing)** |
+| A45 | Remaining `npm audit` findings (`vitest`/`@vitest/mocker`/`vite`/`vite-node`/`esbuild`/`eslint`/`eslint-plugin-react`/`minimatch`/`@eslint/*`) confirmed dev-only via `npm audit --omit=dev` (zero results beyond A44) — build/lint/test tooling, never shipped to production. Same lineage as A17 (unchanged since v1.24.0); fixing requires breaking `vitest@4`/`eslint@10` upgrades. | LOW (dev-only) | **Accepted risk — reconfirmed no production exposure** |
+| A46 | Re-confirmed clean: no hardcoded secrets/API keys/tokens/credentials (including in `acaciaControl`'s HMAC handling); `resolveTenant` tenant-binding fallback (no `all[0]` risk); `generateAlerts`/`calculateCostPerKm`/`fleetUnitMetrics` tenant scoping and role gating; Admin users list tenant filtering; route/page protection backed by independent server-side/RLS enforcement. `validate:rls` (26 entities, including `AcaciaReplayKey`), `audit:tenant-scope`, lint, typecheck, all 440 unit tests, and the production build all pass at HEAD. | — | **CONFIRMED CLEAN / CONFIRMED PASSING** |
+
+**No open, draft, or disconnected pull requests found** at audit start — the prior audit (PR #83) was cleanly merged, and no work-in-progress branches existed. No unresolved GitHub issues. CI green on `main` at HEAD.
+
+---
 
 ### v1.29.0 Audit (2026-07-13)
 
@@ -315,3 +363,6 @@ Security, code quality, tenant isolation, permissions, and release-readiness aud
 | `base44/functions/githubRepos/entry.ts` | GitHub access — gated on `APP_OWNER_EMAIL` |
 | `base44/functions/createTenant/entry.ts` | Tenant creation with cryptographic join code; prevents duplicates |
 | `base44/functions/joinTenant/entry.ts` | Join by code — minimum privilege (driver role); blocked for cancelled/suspended tenants |
+| `base44/functions/createTestData/entry.ts` | Seeds demo/test data — gated on `APP_OWNER_EMAIL` |
+| `base44/functions/acaciaControl/entry.ts` | ACACIA Mission Control admin bridge — HMAC-signature-gated, no app user/tenant session; entity allowlist limits blast radius to `TenantLicense`/`SupportTicket`/`AppSession` |
+| `base44/entities/AcaciaReplayKey.jsonc` | Anti-replay nonce store for `acaciaControl` — service-role-only RLS on all operations |
