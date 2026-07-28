@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.29.1 | Updated 2026-07-27**
+**Version 1.29.2 | Updated 2026-07-28**
 
 ---
 
@@ -222,6 +222,18 @@ since it is never seen or used by tenant users or admins.
 ---
 
 ## Audit History
+
+### v1.29.2 Audit (2026-07-28)
+
+Full re-run of the security, code quality, tenant-isolation, permissions, and release-readiness audit. No application commits landed since the v1.29.1 merge (HEAD unchanged at `83b22667`) — this pass re-verifies the codebase from a clean baseline rather than reviewing a diff.
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A47 | `npm audit` at HEAD: 13 findings (5 moderate, 7 high, 1 critical), up from 10 at the last audit — same `vitest`/`vite`/`esbuild`/`eslint`/`eslint-plugin-react`/`brace-expansion`/`minimatch`/`@eslint/*` dev-tooling chain, now with newer/reclassified advisories (including one now rated critical, `vitest<=3.2.5`). Confirmed dev-only via `npm audit --omit=dev` (zero results beyond A44's `react-router`). Fixing requires breaking `vitest@4`/`eslint@10` upgrades — same accepted-risk lineage as A17/A45. | LOW/CRITICAL (dev-only) | **Accepted risk — reconfirmed no production exposure** |
+| A48 | `react-router`/`react-router-dom` open-redirect + SSR-hydration advisories (same as A44) re-verified against current HEAD: no non-breaking patch exists (latest 6.x, `6.30.4`, is already installed and still in the vulnerable `6.0.0–7.17.0` range; the fix requires the v7 major). Re-grepped every `navigate(...)`/`<Link to={...}>`/`<Navigate to={...}>` call site — all targets are internal, static, or derived from role (`resolveHomeTarget`) or the app's own `localStorage`-persisted path, never from URL/query input. No SSR in this app. | MODERATE | **Accepted risk — reconfirmed no exploitable path, unchanged from A44** |
+| A49 | Re-confirmed clean, no drift: `@base44/sdk` already aligned at `^0.8.40` across the frontend and all 14 backend Deno functions (no recurrence of A35/A41). `acaciaControl`/`AcaciaReplayKey` bridge re-read line-by-line — HMAC verification, timing-safe compare, persistent anti-replay store, 3-entity allowlist, email-relay recipient/size validation all intact and unchanged. No hardcoded secrets/API keys/tokens. `validate:rls` (26 entities), `audit:tenant-scope`, lint, typecheck, all 440 unit tests, and the production build all pass at HEAD. Applied `npm audit fix` (non-breaking transitive dedupe of `@eslint/*` sub-dependencies) — no vulnerability count change, no `package.json` range changes. | — | **CONFIRMED CLEAN / CONFIRMED PASSING** |
+
+**No open, draft, or disconnected pull requests found** at audit start — the prior audit (PR #84) was cleanly merged, and no work-in-progress branches existed. No unresolved GitHub issues. CI green on `main` at HEAD.
 
 ### v1.29.1 Audit (2026-07-27)
 

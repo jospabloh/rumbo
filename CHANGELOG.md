@@ -4,6 +4,28 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.29.2] — 2026-07-28 — Automated security, tenant-isolation, permissions, and release-readiness re-audit
+
+### Security audit result — no High/Critical findings; no code drift; two accepted risks reconfirmed
+
+Full re-run of the security, tenant-isolation, permissions, code quality, and release-readiness audit. No application commits landed since the v1.29.1 merge (HEAD unchanged at `83b22667`) and no open, draft, or disconnected pull requests or unresolved GitHub issues existed at audit start — this pass re-verifies the codebase from a clean baseline.
+
+- **SDK version drift — none found.** Frontend `@base44/sdk` and all 14 backend Deno functions are already aligned at `^0.8.40`; no recurrence of the A35/A41 drift.
+- **`npm audit` — 13 findings (5 moderate, 7 high, 1 critical), reconfirmed dev-tooling-only.** All are transitive `vitest`/`vite`/`esbuild`/`eslint`/`eslint-plugin-react` build/lint-chain advisories (`npm audit --omit=dev` returns only `react-router`); fixing needs breaking `vitest@4`/`eslint@10` upgrades. Applied `npm audit fix` for a non-breaking transitive dedupe of `@eslint/*` sub-dependencies (no vulnerability count change, no `package.json` range changes).
+- **`react-router`/`react-router-dom` — accepted risk reconfirmed.** Same moderate open-redirect/SSR-hydration advisory as v1.29.1 (A44); no non-breaking patch exists on the installed 6.x line. Re-audited every `navigate()`/`<Link>`/`<Navigate>` call site — still no exploitable path (no SSR, no redirect target built from URL/query input).
+- **ACACIA Mission Control bridge (`acaciaControl`/`AcaciaReplayKey`) — re-read line-by-line, unchanged and sound.** HMAC verification with timing-safe compare, persistent anti-replay store, 3-entity allowlist, email-relay validation all intact.
+- Re-confirmed clean: no hardcoded secrets/API keys/tokens; tenant-isolation scoping across all server functions and entity RLS (`validate:rls` 26 entities, `audit:tenant-scope`); route/page protection independent of UI hiding.
+- `validate:rls`, `audit:tenant-scope`, lint, typecheck, all 440 unit tests, and the production build all pass.
+
+### Documentation updates
+
+- `docs/permissions_matrix.md` updated to v1.29.2: recorded this audit's findings (A47–A49).
+- `CHANGELOG.md` updated with this v1.29.2 entry.
+- `APP_VERSION` bumped to v1.29.2 in `src/lib/version.js` and `package.json`.
+- `USER_MANUAL.md`: no user-facing behavior changed this pass — not updated.
+
+---
+
 ## [1.29.1] — 2026-07-27 — Automated security, tenant-isolation, permissions, and release-readiness audit
 
 ### Security audit result — no High/Critical findings; one recurring drift fixed, one documentation gap closed, dependencies patched
