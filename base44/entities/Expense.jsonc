@@ -8,7 +8,7 @@
     },
     "category": {
       "type": "string",
-      "title": "Categoría"
+      "title": "Categor\u00eda"
     },
     "amount": {
       "type": "number",
@@ -21,15 +21,15 @@
     },
     "description": {
       "type": "string",
-      "title": "Descripción"
+      "title": "Descripci\u00f3n"
     },
     "vehicle_id": {
       "type": "string",
-      "title": "Vehículo"
+      "title": "Veh\u00edculo"
     },
     "payment_method": {
       "type": "string",
-      "title": "Método de pago"
+      "title": "M\u00e9todo de pago"
     },
     "notes": {
       "type": "string",
@@ -41,73 +41,103 @@
   ],
   "rls": {
     "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         },
         {
           "user_condition": {
-            "role": "admin"
-          }
-        }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
-    },
-    "read": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "owner"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "admin"
+            "data.write_access": "enabled"
           }
         }
       ]
     },
-    "update": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+    "read": {
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         },
         {
           "user_condition": {
-            "role": "admin"
+            "data.write_access": "enabled"
           }
         }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
+      ]
     },
     "delete": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         },
         {
           "user_condition": {
-            "role": "admin"
+            "data.write_access": "enabled"
           }
         }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
+      ]
     }
   }
 }

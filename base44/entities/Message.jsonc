@@ -22,7 +22,7 @@
     "channel_driver_id": {
       "type": "string",
       "title": "Conductor del canal (denormalizado)",
-      "description": "Copia de Channel.driver_id al crear el mensaje. Permite que la RLS de lectura deje a un conductor leer los mensajes de su propio canal directo (channel_driver_id == driver_profile_id), no solo los que él mismo envió."
+      "description": "Copia de Channel.driver_id al crear el mensaje. Permite que la RLS de lectura deje a un conductor leer los mensajes de su propio canal directo (channel_driver_id == driver_profile_id), no solo los que \u00e9l mismo envi\u00f3."
     },
     "sender_id": {
       "type": "string",
@@ -47,7 +47,7 @@
     },
     "read": {
       "type": "boolean",
-      "title": "Leído",
+      "title": "Le\u00eddo",
       "default": false
     }
   },
@@ -57,17 +57,65 @@
   ],
   "rls": {
     "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "data.sender_id": "{{user.id}}",
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "data.sender_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
+        }
+      ]
     },
     "read": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
         {
           "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            },
+            {
+              "data.sender_id": "{{user.id}}"
+            },
+            {
+              "data.channel_kind": "broadcast"
+            },
+            {
+              "data.channel_driver_id": "{{user.data.driver_profile_id}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
             {
               "user_condition": {
                 "role": "owner"
@@ -86,59 +134,37 @@
           ]
         },
         {
-          "data.sender_id": "{{user.id}}"
-        },
-        {
-          "data.channel_kind": "broadcast"
-        },
-        {
-          "data.channel_driver_id": "{{user.data.driver_profile_id}}"
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
         }
       ]
     },
-    "update": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "owner"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "dispatcher"
-          }
-        }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
-    },
     "delete": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         },
         {
           "user_condition": {
-            "role": "admin"
+            "data.write_access": "enabled"
           }
         }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
+      ]
     }
   }
 }

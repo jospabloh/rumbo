@@ -1,68 +1,165 @@
 {
-  // UnitDayNote — lightweight ad-hoc comment log against a vehicle+date, shown
-  // in the /reports day×unit matrix cell detail ("Comentarios"). Separate from
-  // Maintenance/Expense/RentCharge free-text fields (those are still surfaced
-  // alongside these notes in the UI) — this is for anything an admin/dispatcher
-  // wants to log against a unit on a specific day that isn't tied to a specific
-  // maintenance/expense/payment record.
-  //
-  // RLS mirrors Maintenance.jsonc: owner/admin/dispatcher write (write_access
-  // gated), owner/admin/dispatcher/mechanic read, owner/admin update/delete.
   "name": "UnitDayNote",
   "type": "object",
   "properties": {
-    "tenant_id": { "type": "string", "title": "Tenant" },
-    "vehicle_id": { "type": "string", "title": "Vehículo" },
-    "note_date": { "type": "string", "format": "date", "title": "Fecha" },
-    "text": { "type": "string", "title": "Comentario" },
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "title": "Veh\u00edculo"
+    },
+    "note_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+    },
+    "text": {
+      "type": "string",
+      "title": "Comentario"
+    },
     "attachments": {
       "type": "array",
       "title": "Adjuntos",
       "items": {
         "type": "object",
         "properties": {
-          "file_url": { "type": "string", "title": "Archivo" },
-          "file_name": { "type": "string", "title": "Nombre" },
-          "file_type": { "type": "string", "title": "Tipo" }
+          "file_url": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "file_type": {
+            "type": "string",
+            "title": "Tipo"
+          }
         }
       }
     }
   },
-  "required": ["vehicle_id", "note_date", "text"],
+  "required": [
+    "vehicle_id",
+    "note_date",
+    "text"
+  ],
   "rls": {
     "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        { "user_condition": { "role": "owner" } },
-        { "user_condition": { "role": "admin" } },
-        { "user_condition": { "role": "dispatcher" } }
-      ],
-      "user_condition": { "data.write_access": "enabled" }
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
+        }
+      ]
     },
     "read": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        { "user_condition": { "role": "owner" } },
-        { "user_condition": { "role": "admin" } },
-        { "user_condition": { "role": "dispatcher" } },
-        { "user_condition": { "role": "mechanic" } }
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "mechanic"
+              }
+            }
+          ]
+        }
       ]
     },
     "update": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        { "user_condition": { "role": "owner" } },
-        { "user_condition": { "role": "admin" } }
-      ],
-      "user_condition": { "data.write_access": "enabled" }
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
+        }
+      ]
     },
     "delete": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
-        { "user_condition": { "role": "owner" } },
-        { "user_condition": { "role": "admin" } }
-      ],
-      "user_condition": { "data.write_access": "enabled" }
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
+        }
+      ]
     }
   }
 }

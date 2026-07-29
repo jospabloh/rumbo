@@ -112,7 +112,7 @@
       "type": "number",
       "minimum": 0,
       "maximum": 5,
-      "title": "Calificación",
+      "title": "Calificaci\u00f3n",
       "rls": {
         "write": {
           "$or": [
@@ -169,7 +169,7 @@
     "hire_date": {
       "type": "string",
       "format": "date",
-      "title": "Fecha de contratación",
+      "title": "Fecha de contrataci\u00f3n",
       "rls": {
         "write": {
           "$or": [
@@ -194,7 +194,7 @@
     },
     "phone": {
       "type": "string",
-      "title": "Teléfono"
+      "title": "Tel\u00e9fono"
     },
     "photo_url": {
       "type": "string",
@@ -349,9 +349,9 @@
     },
     "referral_credit": {
       "type": "number",
-      "title": "Crédito de bono por aplicar",
+      "title": "Cr\u00e9dito de bono por aplicar",
       "default": 0,
-      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta automáticamente de los próximos cobros generados para este conductor.",
+      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta autom\u00e1ticamente de los pr\u00f3ximos cobros generados para este conductor.",
       "rls": {
         "write": {
           "$or": [
@@ -430,31 +430,10 @@
   ],
   "rls": {
     "create": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "dispatcher"
-          }
-        }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
-    },
-    "read": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
         {
           "$or": [
             {
@@ -475,13 +454,46 @@
           ]
         },
         {
-          "data.profile_id": "{{user.id}}"
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            },
+            {
+              "data.profile_id": "{{user.id}}"
+            }
+          ]
         }
       ]
     },
     "update": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
         {
           "$or": [
             {
@@ -498,34 +510,44 @@
               "user_condition": {
                 "role": "dispatcher"
               }
+            },
+            {
+              "data.profile_id": "{{user.id}}"
             }
           ]
         },
         {
-          "data.profile_id": "{{user.id}}"
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
         }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
+      ]
     },
     "delete": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         },
         {
           "user_condition": {
-            "role": "admin"
+            "data.write_access": "enabled"
           }
         }
-      ],
-      "user_condition": {
-        "data.write_access": "enabled"
-      }
+      ]
     }
   }
 }

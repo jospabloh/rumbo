@@ -16,7 +16,7 @@
     },
     "tenant_name": {
       "type": "string",
-      "title": "Organización",
+      "title": "Organizaci\u00f3n",
       "rls": {
         "write": false
       }
@@ -27,7 +27,7 @@
     },
     "body": {
       "type": "string",
-      "title": "Descripción"
+      "title": "Descripci\u00f3n"
     },
     "category": {
       "type": "string",
@@ -39,7 +39,7 @@
         "other"
       ],
       "default": "question",
-      "title": "Categoría"
+      "title": "Categor\u00eda"
     },
     "priority": {
       "type": "string",
@@ -104,12 +104,12 @@
     },
     "last_activity_at": {
       "type": "string",
-      "title": "Última actividad"
+      "title": "\u00daltima actividad"
     },
     "ai_brief": {
       "type": "object",
       "title": "Brief BA/PO (IA)",
-      "description": "Especificación estructurada que arma el asistente BA/PO al levantar un feature o incidencia (historia de usuario, criterios de aceptación, pasos de reproducción, impacto, etc.). El mismo brief se incrusta en 'body' en Markdown, así que este campo es aditivo para el render enriquecido en Mission Control."
+      "description": "Especificaci\u00f3n estructurada que arma el asistente BA/PO al levantar un feature o incidencia (historia de usuario, criterios de aceptaci\u00f3n, pasos de reproducci\u00f3n, impacto, etc.). El mismo brief se incrusta en 'body' en Markdown, as\u00ed que este campo es aditivo para el render enriquecido en Mission Control."
     }
   },
   "required": [
@@ -123,16 +123,28 @@
     "read": {
       "$or": [
         {
-          "data.tenant_id": "{{user.data.tenant_id}}",
-          "user_condition": {
-            "role": "owner"
-          }
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            }
+          ]
         },
         {
-          "data.tenant_id": "{{user.data.tenant_id}}",
-          "user_condition": {
-            "role": "admin"
-          }
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         },
         {
           "data.requester_id": "{{user.id}}"
@@ -140,32 +152,44 @@
       ]
     },
     "update": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     },
     "delete": {
-      "data.tenant_id": "{{user.data.tenant_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "owner"
-          }
+          "data.tenant_id": "{{user.data.tenant_id}}"
         },
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     }

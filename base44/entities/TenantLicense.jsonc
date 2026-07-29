@@ -104,7 +104,7 @@
     },
     "join_code": {
       "type": "string",
-      "title": "Código de unión del tenant"
+      "title": "C\u00f3digo de uni\u00f3n del tenant"
     },
     "notes": {
       "type": "string",
@@ -175,28 +175,14 @@
           "data.owner_email": "{{user.email}}"
         },
         {
-          "$and": [
-            {
-              "id": "{{user.data.tenant_id}}"
-            },
-            {
-              "data.members.email": "{{user.email}}"
-            },
-            {
-              "$or": [
-                {
-                  "user_condition": {
-                    "role": "owner"
-                  }
-                },
-                {
-                  "user_condition": {
-                    "role": "admin"
-                  }
-                }
-              ]
-            }
-          ]
+          "user_condition": {
+            "role": "owner"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
         }
       ]
     },
