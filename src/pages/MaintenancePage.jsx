@@ -52,10 +52,13 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
     if (readOnly) { setError('Tu licencia está en modo solo lectura: renueva tu pago para registrar mantenimientos.'); return; }
     setError('');
     try {
+      // Copiamos el `owner_group_id` del vehículo (denormalizado, igual que en RentCharge)
+      // en cada guardado para que el registro quede visible para el socio de esa unidad.
+      const ownerGroupId = vehicles.find(v => v.id === data.vehicle_id)?.owner_group_id || null;
       if (editRecord) {
-        await base44.entities.Maintenance.update(editRecord.id, data);
+        await base44.entities.Maintenance.update(editRecord.id, { ...data, owner_group_id: ownerGroupId });
       } else {
-        await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId });
+        await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId, owner_group_id: ownerGroupId });
       }
       setShowForm(false);
       setEditRecord(null);

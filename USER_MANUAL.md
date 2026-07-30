@@ -17,6 +17,7 @@ Rumbo uses a role-based access model. Your role determines what you can see and 
 | **Dispatcher** | Can manage drivers, vehicles, trips, fuel, fines, insurance claims, alerts, messages, and location requests. Cannot access Financial reports or Import tools. |
 | **Mechanic** | Access to vehicles, maintenance records, and parts inventory only. |
 | **Driver** | Access to personal trip records, own profile, fuel logs, and the driver messaging channel. Uses the Driver App interface. |
+| **Investor (Socio)** | Read-only access to unit status, maintenance history, and rent-payment status — but only for the subset of units their profile is linked to. Uses the Investor Panel interface. |
 
 ---
 
@@ -44,6 +45,8 @@ Each non-admin role ships with sensible defaults, which the **admin can grant or
 **Mechanic defaults:** Can view and update vehicles and maintenance records, manage parts. No access to drivers, trips, financials, or messages.
 
 **Driver defaults:** Can view own vehicle and driver record, log trips and fuel, view own fines/insurance alerts and messages. No access to financial analysis or location tracking.
+
+**Investor defaults:** Read-only, and only for the units linked to their profile. Can view unit status/details, maintenance history, and rent-payment status. No access to drivers, other units, financials, or any create/edit/delete action — this role is not configurable per module like Dispatcher/Mechanic.
 
 **New permissions default to view-only.** When a new module or action is added to the system, every non-admin role receives it in **read-only (Ver) mode** — visible but with no create/edit/delete/pause — until the admin grants more. This means new capabilities surface for the team automatically without ever silently granting write access.
 
@@ -406,6 +409,29 @@ Drivers access a separate simplified interface at `/driver/*`.
 - **Messages:** Receive and respond to messages from dispatchers.
 
 Drivers receive location requests in the app and can respond with a single one-time location share.
+
+---
+
+## Investor Panel
+
+Investors (socios) access a separate simplified interface at `/investor/home` — read-only,
+showing only the units they've been linked to.
+
+- **Mis unidades:** For each linked unit — plate, make/model/year, status, odometer, and
+  document expiry dates (insurance, inspection, registration, hologram).
+- **Pagos de renta del chofer:** The rent-charge ledger for their units — period, amount,
+  and status (Paid / Partial / Pending / Overdue), the same day/week tracking an admin
+  fills in from Rentas.
+- **Mantenimientos:** Maintenance history for their units — description, category, date,
+  and cost.
+
+An admin sets this up from **Admin → Usuarios**: invite the investor with role **Socio**
+and give them a **grupo de sociedad** (a short text tag, e.g. "suegra"). Then, in
+**Vehículos**, set that same tag on each unit that sociedad owns. If a tenant later adds a
+different partnership over a different set of units, use a different tag — a unit belongs
+to at most one group, but a tenant can have any number of groups.
+
+An investor has no create/edit/delete access anywhere in the app.
 
 ---
 

@@ -34,6 +34,7 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
       insurance_company: vehicle?.insurance_company || '',
       insurance_annual_cost: vehicle?.insurance_annual_cost ?? '',
       maintenance_reserve_weekly: vehicle?.maintenance_reserve_weekly ?? '',
+      owner_group_id: vehicle?.owner_group_id || '',
     },
   });
   const rentFrequency = useWatch({ control, name: 'rent_frequency' });
@@ -48,6 +49,7 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
         assigned_driver_id: data.assigned_driver_id || null,
         insurance_annual_cost: data.insurance_annual_cost ?? null,
         maintenance_reserve_weekly: data.maintenance_reserve_weekly ?? null,
+        owner_group_id: data.owner_group_id || null,
       });
     } catch (err) {
       setError('root', { message: err?.message || 'No se pudo guardar el vehículo. Revisa tu conexión e inténtalo de nuevo.' });
@@ -169,6 +171,13 @@ export default function VehicleForm({ vehicle, drivers, onSave, onClose }) {
               <Label>Reserva semanal — fondo de mantenimiento ($)</Label>
               <Input type="number" step="0.01" {...register('maintenance_reserve_weekly')} className="mt-1 bg-background" placeholder="Opcional" />
               <FormError className="mt-1">{errors.maintenance_reserve_weekly?.message}</FormError>
+            </div>
+            <div className="col-span-2">
+              <Label>Grupo de sociedad (acceso de socio/inversionista)</Label>
+              <Input {...register('owner_group_id')} className="mt-1 bg-background" placeholder="Ej. suegra — déjalo vacío si no aplica" />
+              <p className="text-xs text-muted-foreground mt-1">
+                Los usuarios con rol Socio que tengan este mismo texto en su perfil verán esta unidad (estado, mantenimientos y pagos de renta) en modo solo lectura.
+              </p>
             </div>
             <div>
               <Label>Frecuencia de renta</Label>

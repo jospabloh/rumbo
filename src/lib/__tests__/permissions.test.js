@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { can, isAdminOrOwner, isDriver, isOwner, ROLES } from '../permissions.js';
+import { can, isAdminOrOwner, isDriver, isInvestor, isOwner, ROLES } from '../permissions.js';
 
 describe('can() — page access by role', () => {
   it('owner can access every page including github, supabase, and billing', () => {
@@ -49,6 +49,19 @@ describe('can() — page access by role', () => {
     pages.forEach(page => {
       expect(can(ROLES.DRIVER, page), `driver should NOT access ${page}`).toBe(false);
     });
+  });
+
+  it('investor has no access to any back-office page (own view is /investor/home, outside the page map)', () => {
+    const pages = ['dashboard', 'drivers', 'vehicles', 'rentas', 'maintenance', 'parts',
+      'financial', 'location', 'messages', 'alerts', 'import', 'github',
+      'supabase', 'billing', 'catalogs', 'admin'];
+    pages.forEach(page => {
+      expect(can(ROLES.INVESTOR, page), `investor should NOT access ${page}`).toBe(false);
+    });
+  });
+
+  it('investor can access help, like every other role', () => {
+    expect(can(ROLES.INVESTOR, 'help')).toBe(true);
   });
 
   it('returns false for an unknown page regardless of role', () => {
@@ -125,5 +138,22 @@ describe('isDriver()', () => {
   it('returns false for null/undefined input', () => {
     expect(isDriver(null)).toBe(false);
     expect(isDriver(undefined)).toBe(false);
+  });
+});
+
+describe('isInvestor()', () => {
+  it('returns true only for the investor role', () => {
+    expect(isInvestor(ROLES.INVESTOR)).toBe(true);
+  });
+
+  it('returns false for all non-investor roles', () => {
+    [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER, ROLES.MECHANIC, ROLES.DRIVER].forEach(role => {
+      expect(isInvestor(role), `isInvestor should be false for ${role}`).toBe(false);
+    });
+  });
+
+  it('returns false for null/undefined input', () => {
+    expect(isInvestor(null)).toBe(false);
+    expect(isInvestor(undefined)).toBe(false);
   });
 });

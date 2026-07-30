@@ -7,6 +7,8 @@
  *  dispatcher — operador: ve dashboard, conductores, vehículos, ubicación, mensajes, alertas
  *  mechanic   — mecánico: mantenimiento e inventario solamente
  *  driver     — conductor: solo vistas /driver/*
+ *  investor   — socio/inversionista: solo vistas /investor/*, de solo lectura y acotadas
+ *               a las unidades de su `owner_group_id` (entity RLS lo hace cumplir del lado servidor)
  */
 
 export const ROLES = {
@@ -15,6 +17,7 @@ export const ROLES = {
   DISPATCHER: 'dispatcher',
   MECHANIC: 'mechanic',
   DRIVER: 'driver',
+  INVESTOR: 'investor',
 };
 
 // Páginas/secciones y qué roles tienen acceso
@@ -31,7 +34,7 @@ const PAGE_PERMISSIONS = {
   location:    [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER],
   messages:    [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER],
   links:       [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER, ROLES.MECHANIC],
-  help:        [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER, ROLES.MECHANIC, ROLES.DRIVER],
+  help:        [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER, ROLES.MECHANIC, ROLES.DRIVER, ROLES.INVESTOR],
   alerts:      [ROLES.OWNER, ROLES.ADMIN, ROLES.DISPATCHER],
   import:      [ROLES.OWNER, ROLES.ADMIN],
   github:      [ROLES.OWNER],
@@ -66,6 +69,13 @@ export function isAdminOrOwner(role) {
  */
 export function isDriver(role) {
   return role === ROLES.DRIVER;
+}
+
+/**
+ * Devuelve true si el usuario es investor (socio/inversionista).
+ */
+export function isInvestor(role) {
+  return role === ROLES.INVESTOR;
 }
 
 /**

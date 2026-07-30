@@ -1,7 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 import { useTenant } from '@/lib/TenantContext';
-import { can, isDriver } from '@/lib/permissions';
+import { can, isDriver, isInvestor } from '@/lib/permissions';
 import { PageLoader } from '@/components/ui/spinner';
 
 /**
@@ -31,8 +31,9 @@ export default function RequireAccess({ page, roles, children }) {
   const allowed = roles ? roles.includes(userRole) : can(userRole, page);
   if (allowed) return children;
 
-  // Un conductor que cae en una ruta del staff va a su propia interfaz.
+  // Un conductor o un socio que cae en una ruta del staff va a su propia interfaz.
   if (isDriver(userRole)) return <Navigate to="/driver/home" replace />;
+  if (isInvestor(userRole)) return <Navigate to="/investor/home" replace />;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">

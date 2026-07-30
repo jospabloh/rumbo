@@ -45,6 +45,14 @@ export default function Admin() {
     refresh();
   };
 
+  // Grupo de sociedad de un usuario 'investor': debe coincidir con el mismo campo en
+  // los Vehicle a los que debe ver (estado, mantenimientos y rentas de solo lectura).
+  // write:false para todos salvo owner/admin (RLS de entidad de User).
+  const handleSetOwnerGroup = async (userId, ownerGroupId) => {
+    await base44.entities.User.update(userId, { owner_group_id: ownerGroupId || null }).catch(() => {});
+    refresh();
+  };
+
   // Suspender / reactivar / quitar pasa por la función de servidor (write_access,
   // suspended y tenant_id son server-authoritative; el cliente no puede tocarlos).
   const handleManage = async (userId, action, name) => {
@@ -123,6 +131,7 @@ export default function Admin() {
                 member={m}
                 onRoleChange={handleRoleChange}
                 onSetName={handleSetName}
+                onSetOwnerGroup={handleSetOwnerGroup}
                 onManage={handleManage}
                 canManage={isAdminOrOwner(user?.role)}
                 isCurrentUser={m.id === user?.id}
@@ -150,6 +159,19 @@ export default function Admin() {
         <p className="text-sm text-muted-foreground">
           Para que un conductor acceda a la app, invítalo con rol <span className="text-foreground font-medium">Conductor</span> usando su email.
           Una vez que inicie sesión, ve a <span className="text-foreground font-medium">Conductores</span> y vincula su perfil con su cuenta desde el detalle del conductor.
+        </p>
+      </section>
+
+      {/* Investor/socio linking note */}
+      <section className="bg-card border border-border rounded-xl p-5 space-y-2">
+        <div className="flex items-center gap-2 mb-1">
+          <Users className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Socios/inversionistas y acceso a la app</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Invita al socio con rol <span className="text-foreground font-medium">Socio</span> y asígnale un <span className="text-foreground font-medium">grupo de sociedad</span> (texto libre, p. ej. "suegra") en su fila de usuario.
+          Luego, en <span className="text-foreground font-medium">Vehículos</span>, pon ese mismo grupo en el campo "Grupo de sociedad" de cada unidad que le corresponda.
+          El socio solo verá el estado, mantenimientos y pagos de renta de las unidades con ese grupo — nada más del tenant.
         </p>
       </section>
 

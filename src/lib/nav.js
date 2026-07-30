@@ -12,7 +12,7 @@ import {
   MapPin, MessageSquare, Bell, FileText, CreditCard,
   Shield, Banknote, List, Link2, HelpCircle, LifeBuoy, Receipt, BarChart3,
 } from 'lucide-react';
-import { can, isDriver } from '@/lib/permissions';
+import { can, isDriver, isInvestor } from '@/lib/permissions';
 
 /** Grupos de navegación del staff (owner/admin/dispatcher/mechanic). */
 export const NAV_GROUPS = [
@@ -68,6 +68,12 @@ export const DRIVER_NAV = [
   { path: '/driver/profile',  icon: Users,           label: 'Perfil' },
 ];
 
+/** Navegación del socio/inversionista (interfaz simplificada /investor/*, solo lectura). */
+export const INVESTOR_NAV = [
+  { path: '/investor/home', icon: LayoutDashboard, label: 'Mis unidades' },
+  { path: '/help',          icon: HelpCircle,      label: 'Ayuda' },
+];
+
 /** Ítems extra del owner de la app (gestión cross-tenant: licencias y soporte). */
 export const PLATFORM_NAV = [
   { path: '/licenses', icon: Shield,   label: 'Licencias', page: 'licenses' },
@@ -105,6 +111,7 @@ export function accessibleNavItems(role, { isAppOwner = false } = {}) {
  */
 export function resolveHomeTarget(role, { isAppOwner = false, hasTenant = false } = {}) {
   if (isDriver(role)) return '/driver/home';
+  if (isInvestor(role)) return '/investor/home';
   if (hasTenant && can(role, 'dashboard')) return 'dashboard';
   if (isAppOwner) return '/licenses';
   const items = accessibleNavItems(role, { isAppOwner });

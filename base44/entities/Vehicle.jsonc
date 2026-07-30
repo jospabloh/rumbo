@@ -110,6 +110,11 @@
     "maintenance_reserve_weekly": {
       "type": "number",
       "title": "Reserva semanal para fondo de mantenimiento"
+    },
+    "owner_group_id": {
+      "type": "string",
+      "title": "Grupo de sociedad",
+      "description": "Etiqueta de sociedad/inversión de esta unidad. Los usuarios con role='investor' y el mismo `owner_group_id` en su perfil ven esta unidad (y sus mantenimientos/rentas) en modo solo lectura."
     }
   },
   "required": [],
@@ -179,6 +184,23 @@
             },
             {
               "data.assigned_driver_id": "{{user.data.driver_profile_id}}"
+            },
+            {
+              "$and": [
+                {
+                  "user_condition": {
+                    "role": "investor"
+                  }
+                },
+                {
+                  "data.owner_group_id": {
+                    "$ne": null
+                  }
+                },
+                {
+                  "data.owner_group_id": "{{user.data.owner_group_id}}"
+                }
+              ]
             }
           ]
         }

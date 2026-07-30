@@ -115,6 +115,7 @@ export default function Rentas() {
         await base44.entities.RentCharge.create({
           tenant_id: tenantId,
           vehicle_id: v.id,
+          owner_group_id: v.owner_group_id || null,
           driver_id: driverId,
           period_type: freq,
           period_start,

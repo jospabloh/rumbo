@@ -42,6 +42,7 @@ export const vehicleSchema = z
     insurance_company: optionalString,
     insurance_annual_cost: optionalNumber(0),
     maintenance_reserve_weekly: optionalNumber(0),
+    owner_group_id: optionalString,
   })
   .refine((d) => d.plate?.length || d.unit_number?.length, {
     message: 'Ingresa una placa o un número de unidad',

@@ -40,6 +40,7 @@ export default function ManualChargeModal({ vehicles, tenantId, onClose, onSaved
       await base44.entities.RentCharge.create({
         tenant_id: tenantId,
         vehicle_id: v.id,
+        owner_group_id: v.owner_group_id || null,
         driver_id: v.assigned_driver_id || null,
         period_type: form.period_type,
         period_start: form.period_start,

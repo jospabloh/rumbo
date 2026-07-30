@@ -1,4 +1,4 @@
-import { Shield, Crown, Navigation, Wrench, Car, User } from 'lucide-react';
+import { Shield, Crown, Navigation, Wrench, Car, User, Handshake } from 'lucide-react';
 
 // Role badge presentation shared by the admin user list and invite form.
 export const ROLE_CONFIG = {
@@ -7,5 +7,6 @@ export const ROLE_CONFIG = {
   dispatcher: { label: 'Dispatcher', color: 'text-success bg-success/10',   icon: Navigation },
   mechanic:   { label: 'Mecánico',   color: 'text-muted-foreground bg-secondary', icon: Wrench },
   driver:     { label: 'Conductor',  color: 'text-muted-foreground bg-secondary', icon: Car },
+  investor:   { label: 'Socio',      color: 'text-muted-foreground bg-secondary', icon: Handshake },
   user:       { label: 'Usuario',    color: 'text-muted-foreground bg-secondary', icon: User },
 };
