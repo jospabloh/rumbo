@@ -59,6 +59,11 @@
     "photo_url": {
       "type": "string",
       "title": "Foto"
+    },
+    "owner_group_id": {
+      "type": "string",
+      "title": "Grupo de sociedad",
+      "description": "Copia de `Vehicle.owner_group_id` en el momento de creación de este registro (denormalizado, igual que `driver_id` en RentCharge), para que un usuario 'investor' pueda leer el historial de mantenimiento de sus unidades sin depender de un join cruzado que RLS no soporta."
     }
   },
   "required": [
@@ -123,6 +128,23 @@
               "user_condition": {
                 "role": "dispatcher"
               }
+            },
+            {
+              "$and": [
+                {
+                  "user_condition": {
+                    "role": "investor"
+                  }
+                },
+                {
+                  "data.owner_group_id": {
+                    "$ne": null
+                  }
+                },
+                {
+                  "data.owner_group_id": "{{user.data.owner_group_id}}"
+                }
+              ]
             }
           ]
         }

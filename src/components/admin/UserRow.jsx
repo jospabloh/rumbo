@@ -5,11 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROLE_CONFIG } from '@/components/admin/roleConfig';
 
-export default function UserRow({ member, onRoleChange, onSetName, onManage, isCurrentUser, canManage }) {
+export default function UserRow({ member, onRoleChange, onSetName, onSetOwnerGroup, onManage, isCurrentUser, canManage }) {
   const [editing, setEditing] = useState(false);
   const [newRole, setNewRole] = useState(member.role || 'user');
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(member.display_name || member.full_name || '');
+  const [editingGroup, setEditingGroup] = useState(false);
+  const [ownerGroup, setOwnerGroup] = useState(member.owner_group_id || '');
   const [busy, setBusy] = useState(false);
   const conf = ROLE_CONFIG[member.role] || ROLE_CONFIG['user'];
   const RoleIcon = conf.icon;
@@ -26,6 +28,13 @@ export default function UserRow({ member, onRoleChange, onSetName, onManage, isC
     await onSetName(member.id, name.trim());
     setBusy(false);
     setEditingName(false);
+  };
+
+  const saveOwnerGroup = async () => {
+    setBusy(true);
+    await onSetOwnerGroup(member.id, ownerGroup.trim());
+    setBusy(false);
+    setEditingGroup(false);
   };
 
   const manage = async (action) => {
@@ -67,6 +76,31 @@ export default function UserRow({ member, onRoleChange, onSetName, onManage, isC
             </p>
           )}
           <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+          {member.role === 'investor' && (
+            editingGroup ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  value={ownerGroup}
+                  onChange={e => setOwnerGroup(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveOwnerGroup()}
+                  placeholder="Grupo de sociedad, ej. suegra"
+                  className="h-7 text-xs bg-secondary border-border"
+                  autoFocus
+                />
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={saveOwnerGroup} disabled={busy}><Save className="w-3.5 h-3.5 text-success" /></Button>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={() => { setOwnerGroup(member.owner_group_id || ''); setEditingGroup(false); }}><X className="w-3.5 h-3.5" /></Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Grupo: <span className="text-foreground font-medium">{member.owner_group_id || 'sin asignar'}</span>
+                {canManage && (
+                  <button onClick={() => setEditingGroup(true)} className="ml-1.5 text-muted-foreground hover:text-foreground align-middle" aria-label="Editar grupo de sociedad">
+                    <Edit2 className="w-3 h-3 inline" />
+                  </button>
+                )}
+              </p>
+            )
+          )}
         </div>
         {editing ? (
           <div className="flex items-center gap-2">

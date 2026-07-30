@@ -4,6 +4,57 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.30.0] — 2026-07-30 — Investor/socio role, scoped to a subset of units
+
+### New: `investor` role — read-only, scoped by `owner_group_id`
+
+Some tenants split fleet ownership across informal partnerships ("sociedades") — e.g. 8 of
+11 units belong to the tenant owner and 3 belong to a different investor, with the
+possibility of further partnerships being added later for other subsets of units. Previously
+every non-driver role that could log in saw the whole tenant; there was no way to grant
+someone visibility into only part of the fleet.
+
+- **New role `investor`** (`base44/entities/User.jsonc`), assignable from Admin like any
+  other role.
+- **New scoping field `owner_group_id`** (free-text tag, owner/admin-only to write) on
+  `User`, `Vehicle`, `Maintenance`, and `RentCharge`. An investor sees exactly the units
+  tagged with their own group — status/details, maintenance history, and rent-payment
+  status (the driver's day/week payment record) — and nothing else in the tenant.
+  `Maintenance`/`RentCharge` denormalize the tag from their `Vehicle` at write time (same
+  pattern as the existing `driver_id` field), since Base44 RLS can't join across entities.
+- **RLS hardening:** every investor read branch requires the record's `owner_group_id` to
+  be non-null in addition to matching the user's, closing the "both sides unassigned/blank"
+  failure mode that this codebase's `validate:rls`/`audit:tenant-scope` guards exist to catch.
+- **New route `/investor/home`**, a single read-only panel (unit cards + maintenance list +
+  rent-charge list, reusing the existing `rentUtils` status helpers). `RequireAccess`
+  redirects an investor who lands on any staff route back to their own panel, mirroring the
+  existing driver redirect; investor has no write access anywhere.
+- **Admin UI:** assign `owner_group_id` inline on a user row (when role is Socio) and on the
+  Vehicle form ("Grupo de sociedad").
+- **Known gap:** the Reports-page quick-add shortcut (`RegistrarMenu`/`QuickIncomeModal`,
+  fed by the `fleetUnitMetrics` aggregate rather than raw `Vehicle` rows) doesn't yet
+  propagate `owner_group_id` — records created there won't appear in the investor's view
+  until backfilled or re-saved from the main Rentas/Maintenance pages. Fail-closed
+  (under-share, never over-share); documented in `docs/permissions_matrix.md`.
+- `validate:rls` passes (26 entities). The one pre-existing `audit:tenant-scope` finding
+  (`TenantLicense.update`) is unrelated to this change and was already present on `main`.
+
+### Documentation updates
+
+- `docs/permissions_matrix.md` updated to v1.30.0: new `investor` role, page-access column,
+  RLS summary rows, and a new "Investor Unit Scoping" section explaining the `owner_group_id`
+  design and why it's a scalar tag rather than a list/join.
+- `APP_VERSION` bumped to v1.30.0 in `src/lib/version.js` and `package.json`.
+
+### Deployment note
+
+This PR ships the `base44/entities/*.jsonc` schema changes and the frontend. The Base44
+backend schema must still be deployed separately (`base44 push`/dashboard sync) before the
+new role/fields take effect at runtime — the `.jsonc` files alone don't change the live
+backend.
+
+---
+
 ## [1.29.2] — 2026-07-28 — Automated security, tenant-isolation, permissions, and release-readiness re-audit
 
 ### Security audit result — no High/Critical findings; no code drift; two accepted risks reconfirmed

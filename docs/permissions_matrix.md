@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.29.2 | Updated 2026-07-28**
+**Version 1.30.0 | Updated 2026-07-30**
 
 ---
 
@@ -13,6 +13,7 @@
 | `dispatcher` | Fleet operator; configurable access | Yes |
 | `mechanic` | Workshop technician; configurable access | Yes |
 | `driver` | Driver; limited personal data access | Yes |
+| `investor` | Socio/inversionista; read-only, scoped to a subset of units via `owner_group_id` (see below) | Yes |
 
 ---
 
@@ -20,35 +21,36 @@
 
 All pages except the driver portal and help are protected by `RequireAccess` (which applies `can(role, page)` at the route level) or `RequireAppOwner` for platform-owner-only pages. Sidebar nav is additionally filtered by `can()`. As of v1.18.0, direct URL navigation to a restricted page shows an "Acceso restringido" screen — it is no longer silently accessible by URL.
 
-| Page | owner | admin | dispatcher | mechanic | driver | Enforcement |
-|------|-------|-------|-----------|---------|--------|-------------|
-| Dashboard (`/`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="dashboard"` + `permissions.js` `can()` |
-| Drivers (`/drivers`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="drivers"` |
-| Vehicles (`/vehicles`) | ✅ | ✅ | ✅ | ✅ | ❌ | `RequireAccess page="vehicles"` |
-| Rentas (`/rentas`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="rentas"` + `RentCharge` RLS |
-| Maintenance (`/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | `RequireAccess page="maintenance"` |
-| Parts/Inventory (embedded in `/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | Same as maintenance |
-| Financial (`/financial`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="financial"` |
-| Reportes (`/reports`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="reports"` + `fleetUnitMetrics` server function (owner/admin only) |
-| Expenses (`/expenses`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="expenses"` + `Expense.jsonc` RLS |
-| Alerts (`/alerts`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="alerts"` |
-| Location (`/location`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="location"` |
-| Messages (`/messages`) | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="messages"` |
-| Import (`/import`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="import"` |
-| Billing (`/billing`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="billing"` |
-| Admin (`/admin`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="admin"` |
-| Catalogs (`/catalogs`) | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="catalogs"` |
-| Links/Útiles (`/links`) | ✅ | ✅ | ✅ | ✅ | ❌ | `RequireAccess page="links"` |
-| Help/Centro de ayuda (`/help`) | ✅ | ✅ | ✅ | ✅ | ✅ | `RequireAccess page="help"` (all authenticated roles) |
-| Driver Home (`/driver/home`) | — | — | — | — | ✅ | `RequireAccess roles={['driver']}` |
-| Driver Trips (`/driver/trips`) | — | — | — | — | ✅ | `RequireAccess roles={['driver']}` |
-| Driver Profile (`/driver/profile`) | — | — | — | — | ✅ | `RequireAccess roles={['driver']}` |
-| Driver Messages (`/driver/messages`) | — | — | — | — | ✅ | `RequireAccess roles={['driver']}` |
-| GitHub (`/github`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` (gated on `APP_OWNER_EMAIL`) |
-| Supabase (`/supabase`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
-| Licenses (`/licenses`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
-| Support Tickets (`/tickets`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
-| Test Data (`/test-data`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
+| Page | owner | admin | dispatcher | mechanic | driver | investor | Enforcement |
+|------|-------|-------|-----------|---------|--------|----------|-------------|
+| Dashboard (`/`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="dashboard"` + `permissions.js` `can()` |
+| Drivers (`/drivers`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="drivers"` |
+| Vehicles (`/vehicles`) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="vehicles"` |
+| Rentas (`/rentas`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="rentas"` + `RentCharge` RLS |
+| Maintenance (`/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | `RequireAccess page="maintenance"` |
+| Parts/Inventory (embedded in `/maintenance`) | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | Same as maintenance |
+| Financial (`/financial`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | `RequireAccess page="financial"` |
+| Reportes (`/reports`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | `RequireAccess page="reports"` + `fleetUnitMetrics` server function (owner/admin only) |
+| Expenses (`/expenses`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | `RequireAccess page="expenses"` + `Expense.jsonc` RLS |
+| Alerts (`/alerts`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="alerts"` |
+| Location (`/location`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="location"` |
+| Messages (`/messages`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `RequireAccess page="messages"` |
+| Import (`/import`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | `RequireAccess page="import"` |
+| Billing (`/billing`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | `RequireAccess page="billing"` |
+| Admin (`/admin`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | `RequireAccess page="admin"` |
+| Catalogs (`/catalogs`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | `RequireAccess page="catalogs"` |
+| Links/Útiles (`/links`) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `RequireAccess page="links"` |
+| Help/Centro de ayuda (`/help`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `RequireAccess page="help"` (all authenticated roles) |
+| Driver Home (`/driver/home`) | — | — | — | — | ✅ | — | `RequireAccess roles={['driver']}` |
+| Driver Trips (`/driver/trips`) | — | — | — | — | ✅ | — | `RequireAccess roles={['driver']}` |
+| Driver Profile (`/driver/profile`) | — | — | — | — | ✅ | — | `RequireAccess roles={['driver']}` |
+| Driver Messages (`/driver/messages`) | — | — | — | — | ✅ | — | `RequireAccess roles={['driver']}` |
+| Investor Home (`/investor/home`) | — | — | — | — | — | ✅ | `RequireAccess roles={['investor']}`; read-only, scoped by `owner_group_id` (Vehicle/Maintenance/RentCharge RLS) |
+| GitHub (`/github`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` (gated on `APP_OWNER_EMAIL`) |
+| Supabase (`/supabase`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
+| Licenses (`/licenses`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
+| Support Tickets (`/tickets`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
+| Test Data (`/test-data`) | ✅ (app owner) | ❌ | ❌ | ❌ | ❌ | ❌ | `RequireAppOwner` |
 
 **Page protection enforcement (v1.18.0+):** `RequireAccess` (`src/components/RequireAccess.jsx`) applies the same `can(role, page)` logic at route render time. A user who navigates directly to a restricted URL sees a "Acceso restringido" screen. Backend/entity RLS provides the data-level protection regardless.
 
@@ -149,18 +151,18 @@ Admin has full view, create, edit, delete access to every module within their te
 | Entity | Create | Read | Update | Delete |
 |--------|--------|------|--------|--------|
 | TenantLicense | owner only | creator / owner_email / member | owner_email, or (own bound tenant + member + owner/admin)¹ | creator / owner_email |
-| User | owner/admin (via server fn) | own record / same tenant_id (owner,admin) | own record / same-tenant owner,admin | same-tenant owner,admin |
-| Vehicle | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher | owner, admin |
+| User | owner/admin (via server fn) | own record / same tenant_id (owner,admin) | own record / same-tenant owner,admin; `role` and `owner_group_id` are field-level owner/admin-only³ | same-tenant owner,admin |
+| Vehicle | owner, admin, dispatcher | same tenant_id + role, own assigned driver, or (investor + matching `owner_group_id`)³ | owner, admin, dispatcher | owner, admin |
 | Driver | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher (entity-level); self (`profile_id`) limited to `phone` only, field-level² | owner, admin |
 | Trip | (per RLS) | same tenant_id | (per RLS) | owner, admin |
-| RentCharge | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
+| RentCharge | owner, admin, dispatcher | same tenant_id + role, own driver_id, or (investor + matching `owner_group_id`)³ | owner, admin, dispatcher | owner, admin |
 | Alert | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | Message | sender (tenant-scoped) | same tenant_id + (role / own sender_id / broadcast channel / own driver channel) | creator / owner, admin, dispatcher | owner, admin |
 | Channel | owner, admin, dispatcher | same tenant_id + role, broadcast, or own driver_id | owner, admin, dispatcher | owner, admin |
 | FuelLog | (per entity RLS) | same tenant_id | (per RLS) | owner, admin |
 | Fine | (per entity RLS) | same tenant_id | (per RLS) | owner, admin |
 | InsuranceClaim | (per entity RLS) | same tenant_id | (per RLS) | owner, admin |
-| Maintenance | owner, admin, mechanic | same tenant_id | owner, admin, mechanic | owner, admin |
+| Maintenance | owner, admin, mechanic | same tenant_id + role, or (investor + matching `owner_group_id`)³ | owner, admin, mechanic | owner, admin |
 | Part | owner, admin, mechanic | same tenant_id | owner, admin, mechanic | owner, admin |
 | DriverDocument | owner, admin, dispatcher | same tenant_id + role or own driver_id | owner, admin, dispatcher | owner, admin |
 | DriverPrivateNote | owner, admin | same tenant_id | owner, admin | owner, admin |
@@ -172,11 +174,56 @@ Admin has full view, create, edit, delete access to every module within their te
 
 ¹ **Fixed v1.29.0 (A33):** the member+role update branch now also requires the record's own `id` to equal the caller's bound `data.tenant_id` — closes a cross-tenant escalation where a user who is owner/admin of their own tenant, but also listed in another tenant's `members[]`, could update that other tenant's license via a direct API call.
 ² **Fixed v1.29.0 (A34):** `full_name`, `license_no`, `license_expiry`, `background_check_date`, `rating`, `status`, `hire_date`, `photo_url`, license/INE/address-proof files, `referred_by_driver_id`, `referral_bonus_paid`, `referral_credit`, `profile_id`, `aval_name` are now field-level restricted to owner/admin/dispatcher; `ticket_number`/`requester_id`/`requester_email`/`tenant_name` on `SupportTicket` are now `write:false` (server-authoritative via `submitTicket`).
+³ **Added v1.30.0 — investor unit scoping.** `owner_group_id` is a free-text tag set by owner/admin: on a `User` (role `investor`) it names which "sociedad" that user belongs to; on a `Vehicle` it names which sociedad owns that unit. `Maintenance`/`RentCharge` denormalize the same tag from their `Vehicle` at write time (same pattern as `driver_id`), since Base44 RLS templates can't join across entities. Every investor read branch requires **both** `user_condition.role == "investor"` **and** `data.owner_group_id != null` on the record before comparing it to `{{user.data.owner_group_id}}` — this closes the "both sides blank" failure mode the JSON-schema-RLS class of bugs is prone to (an unassigned investor or an untagged unit must never match each other). See "Investor Unit Scoping" below.
 | Expense | owner, admin (write-gated by `write_access`) | same tenant_id (owner, admin) | owner, admin (write-gated) | owner, admin (write-gated) |
 | AppSession | any authenticated user (own row via `created_by_id`) | own row or service-role admin | own row or service-role admin | service-role admin only |
 | DashboardUnitPref | own row (`created_by_id`, tenant-scoped) | own row only | own row only | own row only |
 | UnitDayNote | owner, admin, dispatcher (write-gated) | same tenant_id (+ mechanic read) | owner, admin (write-gated) | owner, admin (write-gated) |
 | AcaciaReplayKey | service role only | service role only | service role only | service role only | Anti-replay nonce store for `acaciaControl`; no tenant_id (not tenant data), no app user (owner/admin/etc.) can read/write it — see below |
+
+---
+
+## Investor Unit Scoping (v1.30.0)
+
+Some tenants split ownership of their fleet across informal partnerships ("sociedades") —
+e.g. 8 of 11 units belong to the tenant owner and 3 belong to a different investor. The
+`investor` role gives that person read-only access to **only** their subset of units:
+unit status (`Vehicle`), maintenance history (`Maintenance`), and rent-payment status
+(`RentCharge`) — nothing else in the tenant (no drivers, messages, financials, other units).
+
+**Why a tag instead of a list/join:** Base44's JSON-schema RLS supports field-to-field
+equality/`$in`/`$nin`/`$ne` against **literal** values or a single `{{user.data.*}}`
+template, but not "entity field is a member of a dynamic array on the user record" or
+cross-entity joins (confirmed against the platform's own RLS reference examples — see
+`base44-cli/references/rls-examples.md` in the `claude-skills` toolbox repo). So instead of
+a many-to-many list, ownership is modeled the same way `Driver`↔`Vehicle` already is
+(`assigned_driver_id` / `driver_profile_id`): a scalar tag, `owner_group_id`, set on both
+sides by owner/admin.
+
+- **Setup (owner/admin only):** in Admin, set a member's role to `investor` and give them
+  an `owner_group_id` (free text, e.g. `"suegra"`). In Vehicles, set the same
+  `owner_group_id` on every unit that sociedad owns. A tenant can have any number of
+  distinct groups (one per sociedad); a unit belongs to at most one group.
+- **Enforcement:** `Vehicle`/`Maintenance`/`RentCharge` read RLS each add one `$and` branch:
+  `role == "investor"` AND `owner_group_id != null` (on the record) AND
+  `owner_group_id == {{user.data.owner_group_id}}`. The `!= null` guard is required —
+  without it, an investor who hasn't been assigned a group yet and a unit that hasn't
+  been tagged yet would both resolve to "empty" and match each other, exactly the class of
+  silent RLS bug this codebase's `validate:rls`/`audit:tenant-scope` scripts exist to catch.
+- **Denormalization:** `Maintenance.owner_group_id` and `RentCharge.owner_group_id` are
+  copied from their `Vehicle` at create/update time (`Rentas.jsx`, `MaintenancePage.jsx`,
+  `ManualChargeModal.jsx`) rather than looked up live, since RLS can't join. The Reports-page
+  quick-add shortcut (`RegistrarMenu`/`QuickIncomeModal`, fed by the `fleetUnitMetrics`
+  aggregate rather than raw `Vehicle` rows) does **not** yet propagate the tag — a
+  known, accepted gap: records created there simply won't appear in the investor's view
+  until backfilled or re-saved from the main Rentas/Maintenance pages, which is a
+  fail-closed (under-share, never over-share) omission.
+- **Write access:** `investor` has no write access to any of these entities — the role is
+  intentionally read-only, matching the ask (view unit status, maintenance, and rent/driver
+  payment status; not edit anything).
+- **UI:** `/investor/home` (`RequireAccess roles={['investor']}`) is the only route the role
+  can reach besides `/help`; `RequireAccess` redirects an investor who lands on any staff
+  route back to `/investor/home`, mirroring the existing driver redirect.
 
 ---
 
@@ -352,8 +399,10 @@ Security, code quality, tenant isolation, permissions, and release-readiness aud
 
 | File | Purpose |
 |------|---------|
-| `src/lib/permissions.js` | `ROLES`, `PAGE_PERMISSIONS`, `can()`, `isAdminOrOwner()`, `isOwner()`, `isDriver()` |
-| `src/components/RequireAccess.jsx` | Route-level guard: applies `can(role, page)` at render time (v1.18.0+) |
+| `src/lib/permissions.js` | `ROLES`, `PAGE_PERMISSIONS`, `can()`, `isAdminOrOwner()`, `isOwner()`, `isDriver()`, `isInvestor()` |
+| `src/lib/nav.js` | `INVESTOR_NAV`, `resolveHomeTarget()` → `/investor/home` for the investor role |
+| `src/pages/investor/InvestorHome.jsx` | Read-only investor panel: unit status, maintenance history, rent-payment status — scoped by `owner_group_id` |
+| `src/components/RequireAccess.jsx` | Route-level guard: applies `can(role, page)` at render time (v1.18.0+); redirects driver/investor off staff routes to their own home |
 | `src/components/RequireAppOwner.jsx` | Route-level guard for app-owner-only pages (Licenses, GitHub, Supabase, Tickets, TestData) |
 | `src/components/Layout.jsx` | Sidebar nav filtered by `can(user.role, page)` |
 | `src/components/admin/PermissionsPanel.jsx` | Granular per-module permissions UI + save to `TenantLicense.permissions_config` |

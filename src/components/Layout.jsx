@@ -8,9 +8,9 @@ import {
   LogOut, Menu, X, Bell, Shield, Search, HelpCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { can, isDriver as checkIsDriver } from '@/lib/permissions';
+import { can, isDriver as checkIsDriver, isInvestor as checkIsInvestor } from '@/lib/permissions';
 import { SUPPORT_URL } from '@/lib/license';
-import { NAV_GROUPS, DRIVER_NAV, PLATFORM_NAV, isNavItemActive } from '@/lib/nav';
+import { NAV_GROUPS, DRIVER_NAV, INVESTOR_NAV, PLATFORM_NAV, isNavItemActive } from '@/lib/nav';
 import { useMe, useAlerts, useMessages } from '@/hooks/useEntities';
 import ThemeToggle from '@/components/ThemeToggle';
 import CommandPalette from '@/components/CommandPalette';
@@ -127,6 +127,11 @@ export default function Layout() {
   const unreadCount = unreadMsgs.length;
 
   const isDriverRole = checkIsDriver(user?.role);
+  const isInvestorRole = checkIsInvestor(user?.role);
+  // Conductor y socio comparten la interfaz simplificada de sidebar/nav inferior
+  // (sin paleta de comandos ni contadores de staff), cada uno con su propia lista de nav.
+  const isSimplifiedRole = isDriverRole || isInvestorRole;
+  const simplifiedNav = isDriverRole ? DRIVER_NAV : INVESTOR_NAV;
   const handleLogout = () => base44.auth.logout();
 
   // Build grouped nav filtered by permissions
@@ -155,8 +160,8 @@ export default function Layout() {
 
       {/* Nav */}
       <nav className="flex-1 py-3 px-3 overflow-y-auto space-y-4">
-        {isDriverRole ? (
-          DRIVER_NAV.map(({ path, icon: Icon, label }) => (
+        {isSimplifiedRole ? (
+          simplifiedNav.map(({ path, icon: Icon, label }) => (
             <NavItem key={path} path={path} icon={Icon} label={label}
               active={isNavItemActive(path, location.pathname)} onClick={onLinkClick}
               alertCount={0} unreadCount={0} />
@@ -266,14 +271,16 @@ export default function Layout() {
             <LogoMark logoUrl={tenant?.logo_url} size="sm" />
             <span className="font-bold text-sm">Rumbo</span>
           </div>
-          <div className="relative">
-            <Link to={isDriverRole ? '/driver/messages' : '/alerts'}>
-              <Bell className="w-5 h-5 text-muted-foreground" />
-              {alertCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-critical rounded-full text-white text-xs flex items-center justify-center">{alertCount}</span>
-              )}
-            </Link>
-          </div>
+          {!isInvestorRole && (
+            <div className="relative">
+              <Link to={isDriverRole ? '/driver/messages' : '/alerts'}>
+                <Bell className="w-5 h-5 text-muted-foreground" />
+                {alertCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-critical rounded-full text-white text-xs flex items-center justify-center">{alertCount}</span>
+                )}
+              </Link>
+            </div>
+          )}
         </header>
 
         <main className="flex-1 overflow-y-auto">
@@ -281,10 +288,10 @@ export default function Layout() {
           {licenseInfo?.state === 'disabled' ? <LicenseDisabled info={licenseInfo} /> : <Outlet />}
         </main>
 
-        {/* Mobile bottom nav — driver only */}
-        {isDriverRole && (
+        {/* Mobile bottom nav — driver/investor simplified roles only */}
+        {isSimplifiedRole && (
           <nav className="lg:hidden flex border-t border-border bg-card shrink-0">
-            {DRIVER_NAV.map(({ path, icon: Icon, label }) => {
+            {simplifiedNav.map(({ path, icon: Icon, label }) => {
               const active = isNavItemActive(path, location.pathname);
               return (
                 <Link key={path} to={path}
@@ -299,7 +306,7 @@ export default function Layout() {
       </div>
 
       {/* Paleta de comandos (⌘K) — solo staff */}
-      {!isDriverRole && (
+      {!isSimplifiedRole && (
         <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} role={user?.role} isAppOwner={isAppOwner} />
       )}
     </div>

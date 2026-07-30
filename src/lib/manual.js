@@ -9,7 +9,7 @@
 import {
   Rocket, Users, Truck, Wrench, Banknote, DollarSign, Bell, MessageSquare,
   MapPin, FileUp, List, Link2, CreditCard, Shield, Smartphone, LifeBuoy,
-  SlidersHorizontal, Building2, Receipt,
+  SlidersHorizontal, Building2, Receipt, Handshake,
 } from 'lucide-react';
 
 export const MANUAL_SECTIONS = [
@@ -465,6 +465,16 @@ export const MANUAL_SECTIONS = [
         ],
       },
       {
+        title: 'Dar acceso a un socio/inversionista (solo sus unidades)',
+        steps: [
+          'Invita al socio con rol "Socio" (o cámbiaselo desde "Usuarios").',
+          'En su fila de usuario, asigna un "grupo de sociedad" (texto libre, ej. "suegra").',
+          'En "Vehículos", edita cada unidad de esa sociedad y pon el mismo texto en "Grupo de sociedad".',
+          'El socio, al entrar, solo verá el estado, mantenimientos y pagos de renta de esas unidades — nada más del tenant.',
+        ],
+        notes: ['Un vehículo pertenece a un solo grupo; puedes tener varios grupos distintos para distintas sociedades.'],
+      },
+      {
         title: 'Permisos por rol',
         steps: [
           'En "Permisos por rol", la pestaña Admin se muestra con todo habilitado (no configurable).',
@@ -511,6 +521,23 @@ export const MANUAL_SECTIONS = [
           'En "Perfil" el conductor ve sus datos y vehículo asignado.',
           'Pulsa "Editar" para actualizar su propio teléfono. Los demás datos los gestiona un administrador.',
         ],
+      },
+    ],
+  },
+  {
+    id: 'app-socio',
+    title: 'Panel del socio',
+    icon: Handshake,
+    intro: 'Interfaz de solo lectura para socios/inversionistas en /investor/home, acotada a sus unidades.',
+    topics: [
+      {
+        title: 'Mis unidades',
+        steps: [
+          'En "Mis unidades" el socio ve, de cada unidad suya, su estado, odómetro y vencimientos (seguro, inspección, registro, holograma).',
+          'Debajo, "Pagos de renta del chofer" muestra el cobro de cada periodo (día o semana) y si está pagado, parcial, pendiente o vencido.',
+          '"Mantenimientos" muestra el historial de servicio de esas unidades.',
+        ],
+        notes: ['Es una vista de solo lectura: el socio no puede crear, editar ni eliminar nada.'],
       },
     ],
   },

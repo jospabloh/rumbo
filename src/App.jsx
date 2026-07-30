@@ -30,6 +30,7 @@ import Import from './pages/Import';
 import DriverHome from './pages/driver/DriverHome';
 import DriverProfile from './pages/driver/DriverProfile';
 import DriverTrips from './pages/driver/DriverTrips';
+import InvestorHome from './pages/investor/InvestorHome';
 import GitHubPage from './pages/GitHubPage';
 import SupabasePage from './pages/SupabasePage';
 import Billing from './pages/Billing';
@@ -137,6 +138,7 @@ const AppShell = () => {
           <Route path="/driver/profile" element={<RequireAccess roles={['driver']}><DriverProfile /></RequireAccess>} />
           <Route path="/driver/trips" element={<RequireAccess roles={['driver']}><DriverTrips /></RequireAccess>} />
           <Route path="/driver/messages" element={<RequireAccess roles={['driver']}><Messages /></RequireAccess>} />
+          <Route path="/investor/home" element={<RequireAccess roles={['investor']}><InvestorHome /></RequireAccess>} />
           <Route path="/github" element={<RequireAppOwner><GitHubPage /></RequireAppOwner>} />
           <Route path="/supabase" element={<RequireAppOwner><SupabasePage /></RequireAppOwner>} />
           <Route path="/billing" element={<RequireAccess page="billing"><Billing /></RequireAccess>} />

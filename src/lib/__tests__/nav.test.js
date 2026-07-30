@@ -49,7 +49,7 @@ describe('accessibleNavItems', () => {
   });
 
   it('exposes Help to every role', () => {
-    for (const role of ['owner', 'admin', 'dispatcher', 'mechanic', 'driver']) {
+    for (const role of ['owner', 'admin', 'dispatcher', 'mechanic', 'driver', 'investor']) {
       expect(can(role, 'help')).toBe(true);
     }
     // and it shows up in the staff quick-nav
@@ -60,6 +60,10 @@ describe('accessibleNavItems', () => {
 describe('resolveHomeTarget', () => {
   it('sends drivers to their own interface', () => {
     expect(resolveHomeTarget('driver', { hasTenant: true })).toBe('/driver/home');
+  });
+
+  it('sends investors to their own interface', () => {
+    expect(resolveHomeTarget('investor', { hasTenant: true })).toBe('/investor/home');
   });
 
   it('shows the dashboard to staff with their own tenant', () => {
