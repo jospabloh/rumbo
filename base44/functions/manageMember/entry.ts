@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 /**
  * manageMember — el admin/owner de un tenant suspende, reactiva o quita a un usuario.

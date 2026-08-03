@@ -188,9 +188,6 @@
               "id": "{{user.data.tenant_id}}"
             },
             {
-              "data.members.email": "{{user.email}}"
-            },
-            {
               "$or": [
                 {
                   "user_condition": {
