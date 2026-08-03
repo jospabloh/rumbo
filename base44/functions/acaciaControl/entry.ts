@@ -6,7 +6,7 @@
 // `npx base44 secrets set`), then run the requested action with the service
 // role. Single channel for reads (license sync, usage) and writes (Fase 6).
 // Same file deploys to every app.
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 // Build marker — bumped to force a fresh deploy artifact. No functional effect.
 const ACACIA_CONTROL_BUILD = 2;

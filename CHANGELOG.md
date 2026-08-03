@@ -4,6 +4,30 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.30.1] — 2026-08-03 — Automated security, tenant-isolation, permissions, and release-readiness audit
+
+### Security audit result — no High/Critical findings; one recurring drift fixed, one dependency patched
+
+Full automated security, tenant-isolation, permissions, code quality, and release-readiness audit covering all changes since v1.30.0 (the investor/socio role) — a bot-authored `@base44/sdk` package bump (`^0.8.40` → `^0.8.41`) was the only commit since. No open, draft, or disconnected pull requests existed at audit start; no stale branches carried unmerged work.
+
+- **SDK version drift — FIXED (recurrence).** Frontend `@base44/sdk` had moved to `^0.8.41` while all 14 backend Deno functions remained pinned to `@0.8.40`. Re-aligned all 14 functions to `@0.8.41`. Same recurring pattern as A35/A41 — a frontend-only automated SDK bump not mirrored to backend functions.
+- **`brace-expansion` ReDoS (high) — FIXED.** Non-breaking transitive dedupe via `npm audit fix` (`1.1.16` → `1.1.18`); no `package.json` range changes.
+- **`react-router`/`react-router-dom` — accepted risk reconfirmed.** Same moderate open-redirect/SSR-hydration advisories as prior audits; still no non-breaking patch on the installed 6.x line (`6.30.4`, unchanged). Re-grepped every `navigate(...)`/`<Link to={...}>`/`useSearchParams`-adjacent call site — no redirect target is built from URL/query input.
+- **Remaining dev-tooling vulnerabilities (`vitest`/`vite`/`esbuild`/`eslint` chain) — reconfirmed dev-only**, no production exposure; same accepted-risk lineage since v1.24.0.
+- **`resolveTenant`, `generateAlerts`, `calculateCostPerKm`, `manageMember`, admin users list, `PermissionsPanel` save — spot-verified against source, all sound and unchanged**: tenant binding has no `all[0]`/first-match fallback risk; alerts and cost calculations are tenant-scoped and role-gated; admin user list is tenant-filtered; permissions panel persists to `TenantLicense.permissions_config` and reloads tenant context after save.
+- **`USER_MANUAL.md` date stamp — FIXED.** Displayed "Updated 2026-07-27" even though the v1.30.0 investor-role commit (2026-07-30) had already updated its content; the stamp just wasn't bumped. No user-facing behavior changed this pass — date reference corrected only.
+- Re-confirmed clean: no hardcoded secrets/API keys/tokens; tenant-isolation scoping across all server functions and entity RLS (`validate:rls` 26 entities, `audit:tenant-scope` — zero findings); route/page protection independent of UI hiding.
+- `validate:rls`, `audit:tenant-scope`, lint, typecheck, all 446 unit tests, and the production build all pass.
+
+### Documentation updates
+
+- `docs/permissions_matrix.md` updated to v1.30.1: recorded this audit's findings (A50–A52).
+- `USER_MANUAL.md`: no user-facing behavior changed this pass — date reference corrected to match its actual last content update.
+- `CHANGELOG.md` updated with this v1.30.1 entry.
+- `APP_VERSION` bumped to v1.30.1 in `src/lib/version.js` and `package.json`.
+
+---
+
 ## [1.30.0] — 2026-07-30 — Investor/socio role, scoped to a subset of units
 
 ### New: `investor` role — read-only, scoped by `owner_group_id`
