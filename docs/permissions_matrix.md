@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.30.0 | Updated 2026-07-30**
+**Version 1.30.1 | Updated 2026-08-03**
 
 ---
 
@@ -269,6 +269,20 @@ since it is never seen or used by tenant users or admins.
 ---
 
 ## Audit History
+
+### v1.30.1 Audit (2026-08-03)
+
+Full automated security, tenant-isolation, permissions, code quality, and release-readiness audit covering all changes since v1.30.0 (a bot-authored `@base44/sdk` bump was the only commit — no application logic changed). No open, draft, or disconnected pull requests found; no stale branches carried unmerged work at audit start.
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A50 | SDK version drift recurrence: frontend `@base44/sdk` moved to `^0.8.41` (bot-authored "Update base44 packages" commit) while all 14 backend Deno functions remained pinned to `@0.8.40`. Same root cause as A35/A41. | LOW/MEDIUM | **FIXED — all 14 functions re-pinned to `@0.8.41`** |
+| A51 | `npm audit`: `brace-expansion` (high, ReDoS) had a non-breaking transitive dedupe fix available. | HIGH (dev-only) | **FIXED — `npm audit fix` applied (`brace-expansion` 1.1.16→1.1.18), no `package.json` range changes** |
+| A52 | Re-confirmed clean: `resolveTenant` tenant-binding fallback (no `all[0]` risk); `generateAlerts`/`calculateCostPerKm` tenant scoping and role gating; admin users list tenant filtering; `PermissionsPanel` save persists + reloads tenant context; no hardcoded secrets/API keys/tokens. `react-router`/`react-router-dom` and the `vitest`/`vite`/`esbuild` dev chain re-confirmed as accepted risk (unchanged, no exploitable path / no production exposure). `validate:rls` (26 entities), `audit:tenant-scope` (zero findings), lint, typecheck, all 446 unit tests, and the production build all pass at HEAD. `USER_MANUAL.md` "Updated" date stamp was stale (2026-07-27) despite content already reflecting the v1.30.0 investor role — corrected. | — | **CONFIRMED CLEAN / CONFIRMED PASSING** |
+
+**No open, draft, or disconnected pull requests found** at audit start. No unresolved GitHub issues. Stale merged-branch leftovers (`fix/driver-access`, `fix/rls-canonical`, `fix/tenantlicense-residual-access`, `fix/tenantlicense-rls`, `chore/typecheck-clean`, `prod-readiness`) predate this audit lineage, carry no open PRs, and their content is already merged into `main` under separate merge commits — no action required.
+
+---
 
 ### v1.29.2 Audit (2026-07-28)
 

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 // Esta función es un explorador genérico de datos de Supabase para el dueño de la
 // app: la acción `list_tables` descubre dinámicamente las tablas del esquema
