@@ -52,15 +52,22 @@
       ],
       "title": "Estado",
       "default": "active"
+      // view_only agregado 2026-08-03: cierra el hueco de solo-lectura (día 8
+      // del ciclo unificado de licencias) que Rumbo no tenía — ver
+      // docs/superpowers/specs/2026-08-03-portfolio-license-lifecycle-design.md
+      // en acacia-mission-control. Committear este .jsonc NO cambia el
+      // schema desplegado en Base44 — falta el deploy real (Base44 MCP) y
+      // luego flippear `readOnlyStatus: null` -> `'view_only'` en
+      // acacia-mission-control/api/_lib/licenseControl.js para rumbo.
     },
     "max_vehicles": {
       "type": "number",
-      "title": "Veh\u00edculos m\u00e1ximos",
+      "title": "Vehículos máximos",
       "default": 5
     },
     "max_drivers": {
       "type": "number",
-      "title": "Conductores m\u00e1ximos",
+      "title": "Conductores máximos",
       "default": 5
     },
     "features": {
@@ -92,12 +99,12 @@
     "last_payment_at": {
       "type": "string",
       "format": "date",
-      "title": "\u00daltimo pago confirmado"
+      "title": "Último pago confirmado"
     },
     "renews_at": {
       "type": "string",
       "format": "date",
-      "title": "Fecha de renovaci\u00f3n"
+      "title": "Fecha de renovación"
     },
     "owner_email": {
       "type": "string",
@@ -105,7 +112,7 @@
     },
     "join_code": {
       "type": "string",
-      "title": "C\u00f3digo de uni\u00f3n del tenant"
+      "title": "Código de unión del tenant"
     },
     "notes": {
       "type": "string",
@@ -113,11 +120,11 @@
     },
     "permissions_config": {
       "type": "object",
-      "title": "Configuraci\u00f3n de permisos por rol"
+      "title": "Configuración de permisos por rol"
     },
     "settings": {
       "type": "object",
-      "title": "Configuraci\u00f3n de negocio del tenant (bono de referido, ventana de costo/km, etc.). Editable por owner/admin del tenant y por el platform owner v\u00eda licensesAdmin. Cada ajuste tiene un default en la app si no se personaliza."
+      "title": "Configuración de negocio del tenant (bono de referido, ventana de costo/km, etc.). Editable por owner/admin del tenant y por el platform owner vía licensesAdmin. Cada ajuste tiene un default en la app si no se personaliza."
     },
     "members": {
       "type": "array",
@@ -179,6 +186,9 @@
           "$and": [
             {
               "id": "{{user.data.tenant_id}}"
+            },
+            {
+              "data.members.email": "{{user.email}}"
             },
             {
               "$or": [

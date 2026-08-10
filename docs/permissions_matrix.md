@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.30.1 | Updated 2026-08-03**
+**Version 1.30.2 | Updated 2026-08-10**
 
 ---
 
@@ -270,6 +270,20 @@ since it is never seen or used by tenant users or admins.
 
 ## Audit History
 
+### v1.30.2 Audit (2026-08-10)
+
+Automated security, tenant-isolation, permissions, code quality, and release-readiness audit. Triggered by discovering `main`'s HEAD was an unreviewed, bot-authored commit pushed directly with no PR — no other commits or open/draft/disconnected PRs existed at audit start.
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A53 | `TenantLicense.update` RLS regression (recurrence of A33, second recurrence overall): a `base44-builder[bot]` commit ("Apply RLS security recommendations", pushed directly to `main`, no PR/review) removed the `data.members.email` branch from the tenant-scoped `$and` — the exact same regression already fixed once this same day (via PR #88). The live Base44-deployed schema (verified via `list_entity_schemas`, not just the repo) had the same gap, confirming this was exploitable in production, not only a CI/repo issue. `audit:tenant-scope` failed on `main` HEAD as a direct, correct result. | CRITICAL | **FIXED — branch restored in the repo and redeployed live via the Base44 schema API; verified byte-for-byte via `list_entity_schemas`; `audit:tenant-scope` passes again** |
+| A54 | Process root cause: `main` has no branch protection rule, which is how an automated bot commit (twice now) reached production without any PR or review. Not a code-level finding — no tool in this session's GitHub scope can configure branch protection. | — (process) | **Flagged for owner action — recommend requiring PR review on `main`, including for bot-authored commits** |
+| A55 | Re-confirmed clean, no drift since v1.30.1: `resolveTenant` tenant-binding, `generateAlerts`/`calculateCostPerKm` tenant scoping and role gating, admin users list tenant filtering, `PermissionsPanel` save/reload, no hardcoded secrets/API keys/tokens, SDK alignment (`@base44/sdk@0.8.41` frontend + all 14 backend functions). Every other `base44/entities/*.jsonc` file was checked against the same bot commit's diff — only `TenantLicense.jsonc` was touched. Permissions matrix, user manual, and role/permission model are unaffected by this fix — no user-facing behavior changed. | — | **CONFIRMED CLEAN** |
+
+**No open, draft, or disconnected pull requests found** at audit start. No unresolved GitHub issues.
+
+---
+
 ### v1.30.1 Audit (2026-08-03)
 
 Full automated security, tenant-isolation, permissions, code quality, and release-readiness audit covering all changes since v1.30.0 (a bot-authored `@base44/sdk` bump was the only commit — no application logic changed). No open, draft, or disconnected pull requests found; no stale branches carried unmerged work at audit start.
@@ -286,7 +300,7 @@ Full automated security, tenant-isolation, permissions, code quality, and releas
 
 ### v1.29.2 Audit (2026-07-28)
 
-Full re-run of the security, code quality, tenant-isolation, permissions, and release-readiness audit. No application commits landed since the v1.29.1 merge (HEAD unchanged at `83b22667`) — this pass re-verifies the codebase from a clean baseline rather than reviewing a diff.
+Full re-run of the security, tenant-isolation, permissions, code quality, and release-readiness audit. No application commits landed since the v1.29.1 merge (HEAD unchanged at `83b22667`) — this pass re-verifies the codebase from a clean baseline rather than reviewing a diff.
 
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
