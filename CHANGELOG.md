@@ -4,6 +4,17 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.30.2] — 2026-08-10 — Automated security audit: fixed a live cross-tenant RLS regression
+
+### Security audit result — one Critical finding, fixed and deployed live
+
+Automated security, tenant-isolation, permissions, code quality, and release-readiness audit. Triggered by discovering that `main`'s HEAD was an unreviewed, bot-authored commit pushed directly with no PR.
+
+- **CRITICAL — TenantLicense cross-tenant update RLS regression (recurrence #2) — FIXED, deployed live.** A `base44-builder[bot]` commit ("Apply RLS security recommendations", pushed directly to `main` with no PR/review) removed the `data.members.email` branch from `TenantLicense.jsonc`'s `rls.update` — the same regression already fixed twice before (v1.29.0 finding A33, and a same-day recurrence fixed via PR #88). The bot re-applied the identical incorrect recommendation a second time after being reverted once already. Verified the deployed Base44 schema (not just the repo) had the same gap — this was live in production, not only a CI/repo issue. Restored the branch and redeployed via the Base44 schema API; CI's `audit:tenant-scope` check (which exists specifically to catch this class of regression) now passes again.
+- **Root cause note (process, not code):** `main` has no branch protection, which is how an automated bot commit reached production without review twice. Recommend requiring PR review for pushes to `main`, including bot commits — flagged for owner action, not something fixable from this repo's code.
+- Re-confirmed clean (no drift since the v1.30.1 audit, whose findings still hold): `resolveTenant` tenant-binding, `generateAlerts`/`calculateCostPerKm` tenant scoping and role gating, admin users list tenant filtering, `PermissionsPanel` save/reload, no hardcoded secrets/API keys/tokens, SDK version alignment (frontend and all 14 backend functions on `@base44/sdk@0.8.41`).
+- No user-facing behavior change — permissions matrix and user manual content are unaffected; only the audit history and version are updated.
+
 ## [1.30.1] — 2026-08-03 — Automated security, tenant-isolation, permissions, and release-readiness audit
 
 ### Security audit result — no High/Critical findings; one recurring drift fixed, one dependency patched
