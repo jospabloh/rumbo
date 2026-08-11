@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTenant } from '@/lib/TenantContext';
-import { applyTenantColors } from '@/pages/TenantOnboarding';
+import { applyTenantColors } from '@/lib/palettes';
 import { LAST_PATH_KEY, shouldPersist, shouldRestore } from '@/lib/routePersistence';
 import {
   LogOut, Menu, X, Bell, Shield, Search, HelpCircle,

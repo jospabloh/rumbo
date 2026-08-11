@@ -18,26 +18,36 @@ export default function SupabasePage() {
   const [loading, setLoading] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [page, setPage] = useState(0);
+  const [error, setError] = useState('');
   const PAGE_SIZE = 20;
 
   useEffect(() => {
+    setError('');
     Promise.all([invoke('list_projects'), invoke('list_tables')]).then(([p, t]) => {
       setProjects(p.projects || []);
       const tableNames = (t.tables || []).map(r => r.table_name).filter(Boolean);
       setTables(tableNames);
-    }).finally(() => setLoading(false));
+    }).catch(() => setError('No se pudieron cargar las tablas de Supabase.'))
+      .finally(() => setLoading(false));
   }, []);
 
   const loadTable = async (tableName, pageNum = 0) => {
     setSelectedTable(tableName);
     setLoadingRows(true);
     setPage(pageNum);
-    const res = await invoke('read_table', { table: tableName, limit: PAGE_SIZE, offset: pageNum * PAGE_SIZE });
-    const data = res.data || [];
-    if (data.length > 0) setColumns(Object.keys(data[0]));
-    setRows(data);
-    setTotal(res.total);
-    setLoadingRows(false);
+    setError('');
+    try {
+      const res = await invoke('read_table', { table: tableName, limit: PAGE_SIZE, offset: pageNum * PAGE_SIZE });
+      const data = res.data || [];
+      if (data.length > 0) setColumns(Object.keys(data[0]));
+      setRows(data);
+      setTotal(res.total);
+    } catch {
+      setError('No se pudo cargar la tabla.');
+      setRows([]);
+    } finally {
+      setLoadingRows(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center items-center h-full p-8"><Spinner /></div>;
@@ -51,6 +61,8 @@ export default function SupabasePage() {
           {projects[0] && <p className="text-xs text-muted-foreground">Proyecto: {projects[0].name} · {tables.length} tablas</p>}
         </div>
       </div>
+
+      {error && <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2 mb-4">{error}</p>}
 
       {!selectedTable ? (
         <div className="space-y-2">
