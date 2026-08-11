@@ -4,6 +4,75 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.30.3] — 2026-08-11 — Automated security audit: fixed a cross-tenant AppSession RLS gap
+
+### Security audit result — one Critical finding, four more confirmed and fixed
+
+Automated security, tenant-isolation, permissions, code quality, and release-readiness
+audit (`audit/rumbo-full-review`). Three independent research passes (auth/session/
+injection/PII/rate-limiting; code quality/architecture; an independent backend
+cross-check of `docs/permissions_matrix.md` against the actual entity RLS, not
+trusting the doc's own prose) plus manual verification before every fix.
+
+- **CRITICAL — `AppSession.jsonc` cross-tenant exposure — FIXED.** RLS read
+  `user_condition:{role:"admin"}` — an ordinary role any tenant's admin holds —
+  where a service-role sentinel (as `AcaciaReplayKey.jsonc` already correctly used)
+  was clearly intended per the file's own comment. Since `AppSession` has no
+  `tenant_id` field, this granted every tenant's admin full read/update/delete
+  over every OTHER tenant's session rows (email, device, timestamps, force-revoke)
+  via a direct SDK call. Confirmed the `acaciaControl` bridge never relied on this
+  branch (it reads/writes via `base44.asServiceRole`, bypassing RLS entirely) —
+  tightened to `__service_role_only__` with no functional change to the bridge.
+- **HIGH — `DriverPrivateNote.jsonc` granted `dispatcher` access to an "admin
+  only" entity — FIXED.** Both this doc and the UI itself (`DriverDetail.jsx`:
+  "Notas privadas (solo admin)") have always said owner/admin only; RLS and the
+  frontend's `isAdmin` gate both actually allowed dispatcher. Removed dispatcher
+  from RLS; replaced the frontend gate with a dedicated `canManagePrivateNotes` check.
+- **CRITICAL (unconfirmed → closed) — systemic `tenant_id` tamper gap — FIXED.**
+  Of 23 entities with a `tenant_id` field, only `User.tenant_id` had field-level
+  `write:false`. Update RLS only checks a record's *existing* tenant_id, not what
+  a patch payload might try to change it to — same bug class as the historical
+  A33 `TenantLicense` fix, unaddressed everywhere else. Confirmed via grep that no
+  real code path ever sends `tenant_id` in an update payload, so closing it on all
+  21 remaining entities is zero-behavior-impact.
+- **MEDIUM — `joinTenant` had no rate limit — FIXED.** Added a persistent
+  per-user attempt counter (new `JoinAttempt` entity, service-role-only RLS,
+  mirrors `AcaciaReplayKey`'s anti-replay pattern): 10 attempts / 15 min.
+- **LOW — `githubRepos` built GitHub API URLs with no encoding — FIXED.** Added
+  segment-aware `encodeURIComponent` helpers across all 8 call sites.
+- **MEDIUM — driver-document uploads (license, INE, address-proof) had zero
+  client-side validation — FIXED for this path.** Added a shared, unit-tested
+  `validateUploadFile()` (extension allowlist + size cap) and wired it into
+  `DriverForm.jsx`'s document and photo handlers; the photo handler also gained
+  error handling it previously lacked. The remaining upload call sites (vehicle
+  docs, tenant logos, note attachments) should get the same treatment as a
+  fast-follow — the real enforcement is Base44's opaque `UploadFile` integration,
+  which this repo can't verify, so this is defense-in-depth, not a replacement.
+- **Code quality — FIXED.** `GitHubPage.jsx`/`SupabasePage.jsx` had no `.catch`
+  anywhere (silent failures on the pages most likely to actually fail); added
+  error state + banners. `Layout.jsx` (core, always-loaded) depended on
+  `TenantOnboarding.jsx` (a one-time wizard) for `applyTenantColors` — moved to
+  `src/lib/palettes.js` with 13 new unit tests (previously untestable). Removed
+  `ContinueAs.jsx`, a fully-built, zero-import dead component.
+- **`npm audit`: 5 → 0 vulnerabilities.** `react-router-dom` 6.30.4 → 7.18.2 and
+  `vitest` 2.1.9 → 4.1.10, both previously carried as accepted risk (A44/A45/A47/A48)
+  pending a major-version bump. No source changes required for either; full
+  route-tree usage re-verified (all v6/v7-compatible library-mode APIs) and the
+  full test/lint/typecheck/build suite re-confirmed green after both.
+- Re-confirmed clean: no hardcoded secrets/API keys/tokens; `resolveTenant`,
+  `generateAlerts`, `calculateCostPerKm`, `manageMember`, admin users list,
+  `PermissionsPanel` all sound and unchanged; `acaciaControl` HMAC/anti-replay/
+  entity-allowlist intact; all 7 `APP_OWNER_EMAIL`-gated functions match their
+  documented gate; no `eval`/`new Function`/unescaped `innerHTML`; SDK version
+  aligned (`@base44/sdk@0.8.41`) across frontend and all 14 backend functions.
+  `validate:rls` (27 entities, was 26), `audit:tenant-scope`, lint, typecheck,
+  all 463 unit tests (was 446; +17 new), and the production build all pass.
+- Also documented (not code changes): `docs/permissions_matrix.md` corrected a
+  stale "TenantLicense create: owner only" claim (RLS actually allows admin too;
+  real creation path is server-side regardless) and added a new accepted-risk
+  entry (G6) for `Catalog`/`UsefulLink`'s ungated `active:true` read branch —
+  low-sensitivity data, flagged for a consumer-read pass before restricting.
+
 ## [1.30.2] — 2026-08-10 — Automated security audit: fixed a live cross-tenant RLS regression
 
 ### Security audit result — one Critical finding, fixed and deployed live
