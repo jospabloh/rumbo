@@ -6,9 +6,20 @@
   // and sets revoked_at (sessions.revoke) to force a logout — the client checks
   // its own row each heartbeat and calls logout() when revoked.
   //
-  // RLS: service role (role:admin) has full access so the bridge can list/revoke;
-  // an end user only touches THEIR OWN rows, scoped by the built-in created_by_id
-  // (Base44 sets it on create — cannot be spoofed by a forged data.user_id).
+  // RLS: the acaciaControl bridge reads/writes via base44.asServiceRole, which
+  // bypasses RLS entirely — it never needs an app-level role branch here. An end
+  // user only touches THEIR OWN rows, scoped by the built-in created_by_id (Base44
+  // sets it on create — cannot be spoofed by a forged data.user_id). The service-
+  // role sentinel below (matching AcaciaReplayKey) exists only so this is never
+  // satisfiable by an ordinary app user; it is NOT what grants the bridge access.
+  //
+  // SECURITY FIX (audit/rumbo-full-review): this previously read
+  // `user_condition: { role: "admin" }` — a real, ordinary app-level role that
+  // ANY tenant's admin user holds. Since AppSession has no tenant_id field, that
+  // granted every tenant's admin full read/update/delete over every OTHER
+  // tenant's session rows (user_email, device, timestamps, and the ability to
+  // force-revoke another tenant's users) via a direct SDK call — a cross-tenant
+  // exposure with no legitimate use (the bridge never relied on this branch).
   "name": "AppSession",
   "type": "object",
   "properties": {
@@ -24,24 +35,24 @@
   "rls": {
     "create": {
       "$or": [
-        { "user_condition": { "role": "admin" } },
+        { "user_condition": { "role": "__service_role_only__" } },
         { "created_by_id": "{{user.id}}" }
       ]
     },
     "read": {
       "$or": [
-        { "user_condition": { "role": "admin" } },
+        { "user_condition": { "role": "__service_role_only__" } },
         { "created_by_id": "{{user.id}}" }
       ]
     },
     "update": {
       "$or": [
-        { "user_condition": { "role": "admin" } },
+        { "user_condition": { "role": "__service_role_only__" } },
         { "created_by_id": "{{user.id}}" }
       ]
     },
     "delete": {
-      "user_condition": { "role": "admin" }
+      "user_condition": { "role": "__service_role_only__" }
     }
   }
 }

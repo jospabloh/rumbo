@@ -9,7 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FormError } from '@/components/ui/form-error';
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/lib/imageUtils';
+import { validateUploadFile } from '@/lib/uploadValidation';
 import { driverSchema } from '@/lib/schemas';
+
+const DOC_UPLOAD_RULES = { extensions: ['.jpg', '.jpeg', '.png', '.pdf'], maxSizeMB: 10 };
+const PHOTO_UPLOAD_RULES = { extensions: ['.jpg', '.jpeg', '.png', '.webp', '.gif'], maxSizeMB: 10 };
 
 const DOCS = [
   { field: 'license_file_url', label: 'Licencia' },
@@ -46,17 +50,35 @@ export default function DriverForm({ driver, drivers = [], onSave, onClose }) {
   const handlePhoto = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const validationError = validateUploadFile(file, PHOTO_UPLOAD_RULES);
+    if (validationError) {
+      setUploadError(validationError);
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    setValue('photo_url', file_url);
-    setUploading(false);
+    setUploadError('');
+    try {
+      const compressed = await compressImage(file);
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
+      setValue('photo_url', file_url);
+    } catch (err) {
+      setUploadError('No se pudo subir la foto. Inténtalo de nuevo.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Documentos (licencia, INE, comprobante): se suben tal cual para preservar PDFs.
   const handleDocFile = async (field, e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const validationError = validateUploadFile(file, DOC_UPLOAD_RULES);
+    if (validationError) {
+      setUploadError(validationError);
+      e.target.value = '';
+      return;
+    }
     setUploadingField(field);
     setUploadError('');
     try {

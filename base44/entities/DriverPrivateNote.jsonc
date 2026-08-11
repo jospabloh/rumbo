@@ -1,10 +1,18 @@
 {
+  // Owner/admin only — a note is deliberately "private" (HR-sensitive content
+  // about a driver, kept out of the dispatcher's operational view). The UI
+  // (src/components/drivers/DriverDetail.jsx) has always labeled this section
+  // "solo admin" and docs/permissions_matrix.md has always documented it as
+  // owner/admin only; RLS previously also granted the dispatcher role create/
+  // read/update access here, contradicting both. Fixed (audit/rumbo-full-review)
+  // to match the documented/labeled intent — delete was already owner/admin only.
   "name": "DriverPrivateNote",
   "type": "object",
   "properties": {
     "tenant_id": {
       "type": "string",
-      "title": "Tenant"
+      "title": "Tenant",
+      "rls": { "write": false }
     },
     "driver_id": {
       "type": "string",
@@ -40,11 +48,6 @@
               "user_condition": {
                 "role": "admin"
               }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
             }
           ]
         },
@@ -71,11 +74,6 @@
               "user_condition": {
                 "role": "admin"
               }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
             }
           ]
         }
@@ -96,11 +94,6 @@
             {
               "user_condition": {
                 "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
               }
             }
           ]

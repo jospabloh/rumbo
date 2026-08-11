@@ -24,16 +24,21 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
   useEffect(() => {
     base44.auth.me().then(setUser);
     base44.entities.DriverDocument.filter({ driver_id: driver.id }).then(setDocs);
-    // Only admins/dispatchers can see private notes
     base44.auth.me().then(u => {
       if (u?.role !== 'driver') {
-        base44.entities.DriverPrivateNote.filter({ driver_id: driver.id }).then(setNotes);
         base44.entities.User.list().then(setAppUsers);
+      }
+      // Private notes are owner/admin only — RLS enforces this too, but avoid
+      // even attempting the fetch for a role that would just get an empty/
+      // denied result back.
+      if (u?.role === 'owner' || u?.role === 'admin') {
+        base44.entities.DriverPrivateNote.filter({ driver_id: driver.id }).then(setNotes);
       }
     });
   }, [driver.id]);
 
   const isAdmin = user?.role !== 'driver';
+  const canManagePrivateNotes = user?.role === 'owner' || user?.role === 'admin';
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
@@ -236,8 +241,8 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
         </div>
       )}
 
-      {/* Private notes — admin only */}
-      {isAdmin && (
+      {/* Private notes — owner/admin only (not dispatcher; RLS enforces this too) */}
+      {canManagePrivateNotes && (
         <div className="bg-card border border-border rounded-xl p-4">
           <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
             <Lock className="w-4 h-4 text-warning" />Notas privadas <span className="text-xs text-muted-foreground font-normal">(solo admin)</span>
