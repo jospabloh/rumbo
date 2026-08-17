@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.30.2 | Updated 2026-08-10**
+**Version 1.30.3 | Updated 2026-08-11**
 
 ---
 
@@ -127,6 +127,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | Fleet unit metrics (utilidad/ranking/pronóstico) | admin, owner | `fleetUnitMetrics` server function | 403 for dispatcher/mechanic/driver — surfaces `Expense`/revenue data, stricter than cost-per-km |
 | Rent balance carryover | admin, owner, dispatcher | `Rentas.jsx` `generatePeriodCharges` client logic + `RentCharge`/`Alert` RLS | Rolls a unit's unpaid rent into the next period's charge; raises an `Alert` (`entity_type: 'rent_balance'`) |
 | Submit support ticket | any authenticated tenant user | `submitTicket` server function | Creates SupportTicket + sends email confirmation; runs with service role so write-blocked tenants can still submit |
+| Join tenant by code | any authenticated user (enters as `driver`, minimum privilege) | `joinTenant` server function | Rate-limited v1.30.3: 10 attempts / 15 min / user (`JoinAttempt` ledger), defense-in-depth on top of the 32⁶ ≈ 1.07B code space |
 | View/manage all support tickets | app owner only | `ticketsAdmin` server function + `/tickets` page (`RequireAppOwner`) | Cross-tenant; gated on `APP_OWNER_EMAIL` |
 | View all tenants (SuperAdmin) | app owner only | `Admin.jsx` `isOwner()` check | SuperAdminPanel visible only to owner |
 | Manage license plan/status | app owner only | `licensesAdmin` server function + `SuperAdminPanel.jsx` | Gated on `APP_OWNER_EMAIL` |
@@ -150,7 +151,7 @@ Admin has full view, create, edit, delete access to every module within their te
 
 | Entity | Create | Read | Update | Delete |
 |--------|--------|------|--------|--------|
-| TenantLicense | owner only | creator / owner_email / member | owner_email, or (own bound tenant + member + owner/admin)¹ | creator / owner_email |
+| TenantLicense | owner, admin⁴ | creator / owner_email / member | owner_email, or (own bound tenant + member + owner/admin)¹ | creator / owner_email |
 | User | owner/admin (via server fn) | own record / same tenant_id (owner,admin) | own record / same-tenant owner,admin; `role` and `owner_group_id` are field-level owner/admin-only³ | same-tenant owner,admin |
 | Vehicle | owner, admin, dispatcher | same tenant_id + role, own assigned driver, or (investor + matching `owner_group_id`)³ | owner, admin, dispatcher | owner, admin |
 | Driver | owner, admin, dispatcher | same tenant_id | owner, admin, dispatcher (entity-level); self (`profile_id`) limited to `phone` only, field-level² | owner, admin |
@@ -175,11 +176,14 @@ Admin has full view, create, edit, delete access to every module within their te
 ¹ **Fixed v1.29.0 (A33):** the member+role update branch now also requires the record's own `id` to equal the caller's bound `data.tenant_id` — closes a cross-tenant escalation where a user who is owner/admin of their own tenant, but also listed in another tenant's `members[]`, could update that other tenant's license via a direct API call.
 ² **Fixed v1.29.0 (A34):** `full_name`, `license_no`, `license_expiry`, `background_check_date`, `rating`, `status`, `hire_date`, `photo_url`, license/INE/address-proof files, `referred_by_driver_id`, `referral_bonus_paid`, `referral_credit`, `profile_id`, `aval_name` are now field-level restricted to owner/admin/dispatcher; `ticket_number`/`requester_id`/`requester_email`/`tenant_name` on `SupportTicket` are now `write:false` (server-authoritative via `submitTicket`).
 ³ **Added v1.30.0 — investor unit scoping.** `owner_group_id` is a free-text tag set by owner/admin: on a `User` (role `investor`) it names which "sociedad" that user belongs to; on a `Vehicle` it names which sociedad owns that unit. `Maintenance`/`RentCharge` denormalize the same tag from their `Vehicle` at write time (same pattern as `driver_id`), since Base44 RLS templates can't join across entities. Every investor read branch requires **both** `user_condition.role == "investor"` **and** `data.owner_group_id != null` on the record before comparing it to `{{user.data.owner_group_id}}` — this closes the "both sides blank" failure mode the JSON-schema-RLS class of bugs is prone to (an unassigned investor or an untagged unit must never match each other). See "Investor Unit Scoping" below.
+⁴ `admin` create access is a direct-SDK-call defense-in-depth branch — the real creation path is server-side via `createTenant` (service role, cryptographic join code, duplicate prevention). `tenant_id` doesn't apply to `TenantLicense` (the record *is* the tenant), so this isn't a cross-tenant create — see `audit-tenant-scope.mjs`'s create-exemption rule for identity-creation entities.
+⁵ **Fixed v1.30.3 (A56) — was a cross-tenant exposure.** RLS previously read `user_condition:{role:"admin"}` for the service-role branch — an ordinary role any tenant's admin holds, not a service-role sentinel. Since `AppSession` has no `tenant_id` field, that granted every tenant's admin full access to every *other* tenant's session rows. Now `user_condition:{role:"__service_role_only__"}` (same sentinel as `AcaciaReplayKey`), matching what was actually intended: the `acaciaControl` bridge reads/writes via `base44.asServiceRole`, which bypasses RLS entirely, so it never needed — and never used — the old `admin` branch.
 | Expense | owner, admin (write-gated by `write_access`) | same tenant_id (owner, admin) | owner, admin (write-gated) | owner, admin (write-gated) |
-| AppSession | any authenticated user (own row via `created_by_id`) | own row or service-role admin | own row or service-role admin | service-role admin only |
+| AppSession | own row (via `created_by_id`) or service-role⁵ | own row or service-role⁵ | own row or service-role⁵ | service-role only |
 | DashboardUnitPref | own row (`created_by_id`, tenant-scoped) | own row only | own row only | own row only |
 | UnitDayNote | owner, admin, dispatcher (write-gated) | same tenant_id (+ mechanic read) | owner, admin (write-gated) | owner, admin (write-gated) |
 | AcaciaReplayKey | service role only | service role only | service role only | service role only | Anti-replay nonce store for `acaciaControl`; no tenant_id (not tenant data), no app user (owner/admin/etc.) can read/write it — see below |
+| JoinAttempt | service role only | service role only | service role only | service role only | Rate-limit ledger for `joinTenant` — added v1.30.3 (A56), same service-role-only pattern as `AcaciaReplayKey` |
 
 ---
 
@@ -265,10 +269,35 @@ since it is never seen or used by tenant users or admins.
 | G3 | `TenantLicense` read RLS allowed any `admin` to read all TenantLicenses — cross-tenant license/PII exposure | ~~LOW~~ | **FIXED v1.4.0 — read scoped to creator / owner_email / members.email; invites now populate members[]** |
 | G4 | New users invited but not yet logged in lack `tenant_id` in their profile — they may not appear in tenant user lists immediately | LOW | **Accepted — resolves automatically on first login via `resolveTenant`** |
 | G5 | License lapse (`readonly`/`disabled`) was enforced **client-side only** — an expired tenant could still write via the SDK directly | ~~MEDIUM~~ | **FIXED v1.11.0 — server-authoritative `User.write_access` (set by `resolveTenant`) + `user_condition: { write_access: "enabled" }` on create/update/delete RLS of all operational entities. Reads stay allowed (read-only). Freshness: recomputed on each `resolveTenant` call (app load + 15-min revalidation + focus).** |
+| G6 | `Catalog`/`UsefulLink` `read` RLS has an `{"data.active":true}` branch with no role gate — any tenant role (including driver/investor, both UI-blocked from `/links`) can read active catalog/link rows via a direct SDK call | LOW | **Accepted — low-sensitivity data (link labels/URLs, catalog item names), not PII. Flagged v1.30.3 (A57), not changed this pass: tightening the read rule risks breaking a legitimate not-yet-audited caller (e.g. a driver-facing screen reading links directly rather than through `/links`) without a way to verify that live in this environment. Needs a source read of every `Catalog`/`UsefulLink` consumer before restricting.** |
 
 ---
 
 ## Audit History
+
+### v1.30.3 Audit (2026-08-11)
+
+Full automated security/tenant-isolation/permissions/code-quality/release-readiness
+audit (`audit/rumbo-full-review`). Three independent research passes (auth/session/
+injection/PII/rate-limiting; code quality/architecture; an independent backend
+cross-check of this matrix against the actual `base44/entities/*.jsonc` RLS, not
+trusting the matrix's own prose) plus manual verification before every fix below.
+No open, draft, or disconnected pull requests existed at audit start.
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A56 | `AppSession.jsonc` cross-tenant exposure: RLS used `user_condition:{role:"admin"}` — an ordinary role any tenant's admin holds — where a service-role sentinel (as `AcaciaReplayKey.jsonc` already correctly used) was clearly intended per the file's own comment ("service role (role:admin)"). `AppSession` has no `tenant_id` field, so this granted every tenant's admin full read/update/delete over every OTHER tenant's session rows (email, device, timestamps, force-revoke) via a direct SDK call. Confirmed the `acaciaControl` bridge never relied on this branch (reads/writes via `base44.asServiceRole`, which bypasses RLS entirely) and no in-app UI reads other users' sessions (only `SessionHeartbeat.jsx`, self-scoped) — so this was purely unintended, no legitimate caller depended on it. | CRITICAL | **FIXED — all 4 ops now `user_condition:{role:"__service_role_only__"}`; `validate:rls`/`audit:tenant-scope`/tests/build all pass** |
+| A57 | `DriverPrivateNote.jsonc` granted `dispatcher` create/read/update access to an entity both this matrix and the UI itself (`DriverDetail.jsx`: "Notas privadas (solo admin)") have always documented/labeled owner/admin only. The frontend's own gate (`isAdmin = role !== 'driver'`) was equally over-broad — it includes dispatcher. Also flagged this pass: `Catalog`/`UsefulLink` `read` RLS has an ungated `active:true` branch (see Known Gaps G6, not fixed — low sensitivity, needs a consumer-read pass first); `TenantLicense.create` RLS actually allows `admin` (not "owner only" as this matrix previously stated) — doc-only correction, real creation path is server-side via `createTenant` regardless. | HIGH | **FIXED (DriverPrivateNote) — dispatcher removed from all 3 RLS branches; `DriverDetail.jsx` gate replaced with a dedicated `canManagePrivateNotes` check. Doc corrections applied for the other two.** |
+| A58 | Systemic: of 23 entities with a `tenant_id` field, only `User.tenant_id` had field-level `rls.write:false`. Entity-level update RLS only checks the record's *existing* `tenant_id`, not what a patch payload might try to change it to — the same bug class as A33 (fixed only for `TenantLicense.id`), unaddressed everywhere else. Unconfirmed whether Base44 re-validates RLS against the post-patch document (which would neutralize this) — treated as an open question per this audit's "unconfirmed isolation is Critical" standard, not a confirmed exploit. Grepped every `.update()` call in `src/` and `base44/functions/`: none ever sends `tenant_id` in an update payload, so closing it has zero behavior impact on any real code path. | CRITICAL (unconfirmed → closed) | **FIXED — added `rls.write:false` on `tenant_id` to all 21 remaining entities that have the field, mirroring the pattern already proven safe on `User.tenant_id`** |
+| A59 | `joinTenant` had no attempt counter on its join-code lookup — a tenant-boundary-crossing surface reachable by any authenticated user. The 32⁶ ≈ 1.07B code space makes blind brute force impractical on its own; this is defense-in-depth in case that assumption is ever violated (weaker codes later, or an attacker controlling many accounts). | MEDIUM | **FIXED — new `JoinAttempt` entity (service-role-only RLS, mirrors `AcaciaReplayKey`'s persistent-store pattern): 10 attempts / 15 min / user, stale rows pruned** |
+| A60 | `githubRepos/entry.ts` built GitHub API URLs by string-concatenating `owner`/`repo`/`path`/`branch` with no encoding. Owner-only endpoint (bounded impact — worst case is the owner's own request shaping extra query params against their own GitHub token) but still a real gap. | LOW | **FIXED — `ghSeg()`/`ghPath()` encoding helpers added, applied to all 8 call sites** |
+| A61 | `DriverForm.jsx`'s driver-document uploads (license, INE, address-proof — real PII documents) had zero client-side validation of any kind ("se suben tal cual para preservar PDFs" — by design, to not run PDFs through the image compressor) and the photo-upload handler had no error handling. The real enforcement is Base44's opaque `UploadFile` platform integration, which this repo can't verify. | MEDIUM | **FIXED for this path — shared `validateUploadFile()` (extension allowlist + size cap, `src/lib/uploadValidation.js`, 9 unit tests) wired into both handlers; try/catch added to the photo handler. Scoped to the most sensitive path this pass — vehicle documents, tenant logos, and note attachments should get the same treatment as a fast-follow.** |
+| A62 | Code quality: `GitHubPage.jsx` and `SupabasePage.jsx` (external-integration pages, most likely to actually fail) had no `.catch` anywhere — a rejected call left the page silently empty or `loadingRows` stuck `true` forever. `Layout.jsx` (core, always-loaded) imported `applyTenantColors` from `TenantOnboarding.jsx` (a one-time onboarding wizard page). `ContinueAs.jsx` was a fully-built, zero-import dead component duplicating `Login.jsx`. `npm audit`: react-router (moderate, open-redirect/SSR-hydration) and the vitest/vite/esbuild dev chain (moderate/high/critical) had been carried as accepted risk since A44/A45/A47/A48 pending major-version bumps. | — | **FIXED — error state + banner added to both pages; `applyTenantColors`/`hexToHsl` moved to `src/lib/palettes.js` (+13 tests, previously untestable); `ContinueAs.jsx` removed; `react-router-dom` 6.30.4→7.18.2 and `vitest` 2.1.9→4.1.10 upgraded (`npm audit`: 5 vulnerabilities → 0), no source changes required, full route-tree/test coverage re-verified green after both** |
+| A63 | Re-confirmed clean: no hardcoded secrets/API keys/tokens; `resolveTenant`/`generateAlerts`/`calculateCostPerKm`/`manageMember`/admin-users-list/`PermissionsPanel` all sound and unchanged; `acaciaControl` HMAC verification, timing-safe compare, anti-replay store, entity allowlist all intact; all 7 `APP_OWNER_EMAIL`-gated functions match their documented gate; `supabaseData`'s PostgREST query building is regex-allowlisted and `encodeURIComponent`-escaped (exceeds, not just matches, the doc's claim); no `eval`/`new Function`/unescaped `innerHTML`; SDK version aligned (`@base44/sdk@0.8.41`) across frontend and all 14 backend functions. `validate:rls` (27 entities, was 26), `audit:tenant-scope`, lint, typecheck, all 463 unit tests (was 446; +17 new), and the production build all pass at HEAD. | — | **CONFIRMED CLEAN / CONFIRMED PASSING** |
+
+**No open, draft, or disconnected pull requests found** at audit start. No unresolved GitHub issues.
+
+---
 
 ### v1.30.2 Audit (2026-08-10)
 
@@ -438,7 +467,7 @@ Security, code quality, tenant isolation, permissions, and release-readiness aud
 | `src/pages/Admin.jsx` | Admin page access guard (`isAdminOrOwner`) + member management |
 | `src/pages/Billing.jsx` | Billing page access guard (`isAdminOrOwner`) |
 | `src/lib/TenantContext.jsx` | Tenant resolution; revalidates every 15 min + on tab focus |
-| `base44/entities/*.jsonc` | Entity-level RLS rules — all 21 entities have tenant_id-scoped RLS |
+| `base44/entities/*.jsonc` | Entity-level RLS rules — 27 entities total; 23 have a `tenant_id` field, all field-level `write:false` since v1.30.3 (A58) so an update payload can't repoint an existing record at another tenant, even post-entity-gate; the other 4 (`TenantLicense`, `AppSession`, `AcaciaReplayKey`, `JoinAttempt`) are scoped by identity/service-role instead |
 | `base44/entities/User.jsonc` | RLS: tenant-scoped read, role-gated update, server-authoritative fields (write:false) |
 | `base44/functions/resolveTenant/entry.ts` | Source of truth for tenant binding, write_access, driver_profile_id |
 | `base44/functions/generateAlerts/entry.ts` | Role guard: admin/owner only; tenant-scoped |
@@ -451,7 +480,8 @@ Security, code quality, tenant isolation, permissions, and release-readiness aud
 | `base44/functions/supabaseData/entry.ts` | Supabase data access — gated on `APP_OWNER_EMAIL` |
 | `base44/functions/githubRepos/entry.ts` | GitHub access — gated on `APP_OWNER_EMAIL` |
 | `base44/functions/createTenant/entry.ts` | Tenant creation with cryptographic join code; prevents duplicates |
-| `base44/functions/joinTenant/entry.ts` | Join by code — minimum privilege (driver role); blocked for cancelled/suspended tenants |
+| `base44/functions/joinTenant/entry.ts` | Join by code — minimum privilege (driver role); blocked for cancelled/suspended tenants; rate-limited since v1.30.3 |
+| `base44/entities/JoinAttempt.jsonc` | Rate-limit ledger for `joinTenant` — service-role-only RLS, same pattern as `AcaciaReplayKey` |
 | `base44/functions/createTestData/entry.ts` | Seeds demo/test data — gated on `APP_OWNER_EMAIL` |
 | `base44/functions/acaciaControl/entry.ts` | ACACIA Mission Control admin bridge — HMAC-signature-gated, no app user/tenant session; entity allowlist limits blast radius to `TenantLicense`/`SupportTicket`/`AppSession` |
 | `base44/entities/AcaciaReplayKey.jsonc` | Anti-replay nonce store for `acaciaControl` — service-role-only RLS on all operations |

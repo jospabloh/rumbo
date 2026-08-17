@@ -4,7 +4,8 @@
   "properties": {
     "tenant_id": {
       "type": "string",
-      "title": "Tenant"
+      "title": "Tenant",
+      "rls": { "write": false }
     },
     "category": {
       "type": "string",

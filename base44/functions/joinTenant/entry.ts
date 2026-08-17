@@ -20,9 +20,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *   - El owner de la app no se une a tenants por código (gestiona licencias).
  *   - tenant_id / write_access del perfil se persisten server-side (write:false en RLS),
  *     consistente con resolveTenant.
+ *   - Rate limit (audit/rumbo-full-review): sin él, un atacante autenticado podía
+ *     probar códigos sin límite. El espacio de códigos (32^6 ≈ 1.07 mil millones)
+ *     hace el fuerza-bruta impráctico por sí solo, pero esto añade una capa de
+ *     defensa (JoinAttempt, ledger persistente — ver ese archivo) por si el
+ *     espacio de códigos cambia o un atacante controla muchas cuentas.
  */
 
 const DEFAULT_JOIN_ROLE = 'driver';
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 min
+const RATE_LIMIT_MAX_ATTEMPTS = 10; // per user, per window
 
 function normalizeCode(raw: string): string {
   if (!raw) return '';
@@ -36,6 +43,18 @@ function isJoinable(tenant: any): boolean {
   // Bloquea unión a tenants apagados por el owner de la app.
   if (tenant.status === 'cancelled' || tenant.status === 'suspended' || tenant.status === 'expired') return false;
   return true;
+}
+
+// Borra intentos fuera de la ventana — igual que pruneReplayStore en acaciaControl,
+// mantiene la entidad chica. Best-effort: si falla, el rate limit sigue funcionando
+// (solo se acumulan filas de más, no se abre el candado).
+async function pruneOldAttempts(svc: any, now: number): Promise<void> {
+  try {
+    const stale = await svc.entities.JoinAttempt.filter({ attempted_at: { $lt: now - RATE_LIMIT_WINDOW_MS } });
+    for (const row of stale) {
+      try { await svc.entities.JoinAttempt.delete(row.id); } catch { /* best-effort cleanup */ }
+    }
+  } catch { /* best-effort cleanup */ }
 }
 
 Deno.serve(async (req) => {
@@ -52,6 +71,19 @@ Deno.serve(async (req) => {
 
     const email = (user.email || '').toLowerCase();
     const svc = base44.asServiceRole;
+
+    // Rate limit: cuenta los intentos recientes de ESTE usuario antes de tocar el
+    // código o escanear tenants. Se registra el intento aunque el código termine
+    // siendo inválido — es la búsqueda por código lo que se limita, no solo los
+    // uniones exitosas.
+    const now = Date.now();
+    await pruneOldAttempts(svc, now);
+    const attempts = await svc.entities.JoinAttempt.filter({ user_id: user.id });
+    const recentAttempts = attempts.filter((a: any) => now - a.attempted_at < RATE_LIMIT_WINDOW_MS);
+    if (recentAttempts.length >= RATE_LIMIT_MAX_ATTEMPTS) {
+      return Response.json({ error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' }, { status: 429 });
+    }
+    await svc.entities.JoinAttempt.create({ user_id: user.id, attempted_at: now });
 
     // El owner de la app gestiona licencias, no se une por código.
     const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();

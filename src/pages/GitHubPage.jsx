@@ -18,42 +18,61 @@ export default function GitHubPage() {
   const [ghUser, setGhUser] = useState(null);
   const [newIssue, setNewIssue] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    setError('');
     Promise.all([invoke('list_repos'), invoke('get_user')]).then(([r, u]) => {
       setRepos(r.repos || []);
       setGhUser(u.user);
-    }).finally(() => setLoading(false));
+    }).catch(() => setError('No se pudieron cargar los repositorios de GitHub.'))
+      .finally(() => setLoading(false));
   }, []);
 
   const selectRepo = async (repo) => {
     setSelectedRepo(repo);
     setView('commits');
     setItems([]);
-    const res = await invoke('list_commits', { owner: repo.owner.login, repo: repo.name });
-    setItems(res.commits || []);
+    setError('');
+    try {
+      const res = await invoke('list_commits', { owner: repo.owner.login, repo: repo.name });
+      setItems(res.commits || []);
+    } catch {
+      setError('No se pudieron cargar los commits.');
+    }
   };
 
   const loadView = async (v) => {
     setView(v);
     setItems([]);
+    setError('');
     const { owner: { login }, name } = selectedRepo;
-    let res;
-    if (v === 'commits') res = await invoke('list_commits', { owner: login, repo: name });
-    else if (v === 'issues') res = await invoke('list_issues', { owner: login, repo: name });
-    else if (v === 'pulls') res = await invoke('list_pulls', { owner: login, repo: name });
-    else if (v === 'files') res = await invoke('list_contents', { owner: login, repo: name });
-    setItems(res?.commits || res?.issues || res?.pulls || res?.contents || []);
+    try {
+      let res;
+      if (v === 'commits') res = await invoke('list_commits', { owner: login, repo: name });
+      else if (v === 'issues') res = await invoke('list_issues', { owner: login, repo: name });
+      else if (v === 'pulls') res = await invoke('list_pulls', { owner: login, repo: name });
+      else if (v === 'files') res = await invoke('list_contents', { owner: login, repo: name });
+      setItems(res?.commits || res?.issues || res?.pulls || res?.contents || []);
+    } catch {
+      setError('No se pudo cargar la información.');
+    }
   };
 
   const createIssue = async () => {
     if (!newIssue?.title) return;
     setSaving(true);
+    setError('');
     const { owner: { login }, name } = selectedRepo;
-    await invoke('create_issue', { owner: login, repo: name, title: newIssue.title, body: newIssue.body });
-    setNewIssue(null);
-    await loadView('issues');
-    setSaving(false);
+    try {
+      await invoke('create_issue', { owner: login, repo: name, title: newIssue.title, body: newIssue.body });
+      setNewIssue(null);
+      await loadView('issues');
+    } catch {
+      setError('No se pudo crear el issue.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center items-center h-full p-8"><Spinner /></div>;
@@ -67,6 +86,8 @@ export default function GitHubPage() {
           {ghUser && <p className="text-xs text-muted-foreground">@{ghUser.login} · {repos.length} repos</p>}
         </div>
       </div>
+
+      {error && <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2 mb-4">{error}</p>}
 
       {!selectedRepo ? (
         <div className="space-y-2">

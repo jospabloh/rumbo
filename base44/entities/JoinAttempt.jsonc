@@ -1,0 +1,50 @@
+{
+  // JoinAttempt — rate-limit ledger for joinTenant (audit/rumbo-full-review:
+  // section 2 flagged that joinTenant had no attempt counter/lockout on its
+  // join-code lookup — a tenant-boundary-crossing surface). One row per
+  // attempt (success or failure) by an authenticated user, keyed by user id.
+  // joinTenant checks recent rows before processing a join and rejects with
+  // 429 past the threshold, then prunes rows older than the window.
+  //
+  // Service-role only — no app user ever reads/writes this directly. Mirrors
+  // AcaciaReplayKey's persistent-store pattern (a process-memory counter
+  // wouldn't detect attempts served by another Deno function instance).
+  "name": "JoinAttempt",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "Usuario"
+    },
+    "attempted_at": {
+      "type": "number",
+      "title": "Momento (epoch ms)"
+    }
+  },
+  "required": [
+    "user_id",
+    "attempted_at"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    }
+  }
+}

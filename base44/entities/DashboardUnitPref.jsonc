@@ -13,7 +13,7 @@
   "name": "DashboardUnitPref",
   "type": "object",
   "properties": {
-    "tenant_id": { "type": "string", "title": "Tenant" },
+    "tenant_id": { "type": "string", "title": "Tenant", "rls": { "write": false } },
     "hidden_vehicle_ids": {
       "type": "array",
       "title": "Unidades ocultas",
