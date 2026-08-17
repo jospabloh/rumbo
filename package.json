@@ -16,7 +16,7 @@
     "audit:tenant-scope": "node scripts/audit-tenant-scope.mjs"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.41",
+    "@base44/sdk": "^0.8.42",
     "@base44/vite-plugin": "^1.0.30",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
