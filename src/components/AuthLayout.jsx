@@ -4,7 +4,7 @@ import React from "react";
 // el formulario a la izquierda y un panel de marca Rumbo a la derecha (oculto en
 // móvil). Mantiene la misma API de props que el boilerplate (icon/title/
 // subtitle/footer/children) para que las páginas no cambien su forma de usarlo.
-export default function AuthLayout({ icon: Icon, title, subtitle = null, footer = null, children }) {
+export default function AuthLayout({ icon: Icon, title, subtitle = null, footer = null, children = null }) {
   return (
     <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-2">
       {/* Columna del formulario */}

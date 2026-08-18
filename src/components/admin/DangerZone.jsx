@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, AlertTriangle, Trash2, ArrowRightLeft } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Trash2, ArrowRightLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -9,9 +9,37 @@ export default function DangerZone({ tenant, onDeleted, onDelegated }) {
   const [confirmDelete, setConfirmDelete] = useState('');
   const [loadingDelegate, setLoadingDelegate] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
+  const [loadingExport, setLoadingExport] = useState(false);
   const [doneDelegate, setDoneDelegate] = useState(false);
   const [delegateError, setDelegateError] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [exportError, setExportError] = useState(null);
+
+  const handleExport = async () => {
+    setLoadingExport(true);
+    setExportError(null);
+    try {
+      const resp = await base44.functions.invoke('exportTenantData', {});
+      if (!resp?.data?.success) {
+        setExportError(resp?.data?.error || 'No se pudieron exportar los datos.');
+        return;
+      }
+      const blob = new Blob([JSON.stringify(resp.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rumbo-datos-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError('Error al exportar. Intenta de nuevo.');
+      console.error('Export tenant data failed:', e);
+    } finally {
+      setLoadingExport(false);
+    }
+  };
 
   const members = Array.isArray(tenant?.members) ? tenant.members : [];
   const normalizedTarget = delegateEmail.trim().toLowerCase();
@@ -57,8 +85,24 @@ export default function DangerZone({ tenant, onDeleted, onDelegated }) {
         <h2 className="text-sm font-semibold text-destructive uppercase tracking-wide">Zona de Peligro</h2>
       </div>
 
+      {/* Exportar datos */}
+      <div className="space-y-2 pb-1">
+        <div className="flex items-start gap-3">
+          <Download className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Descargar mis datos</p>
+            <p className="text-xs text-muted-foreground">Exporta vehículos, conductores, viajes y demás datos operativos de tu tenant en formato JSON. Hazlo antes de eliminar.</p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" className="h-9 gap-2" disabled={loadingExport} onClick={handleExport}>
+          <Download className="w-4 h-4" />
+          {loadingExport ? 'Exportando...' : 'Descargar datos'}
+        </Button>
+        {exportError && <p className="text-xs text-destructive">{exportError}</p>}
+      </div>
+
       {/* Delegar ownership */}
-      <div className="space-y-2">
+      <div className="space-y-2 border-t border-destructive/20 pt-4">
         <div className="flex items-start gap-3">
           <ArrowRightLeft className="w-4 h-4 text-warning mt-0.5 shrink-0" />
           <div>
