@@ -39,7 +39,14 @@
         "enterprise"
       ],
       "title": "Plan",
-      "default": "trial"
+      "default": "trial",
+      // Fixed 2026-08-19 (re-verification audit, module 1): server-authoritative —
+      // only asServiceRole (createTenant on signup, licensesAdmin's `renew`/`patch`
+      // actions, acaciaControl's `license.set` from Mission Control) may write this.
+      // Before this fix the entity-level update rule let a tenant's own owner/admin
+      // write ANY field including this one — self-upgrading their own plan via a
+      // direct SDK call, or via SuperAdminPanel.jsx (now migrated to licensesAdmin).
+      "rls": { "write": false }
     },
     "status": {
       "type": "string",
@@ -51,7 +58,7 @@
         "view_only"
       ],
       "title": "Estado",
-      "default": "active"
+      "default": "active",
       // view_only agregado 2026-08-03: cierra el hueco de solo-lectura (día 8
       // del ciclo unificado de licencias) que Rumbo no tenía — ver
       // docs/superpowers/specs/2026-08-03-portfolio-license-lifecycle-design.md
@@ -59,33 +66,45 @@
       // schema desplegado en Base44 — falta el deploy real (Base44 MCP) y
       // luego flippear `readOnlyStatus: null` -> `'view_only'` en
       // acacia-mission-control/api/_lib/licenseControl.js para rumbo.
+      //
+      // Fixed 2026-08-19 (re-verification audit, module 1): server-authoritative,
+      // same reasoning as `plan` above — a suspended/view_only tenant's own owner
+      // could otherwise flip themselves back to `active` directly.
+      "rls": { "write": false }
     },
     "max_vehicles": {
       "type": "number",
       "title": "Vehículos máximos",
-      "default": 5
+      "default": 5,
+      // Fixed 2026-08-19 (re-verification audit, module 1): server-authoritative,
+      // same reasoning as `plan` — this is a plan-tier limit, not tenant config.
+      "rls": { "write": false }
     },
     "max_drivers": {
       "type": "number",
       "title": "Conductores máximos",
-      "default": 5
+      "default": 5,
+      "rls": { "write": false }
     },
     "features": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "title": "Funcionalidades habilitadas"
+      "title": "Funcionalidades habilitadas",
+      "rls": { "write": false }
     },
     "trial_ends_at": {
       "type": "string",
       "format": "date",
-      "title": "Fin del periodo de prueba"
+      "title": "Fin del periodo de prueba",
+      "rls": { "write": false }
     },
     "current_period_end": {
       "type": "string",
       "format": "date",
-      "title": "Fin del periodo pagado"
+      "title": "Fin del periodo pagado",
+      "rls": { "write": false }
     },
     "billing_cycle": {
       "type": "string",
@@ -94,17 +113,20 @@
         "annual"
       ],
       "title": "Ciclo de cobro",
-      "default": "monthly"
+      "default": "monthly",
+      "rls": { "write": false }
     },
     "last_payment_at": {
       "type": "string",
       "format": "date",
-      "title": "Último pago confirmado"
+      "title": "Último pago confirmado",
+      "rls": { "write": false }
     },
     "renews_at": {
       "type": "string",
       "format": "date",
-      "title": "Fecha de renovación"
+      "title": "Fecha de renovación",
+      "rls": { "write": false }
     },
     "owner_email": {
       "type": "string",

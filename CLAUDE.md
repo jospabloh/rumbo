@@ -3,6 +3,68 @@
 Fleet management SaaS (Base44 backend + Vite/React front-end), multi-tenant via
 `TenantLicense`. See `docs/permissions_matrix.md` for the role/permission model.
 
+## License self-escalation via `TenantLicense` (module 1, fixed 2026-08-19)
+
+Found by an independent end-to-end re-verification of a prior "10/10 compliant"
+audit pass — the re-verification agent didn't just restate this file's claims,
+it re-derived module 1 from the actual RLS and found `TenantLicense`'s `update`
+rule granted **whole-record** write access to a tenant's own owner (by
+`owner_email` match) or any same-tenant owner/admin, with **no field-level
+lock** on `status`/`plan`/`max_vehicles`/`max_drivers`/`features`/billing
+dates. A tenant's own admin could self-escalate — flip a `suspended`/
+`view_only` license back to `active`, or bump their own `plan` to
+`enterprise` — via a direct SDK call, contradicting the "written ONLY by
+Mission Control's cron" module-1 requirement. This is the exact bug class
+`docs/permissions_matrix.md` already fixed repeatedly for *other* entities
+(A33/A34/A58 — `tenant_id`, `Driver`, `SupportTicket`), just never applied to
+`TenantLicense`'s own billing fields.
+
+**Not hypothetical:** while scoping the fix, found the actual live delivery
+mechanism — `SuperAdminPanel.jsx` (rendered on `/admin` for anyone whose OWN
+`role` is `owner`, gated only by `isOwner(user.role)` — not by an actual
+platform-owner identity check) already had a "Zona exclusiva" panel with a
+plan/status editor calling `base44.entities.TenantLicense.update()` directly.
+Since every tenant has its own "owner", this UI was reachable by any tenant's
+real owner, not just the app's true platform owner — RLS still constrained
+the actual write to their own tenant's row (so no cross-tenant leak), but it
+gave any tenant owner a working button to edit their own `plan`/`status`.
+
+**Fix:**
+- `base44/entities/TenantLicense.jsonc` — `rls:{write:false}` added to
+  `plan`, `status`, `max_vehicles`, `max_drivers`, `features`,
+  `trial_ends_at`, `current_period_end`, `billing_cycle`, `last_payment_at`,
+  `renews_at`. `permissions_config`/`settings`/`members`/`owner_email` stay
+  writable by the tenant's own owner/admin — those are genuine tenant-config
+  fields (`PermissionsPanel.jsx`, `DangerZone.jsx`'s delegate-ownership flow),
+  not license/billing state, and locking them would break real features.
+- `base44/functions/licensesAdmin/entry.ts` — new `patch` action (whitelisted
+  to a `PATCHABLE_FIELDS` set), alongside the existing `list`/`renew`/
+  `set_status`. Still gated by `APP_OWNER_EMAIL` + `asServiceRole`, same as
+  before.
+- `src/components/admin/SuperAdminPanel.jsx` — migrated both `list` and the
+  plan/status/limits editor from direct `base44.entities.TenantLicense.*`
+  calls to `licensesAdmin` invocations. Closes the `isOwner()` UI-gating gap
+  too: a regular tenant owner clicking into this panel now gets a real 403
+  from the server-side `APP_OWNER_EMAIL` check instead of a silently-scoped
+  RLS read/write on just their own tenant.
+- `src/components/admin/TenantEditor.jsx` — its no-license-yet create
+  fallback no longer explicitly sends `plan: 'trial', status: 'active'`
+  (now `rls.write:false` fields); the entity's own JSON-Schema `default`
+  already supplies the same values on create, so behavior is unchanged.
+- `createTenant/entry.ts`'s service-role create (the real onboarding path)
+  and `licensesAdmin`'s `renew`/`set_status`/`patch` actions are unaffected —
+  `asServiceRole` bypasses field-level RLS the same way it bypasses
+  entity-level RLS.
+
+**Verified:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm run
+validate:rls` (27 entities OK), `npm run test` (463/463) all pass. **Not
+verified:** deploy to the live Base44 schema (this environment has no Base44
+MCP access for this app) — like every other RLS change in this portfolio,
+the repo-side `.jsonc` change alone does not touch the running backend; run
+`update_entity_schema` before treating this as closed in production. A live
+browser session as a non-owner tenant admin attempting the old
+`SuperAdminPanel`/direct-write path also wasn't achievable here.
+
 ## In-app changelog digest (module 6, added 2026-08-19)
 
 `CHANGELOG.md` at the repo root was kept current release-over-release, but
