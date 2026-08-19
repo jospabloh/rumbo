@@ -3,6 +3,20 @@
 Fleet management SaaS (Base44 backend + Vite/React front-end), multi-tenant via
 `TenantLicense`. See `docs/permissions_matrix.md` for the role/permission model.
 
+## In-app changelog digest (module 6, added 2026-08-19)
+
+`CHANGELOG.md` at the repo root was kept current release-over-release, but
+nothing in the running app ever showed it — `Help.jsx`'s version stamp
+(`APP_VERSION`/`RELEASE_DATE` from `src/lib/version.js`) had no changelog
+next to it. Added a `CHANGES` array to `Help.jsx` — plain-language Spanish
+summaries of recent releases (not the raw technical `CHANGELOG.md` entries),
+rendered as a new "Historial de cambios" section above the version stamp,
+matching the pattern already used in stockflow/cateqhub/puntos/radar/liuma.
+Bumped to v1.31.0 alongside the module 3 fix below (same release).
+
+**Verified:** `npm run lint`, `npm run build`, `npm run typecheck` all pass —
+purely additive, no RLS or permission change.
+
 ## Account & danger zone — added data export (module 7, 2026-08-18)
 
 A portfolio-standard audit (`jospabloh/acacia-app-standard`, module 7) found
