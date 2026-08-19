@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useTenant } from '@/lib/TenantContext';
 import { getSetting } from '@/lib/settings';
 import { statusOf } from '@/components/rentas/rentUtils';
+import { guardedUpdate } from '@/lib/guardedWrite';
 
 // Bono por referido: el referidor gana un monto (descontado de su renta) cuando su
 // referido cumple N pagos semanales puntuales. Monto y meta son configurables por el
@@ -56,7 +56,7 @@ export default function ReferralsView({ drivers, charges, loading, readOnly, onA
         if (applied <= 0) continue;
         const newDue = (c.amount_due || 0) - applied;
         remaining = Math.round((remaining - applied) * 100) / 100;
-        await base44.entities.RentCharge.update(c.id, {
+        await guardedUpdate('RentCharge', c.id, {
           amount_due: newDue,
           status: statusOf({ amount_due: newDue, amount_paid: c.amount_paid || 0 }),
           notes: `${c.notes ? c.notes + ' · ' : ''}Bono referido (-$${applied.toLocaleString()}) por ${referredDriver.full_name}`,
@@ -66,10 +66,10 @@ export default function ReferralsView({ drivers, charges, loading, readOnly, onA
       // Sobrante → crédito del referidor (se aplicará a sus próximos cobros).
       if (remaining > 0) {
         const prevCredit = Number(referrer.referral_credit) || 0;
-        await base44.entities.Driver.update(referrer.id, { referral_credit: Math.round((prevCredit + remaining) * 100) / 100 });
+        await guardedUpdate('Driver', referrer.id, { referral_credit: Math.round((prevCredit + remaining) * 100) / 100 });
       }
 
-      await base44.entities.Driver.update(referredDriver.id, { referral_bonus_paid: true });
+      await guardedUpdate('Driver', referredDriver.id, { referral_bonus_paid: true });
       onApplied();
     } catch (e) {
       setError('No se pudo aplicar el bono.');

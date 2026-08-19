@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Star, Phone, FileText, Calendar, Shield, Truck, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { FormError } from '@/components/ui/form-error';
 import { PageLoader } from '@/components/ui/spinner';
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { useMe, useCurrentDriver, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedUpdate } from '@/lib/guardedWrite';
 
 const docTypeLabel = { license: 'Licencia', medical: 'Cert. médico', background: 'Antecedentes', other: 'Otro' };
 
@@ -44,7 +44,7 @@ export default function DriverProfile() {
     setSaving(true);
     setError('');
     try {
-      await base44.entities.Driver.update(driver.id, { phone: phone.trim() });
+      await guardedUpdate('Driver', driver.id, { phone: phone.trim() });
       invalidate('Driver');
       setEditing(false);
     } catch {

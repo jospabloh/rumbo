@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { ArrowLeft, Edit, Trash2, Truck, FileText, Upload, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { compressImage } from '@/lib/imageUtils';
+import { guardedCreate } from '@/lib/guardedWrite';
 import { Link } from 'react-router-dom';
 
 const dayLabel = { monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo' };
@@ -31,7 +32,7 @@ export default function VehicleDetail({ vehicle, drivers, onBack, onEdit, onDele
       const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
       // tenant_id es obligatorio: la RLS de create de VehicleDocument exige que coincida
       // con el tenant del usuario. Sin él el documento se rechazaba y se perdía en silencio.
-      await base44.entities.VehicleDocument.create({ tenant_id: vehicle.tenant_id, vehicle_id: vehicle.id, doc_type: 'other', file_url });
+      await guardedCreate('VehicleDocument', { vehicle_id: vehicle.id, doc_type: 'other', file_url });
       const updated = await base44.entities.VehicleDocument.filter({ vehicle_id: vehicle.id });
       setDocs(updated);
     } catch (err) {

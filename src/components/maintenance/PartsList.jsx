@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Plus, Package, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +9,7 @@ import ResponsiveModal from '@/components/ui/responsive-modal';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 import { isLowStock, isOutOfStock, lowStockParts } from '@/lib/parts';
 
 const EMPTY = {
@@ -59,8 +59,8 @@ export default function PartsList({ vehicles }) {
       vehicle_id: form.vehicle_id || null,
     };
     try {
-      if (editId) await base44.entities.Part.update(editId, payload);
-      else await base44.entities.Part.create(payload);
+      if (editId) await guardedUpdate('Part', editId, payload);
+      else await guardedCreate('Part', payload);
       setShowForm(false);
       setEditId(null);
       setForm(EMPTY);
@@ -77,7 +77,7 @@ export default function PartsList({ vehicles }) {
     if (newStock < 0) return;
     setError('');
     try {
-      await base44.entities.Part.update(part.id, { stock: newStock });
+      await guardedUpdate('Part', part.id, { stock: newStock });
       refresh();
     } catch (err) {
       setError('No se pudo actualizar el stock. Reintenta; el valor mostrado no cambió.');
@@ -87,7 +87,7 @@ export default function PartsList({ vehicles }) {
   const handleDelete = async (id) => {
     setError('');
     try {
-      await base44.entities.Part.delete(id);
+      await guardedDelete('Part', id);
       refresh();
     } catch (err) {
       setError('No se pudo eliminar la refacción. Verifica tus permisos e inténtalo de nuevo.');

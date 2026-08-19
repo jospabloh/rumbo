@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { Plus, Search, Star, Phone, ChevronRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +12,7 @@ import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { driverLimit, PLAN_LABELS } from '@/lib/plans';
 import { useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 
 const statusLabel = { active: 'Activo', suspended: 'Suspendido', inactive: 'Inactivo' };
 const statusColor = {
@@ -53,12 +53,12 @@ export default function Drivers() {
     if (readOnly) throw new Error('Licencia en modo solo lectura: renueva tu pago para hacer cambios.');
     if (editDriver) {
       if (!can('drivers', 'edit')) throw new Error('No tienes permiso para editar conductores.');
-      await base44.entities.Driver.update(editDriver.id, data);
+      await guardedUpdate('Driver', editDriver.id, data);
     } else {
       if (!can('drivers', 'create')) throw new Error('No tienes permiso para crear conductores.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
       if (drivers.length >= limit) throw new Error(`Alcanzaste el límite de ${limit} conductores de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
-      await base44.entities.Driver.create({ ...data, tenant_id: tenantId });
+      await guardedCreate('Driver', data);
     }
     setShowForm(false);
     setEditDriver(null);
@@ -66,7 +66,7 @@ export default function Drivers() {
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.Driver.delete(id);
+    await guardedDelete('Driver', id);
     setSelectedDriver(null);
     refresh();
   };

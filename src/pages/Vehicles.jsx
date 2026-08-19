@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { Plus, Search, ChevronRight, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +12,7 @@ import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { vehicleLimit, PLAN_LABELS } from '@/lib/plans';
 import { useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 
 const statusLabel = { active: 'Activo', maintenance: 'Mantenimiento', inactive: 'Inactivo' };
 const statusColor = {
@@ -55,12 +55,12 @@ export default function Vehicles() {
     if (readOnly) throw new Error('Licencia en modo solo lectura: renueva tu pago para hacer cambios.');
     if (editVehicle) {
       if (!can('vehicles', 'edit')) throw new Error('No tienes permiso para editar vehículos.');
-      await base44.entities.Vehicle.update(editVehicle.id, data);
+      await guardedUpdate('Vehicle', editVehicle.id, data);
     } else {
       if (!can('vehicles', 'create')) throw new Error('No tienes permiso para crear vehículos.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
       if (vehicles.length >= limit) throw new Error(`Alcanzaste el límite de ${limit} vehículos de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
-      await base44.entities.Vehicle.create({ ...data, tenant_id: tenantId });
+      await guardedCreate('Vehicle', data);
     }
     setShowForm(false);
     setEditVehicle(null);
@@ -68,7 +68,7 @@ export default function Vehicles() {
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.Vehicle.delete(id);
+    await guardedDelete('Vehicle', id);
     setSelectedVehicle(null);
     refresh();
   };

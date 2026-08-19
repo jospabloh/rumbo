@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Truck, Clock, DollarSign, MapPin, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { PageLoader } from '@/components/ui/spinner';
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { useMe, useCurrentDriver, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate } from '@/lib/guardedWrite';
 
 const PLATFORMS = [{ value: 'uber', label: 'Uber' }, { value: 'didi', label: 'DiDi' }, { value: 'particular', label: 'Particular' }];
 const platformLabel = { uber: 'Uber', didi: 'DiDi', particular: 'Particular' };
@@ -39,8 +39,7 @@ export default function DriverTrips() {
     setSaving(true);
     setError('');
     try {
-      await base44.entities.Trip.create({
-        tenant_id: driver.tenant_id,
+      await guardedCreate('Trip', {
         driver_id: driver.id,
         vehicle_id: vehicle.id,
         platform: form.platform,

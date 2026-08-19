@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { compressImage } from '@/lib/imageUtils';
+import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 
 const docTypeLabel = { license: 'Licencia', medical: 'Cert. médico', background: 'Antecedentes', other: 'Otro' };
 
@@ -43,11 +44,10 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     setAddingNote(true);
-    await base44.entities.DriverPrivateNote.create({
+    await guardedCreate('DriverPrivateNote', {
       driver_id: driver.id,
       author_id: user.id,
       note: newNote.trim(),
-      tenant_id: driver.tenant_id,
     });
     setNewNote('');
     base44.entities.DriverPrivateNote.filter({ driver_id: driver.id }).then(setNotes);
@@ -60,11 +60,10 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
     setUploadingDoc(true);
     const compressed = await compressImage(file);
     const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    await base44.entities.DriverDocument.create({
+    await guardedCreate('DriverDocument', {
       driver_id: driver.id,
       doc_type: 'other',
       file_url,
-      tenant_id: driver.tenant_id,
     });
     base44.entities.DriverDocument.filter({ driver_id: driver.id }).then(setDocs);
     setUploadingDoc(false);
@@ -75,7 +74,7 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
     setLinkSaving(true);
     const matched = appUsers.find(u => u.email?.toLowerCase() === linkEmail.trim().toLowerCase());
     if (matched) {
-      await base44.entities.Driver.update(driver.id, { profile_id: matched.id });
+      await guardedUpdate('Driver', driver.id, { profile_id: matched.id });
       onRefresh();
     }
     setLinkSaving(false);
@@ -84,7 +83,7 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
   };
 
   const handleDeleteNote = async (id) => {
-    await base44.entities.DriverPrivateNote.delete(id);
+    await guardedDelete('DriverPrivateNote', id);
     setNotes(n => n.filter(x => x.id !== id));
   };
 
@@ -211,7 +210,7 @@ export default function DriverDetail({ driver, onBack, onEdit, onDelete, onRefre
               <span>Cuenta vinculada</span>
               <button
                 className="ml-auto text-xs text-muted-foreground hover:text-destructive transition-colors"
-                onClick={async () => { await base44.entities.Driver.update(driver.id, { profile_id: '' }); onRefresh(); }}
+                onClick={async () => { await guardedUpdate('Driver', driver.id, { profile_id: '' }); onRefresh(); }}
               >
                 Desvincular
               </button>

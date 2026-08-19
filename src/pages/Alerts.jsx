@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ListSkeleton } from '@/components/ui/list-skeleton';
 import { useAlerts, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedUpdate } from '@/lib/guardedWrite';
 
 const severityConfig = {
   critical: { icon: AlertTriangle, cls: 'text-destructive bg-destructive/10 border-destructive/20', label: 'Crítica' },
@@ -30,7 +31,7 @@ export default function Alerts() {
   const handleResolve = async (id) => {
     setError('');
     try {
-      await base44.entities.Alert.update(id, { resolved: true });
+      await guardedUpdate('Alert', id, { resolved: true });
       invalidate('Alert');
     } catch (err) {
       setError('No se pudo marcar la alerta como resuelta. Inténtalo de nuevo.');
