@@ -57,13 +57,16 @@ gave any tenant owner a working button to edit their own `plan`/`status`.
   entity-level RLS.
 
 **Verified:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm run
-validate:rls` (27 entities OK), `npm run test` (463/463) all pass. **Not
-verified:** deploy to the live Base44 schema (this environment has no Base44
-MCP access for this app) — like every other RLS change in this portfolio,
-the repo-side `.jsonc` change alone does not touch the running backend; run
-`update_entity_schema` before treating this as closed in production. A live
-browser session as a non-owner tenant admin attempting the old
-`SuperAdminPanel`/direct-write path also wasn't achievable here.
+validate:rls` (27 entities OK), `npm run test` (463/463) all pass.
+**Deploy confirmed live** (2026-08-19, via the Base44 MCP's
+`list_entity_schemas` against `appId 6a15eceffe8dbf6602fa6c35`): the running
+`TenantLicense` schema already carries `rls.write:false` on all ten fields
+and `licensesAdmin`'s new `patch` action is present in the deployed function
+source — this repo's `main` branch syncs to the live Base44 backend
+automatically (confirmed independently by `base44-builder[bot]` pushing a
+reverse-sync commit to `main` the same day). A live browser session as a
+non-owner tenant admin attempting the old `SuperAdminPanel`/direct-write
+path still wasn't achievable here.
 
 ## In-app changelog digest (module 6, added 2026-08-19)
 
@@ -166,14 +169,16 @@ SDK's calling shape (data in, record out).
 
 **Verification performed:** `npm run lint`, `npm run build`, `npm run
 validate:rls` (27 entities, unaffected — no `.jsonc` file changed), `npm
-test` (463/463) all pass. `deno` isn't available in this sandbox —
-`guardedEntityWrite` gets its first live check once deployed to the Base44
-backend (a repo commit alone doesn't deploy a new backend function — see
-this portfolio's standard note on that). **Not verified:** an actual
-browser session as a permission-restricted dispatcher/mechanic/driver — not
-achievable in this environment. Risk is bounded the same way as every
-other module-3 fix in this portfolio: every migrated call site preserves
-identical behavior for anyone whose role/config combination already
+test` (463/463) all pass. `deno` isn't available in this sandbox — but
+**deploy confirmed live** (2026-08-19, via the Base44 MCP): `entry.ts`'s
+`ROLE_ONLY_ENTITIES`, `DRIVER_SELF_SCOPE`, and `moduleCan()` are all present
+in the running function source at `appId 6a15eceffe8dbf6602fa6c35`, matching
+the repo exactly — this repo's `main` branch syncs to the live Base44
+backend automatically. **Not verified:** an actual browser session as a
+permission-restricted dispatcher/mechanic/driver — not achievable in this
+environment. Risk is bounded the same way as every other module-3 fix in
+this portfolio: every migrated call site preserves identical behavior for
+anyone whose role/config combination already
 granted access (verified case-by-case against each entity's own deployed
 RLS and against which pages actually gate their buttons with
 `useModulePerms().can()` today) — the only behavior change is that a user
