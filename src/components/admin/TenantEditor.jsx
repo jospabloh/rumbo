@@ -86,7 +86,10 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
     if (license?.id) {
       await base44.entities.TenantLicense.update(license.id, form);
     } else {
-      await base44.entities.TenantLicense.create({ ...form, plan: 'trial', status: 'active' });
+      // plan/status ya no se envían explícitamente: son rls.write:false (auditoría
+      // 2026-08-19, módulo 1) — el esquema de la entidad ya declara sus defaults
+      // ("trial"/"active"), que Base44 aplica igual al omitirlos.
+      await base44.entities.TenantLicense.create({ ...form });
     }
     setSaving(false);
     setEditing(false);
