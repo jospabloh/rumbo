@@ -5,11 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoader } from '@/components/ui/spinner';
 import NewChannelForm from '@/components/messages/NewChannelForm';
-import { useTenant } from '@/lib/TenantContext';
 import { useMe, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate, guardedUpdate } from '@/lib/guardedWrite';
 
 export default function Messages() {
-  const { tenantId } = useTenant();
   const { data: user, isLoading: meLoading } = useMe();
   const { data: channels = [], isLoading: channelsLoading } = useEntityList('Channel');
   const invalidate = useInvalidateEntity();
@@ -59,7 +58,7 @@ export default function Messages() {
     // Mark as delivered/read
     const unread = sorted.filter(m => !m.read && m.sender_id !== user?.id);
     for (const m of unread) {
-      base44.entities.Message.update(m.id, { delivered: true, read: true }).catch(() => {});
+      guardedUpdate('Message', m.id, { delivered: true, read: true }).catch(() => {});
     }
     if (sorted.length > 0) lastSeenRef.current = sorted[sorted.length - 1].created_date;
   };
@@ -68,7 +67,7 @@ export default function Messages() {
     e?.preventDefault();
     if (!newMessage.trim() || !selectedChannel || !user) return;
     setSending(true);
-    await base44.entities.Message.create({
+    await guardedCreate('Message', {
       channel_id: selectedChannel.id,
       channel_kind: selectedChannel.kind,
       channel_driver_id: selectedChannel.driver_id || null,
@@ -77,7 +76,6 @@ export default function Messages() {
       body: newMessage.trim(),
       delivered: false,
       read: false,
-      tenant_id: tenantId,
     });
     setNewMessage('');
     setSending(false);
@@ -93,7 +91,7 @@ export default function Messages() {
       const blob = new Blob(chunks, { type: 'audio/webm' });
       const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      await base44.entities.Message.create({
+      await guardedCreate('Message', {
         channel_id: selectedChannel.id,
         channel_kind: selectedChannel.kind,
         channel_driver_id: selectedChannel.driver_id || null,
@@ -103,7 +101,6 @@ export default function Messages() {
         audio_url: file_url,
         delivered: false,
         read: false,
-        tenant_id: tenantId,
       });
     };
     mr.start();
@@ -118,9 +115,7 @@ export default function Messages() {
   };
 
   const handleCreateChannel = async (data) => {
-    // tenant_id es obligatorio: la RLS de create de Channel exige que coincida con el
-    // tenant del usuario. Sin él, crear un canal fallaba y Mensajes quedaba inutilizable.
-    const ch = await base44.entities.Channel.create({ ...data, tenant_id: tenantId });
+    const ch = await guardedCreate('Channel', data);
     invalidate('Channel');
     setSelectedChannel(ch);
     setShowNewChannel(false);

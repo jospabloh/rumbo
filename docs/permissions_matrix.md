@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.30.3 | Updated 2026-08-11**
+**Version 1.31.0 | Updated 2026-08-19**
 
 ---
 
@@ -60,7 +60,7 @@ All pages except the driver portal and help are protected by `RequireAccess` (wh
 
 The following matrix shows **default values** for configurable roles. Admin explicitly grants/revokes these per tenant via the Permisos por Rol panel in Admin. Changes are persisted to `TenantLicense.permissions_config` and used to control UI-level access per module.
 
-**Note (G1):** These granular permissions currently control the UI only (what the user sees). Backend entity RLS enforces the role-level access (e.g., a dispatcher cannot call the Vehicle API if the entity RLS disallows it), but does not yet read `permissions_config`. New modules default to view-only for non-admin roles.
+**Note (G1) — fixed 2026-08-19:** these granular permissions used to control the UI only. As of v1.31.0, `base44/functions/guardedEntityWrite` is the sanctioned write path for every entity in this matrix and reads `TenantLicense.permissions_config` before delegating the write — the same role/module/action resolution as `src/lib/modulePerms.js`'s `moduleCan()`, mirrored server-side. Entity RLS still enforces the role-level floor underneath it (e.g. a dispatcher's raw SDK call still can't reach an entity RLS disallows for that role at all), and remains the correct place to think about *role* access; `permissions_config` overrides are now enforced at the `guardedEntityWrite` layer, not the UI. Two entities (`Channel`, `LocationRequest`) are intentionally role-gated only rather than config-driven — see `CLAUDE.md`'s module-3 section for why. New modules still default to view-only for non-admin roles.
 
 ### Default: Dispatcher
 
@@ -264,7 +264,7 @@ since it is never seen or used by tenant users or admins.
 
 | # | Gap | Severity | Status |
 |---|-----|----------|--------|
-| G1 | Granular PermissionsPanel permissions are saved to `TenantLicense.permissions_config` but enforced only in the UI — not at the API/entity RLS level | MEDIUM | **Documented — enforcement at data layer is a future priority; entity RLS still enforces role-level access (e.g., dispatchers can't call Maintenance entity APIs)** |
+| G1 | Granular PermissionsPanel permissions are saved to `TenantLicense.permissions_config` but enforced only in the UI — not at the API/entity RLS level | MEDIUM | **Fixed 2026-08-19 — `base44/functions/guardedEntityWrite` now reads `permissions_config` server-side before every write; entity RLS still enforces the role-level floor underneath it. See CLAUDE.md's module-3 section.** |
 | G2 | ~~Page protection is client-side only~~ | ~~LOW~~ | **FIXED v1.18.0 — `RequireAccess` component enforces `can(role, page)` at route render time; direct URL navigation shows access-denied screen** |
 | G3 | `TenantLicense` read RLS allowed any `admin` to read all TenantLicenses — cross-tenant license/PII exposure | ~~LOW~~ | **FIXED v1.4.0 — read scoped to creator / owner_email / members.email; invites now populate members[]** |
 | G4 | New users invited but not yet logged in lack `tenant_id` in their profile — they may not appear in tenant user lists immediately | LOW | **Accepted — resolves automatically on first login via `resolveTenant`** |
@@ -371,7 +371,7 @@ Security, code quality, tenant-isolation, permissions, and release-readiness aud
 | A39 | `generateAlerts` and `calculateCostPerKm`: tenant scoping via `user.data.tenant_id` only (never client-supplied), correct role gates (admin/owner; owner/admin/dispatcher respectively). Admin users list (`Admin.jsx`) filtered by `data.tenant_id`, backed by `User.jsonc` read RLS independently. Route/page protection (`RequireAccess`/`RequireAppOwner`) backed by independent server-side checks (role-gated functions, entity RLS) — not UI-hiding alone. | — | **CONFIRMED CLEAN** |
 | A40 | No hardcoded secrets, API keys, tokens, or credentials found. `validate:rls` (26 entities), `audit:tenant-scope`, lint, typecheck, all 440 unit tests, and the production build all pass at HEAD. 5 dev-only `vite`/`vitest`/`esbuild` transitive vulnerabilities re-confirmed as accepted risk (unchanged since v1.24.0/`A17` — no production exposure, fix requires breaking `vitest@4` upgrade). | — | **CONFIRMED CLEAN / CONFIRMED PASSING** |
 
-**Known, not independently re-verified this pass:** the granular `PermissionsPanel`/`permissions_config` UI-only enforcement gap (**G1**, unchanged) and the broad `TenantLicense.read` exposure to any listed `members[]` entry regardless of per-tenant role (full license record — billing, `notes`, `settings`, `join_code` — visible to a same-tenant driver via direct SDK call, or to anyone another tenant's admin adds to their roster). The latter shares A33's root cause but restricting it risks breaking the invite-acceptance and degraded-mode tenant-discovery flows (`TenantContext.jsx` fallback), which legitimately need to read a not-yet-bound member's prospective tenant. Flagged for owner review before any read-side change — not modified in this pass.
+**Known, not independently re-verified this pass:** the granular `PermissionsPanel`/`permissions_config` enforcement gap (**G1**, fixed 2026-08-19 — see above) and the broad `TenantLicense.read` exposure to any listed `members[]` entry regardless of per-tenant role (full license record — billing, `notes`, `settings`, `join_code` — visible to a same-tenant driver via direct SDK call, or to anyone another tenant's admin adds to their roster). The latter shares A33's root cause but restricting it risks breaking the invite-acceptance and degraded-mode tenant-discovery flows (`TenantContext.jsx` fallback), which legitimately need to read a not-yet-bound member's prospective tenant. Flagged for owner review before any read-side change — not modified in this pass.
 
 ---
 

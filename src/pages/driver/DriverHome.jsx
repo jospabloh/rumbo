@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Truck, Bell, Star, MapPin } from 'lucide-react';
 import AlertBadge from '@/components/dashboard/AlertBadge';
 import { PageLoader } from '@/components/ui/spinner';
 import { useMe, useCurrentDriver, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedUpdate } from '@/lib/guardedWrite';
 
 export default function DriverHome() {
   const { data: user, isLoading: meLoading } = useMe();
@@ -24,7 +24,7 @@ export default function DriverHome() {
     setSharing(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        await base44.entities.LocationRequest.update(locationRequest.id, {
+        await guardedUpdate('LocationRequest', locationRequest.id, {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           status: 'fulfilled',

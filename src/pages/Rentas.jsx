@@ -16,6 +16,7 @@ import { getSetting } from '@/lib/settings';
 import ManualChargeModal from '@/components/rentas/ManualChargeModal';
 import IngresosView from '@/components/rentas/IngresosView';
 import ReferralsView from '@/components/rentas/ReferralsView';
+import { guardedCreate, guardedUpdate } from '@/lib/guardedWrite';
 
 export default function Rentas() {
   const { tenant, tenantId, readOnly } = useTenant();
@@ -112,8 +113,7 @@ export default function Rentas() {
           credited++;
         }
 
-        await base44.entities.RentCharge.create({
-          tenant_id: tenantId,
+        await guardedCreate('RentCharge', {
           vehicle_id: v.id,
           owner_group_id: v.owner_group_id || null,
           driver_id: driverId,
@@ -135,7 +135,7 @@ export default function Rentas() {
           // Se reduce su amount_due a lo ya pagado (balance queda en 0, status pasa a
           // 'paid' de forma natural) en vez de dejarlo como deuda duplicada.
           for (const c of priorOpen) {
-            await base44.entities.RentCharge.update(c.id, {
+            await guardedUpdate('RentCharge', c.id, {
               amount_due: c.amount_paid || 0,
               carried_forward: true,
               notes: [c.notes, 'Saldo trasladado a la semana siguiente'].filter(Boolean).join(' · '),
@@ -145,9 +145,8 @@ export default function Rentas() {
           // crea una nueva con el monto actualizado — no se van acumulando alertas viejas.
           try {
             const openAlerts = await base44.entities.Alert.filter({ tenant_id: tenantId, entity_type: 'rent_balance', entity_id: v.id, resolved: false });
-            for (const a of openAlerts) await base44.entities.Alert.update(a.id, { resolved: true }).catch(() => {});
-            await base44.entities.Alert.create({
-              tenant_id: tenantId,
+            for (const a of openAlerts) await guardedUpdate('Alert', a.id, { resolved: true }).catch(() => {});
+            await guardedCreate('Alert', {
               entity_type: 'rent_balance',
               entity_id: v.id,
               vehicle_id: v.id,
@@ -165,7 +164,7 @@ export default function Rentas() {
       for (const d of drivers) {
         const left = creditLeft[d.id] || 0;
         if (left !== (Number(d.referral_credit) || 0)) {
-          await base44.entities.Driver.update(d.id, { referral_credit: left }).catch(() => {});
+          await guardedUpdate('Driver', d.id, { referral_credit: left }).catch(() => {});
         }
       }
 
@@ -195,7 +194,7 @@ export default function Rentas() {
       const payments = [...(c.payments || []), { amount, paid_at: todayStr(), method: payForm.method, note: payForm.note.trim() }];
       const amount_paid = Math.round(payments.reduce((a, p) => a + (p.amount || 0), 0) * 100) / 100;
       const status = statusOf({ amount_due: c.amount_due, amount_paid });
-      await base44.entities.RentCharge.update(c.id, { payments, amount_paid, status });
+      await guardedUpdate('RentCharge', c.id, { payments, amount_paid, status });
       setPayCharge(null);
       refresh();
     } catch (e) {

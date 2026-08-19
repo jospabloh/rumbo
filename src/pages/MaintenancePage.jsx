@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { Plus, Search, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +11,7 @@ import PartsList from '@/components/maintenance/PartsList';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { useEntityList, useVehicles, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 
 export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const { tenantId, readOnly } = useTenant();
@@ -56,9 +56,9 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
       // en cada guardado para que el registro quede visible para el socio de esa unidad.
       const ownerGroupId = vehicles.find(v => v.id === data.vehicle_id)?.owner_group_id || null;
       if (editRecord) {
-        await base44.entities.Maintenance.update(editRecord.id, { ...data, owner_group_id: ownerGroupId });
+        await guardedUpdate('Maintenance', editRecord.id, { ...data, owner_group_id: ownerGroupId });
       } else {
-        await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId, owner_group_id: ownerGroupId });
+        await guardedCreate('Maintenance', { ...data, owner_group_id: ownerGroupId });
       }
       setShowForm(false);
       setEditRecord(null);
@@ -71,7 +71,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const handleDelete = async (id) => {
     setError('');
     try {
-      await base44.entities.Maintenance.delete(id);
+      await guardedDelete('Maintenance', id);
       setConfirmId(null);
       refresh();
     } catch (err) {

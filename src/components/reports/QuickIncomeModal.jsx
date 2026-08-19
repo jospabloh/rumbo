@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { FormError } from '@/components/ui/form-error';
 import { useCatalog } from '@/lib/catalogs';
+import { guardedCreate } from '@/lib/guardedWrite';
 
 /**
  * Registrar un ingreso puntual para una unidad en un día específico, desde el
@@ -32,8 +32,7 @@ export default function QuickIncomeModal({ tenantId, vehicleId, driverId, date, 
     setSaving(true);
     setError('');
     try {
-      await base44.entities.RentCharge.create({
-        tenant_id: tenantId,
+      await guardedCreate('RentCharge', {
         vehicle_id: vehicleId,
         driver_id: driverId || undefined,
         period_type: 'daily',

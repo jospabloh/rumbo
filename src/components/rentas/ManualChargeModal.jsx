@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { FormError } from '@/components/ui/form-error';
 import { currentPeriod } from '@/components/rentas/rentUtils';
+import { guardedCreate } from '@/lib/guardedWrite';
 
 export default function ManualChargeModal({ vehicles, tenantId, onClose, onSaved }) {
   const { period_start, period_end } = currentPeriod('weekly');
@@ -37,8 +37,7 @@ export default function ManualChargeModal({ vehicles, tenantId, onClose, onSaved
     setSaving(true);
     setError('');
     try {
-      await base44.entities.RentCharge.create({
-        tenant_id: tenantId,
+      await guardedCreate('RentCharge', {
         vehicle_id: v.id,
         owner_group_id: v.owner_group_id || null,
         driver_id: v.assigned_driver_id || null,

@@ -1,13 +1,35 @@
 import { useState } from 'react';
-import { LifeBuoy, Command, MessageCircle, BookOpen } from 'lucide-react';
+import { LifeBuoy, Command, MessageCircle, BookOpen, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import TicketForm from '@/components/support/TicketForm';
 import ManualGuide from '@/components/help/ManualGuide';
-import { APP_VERSION } from '@/lib/version';
+import { APP_VERSION, RELEASE_DATE } from '@/lib/version';
 import { useEntityList } from '@/hooks/useEntities';
 import { TICKET_STATUSES, TICKET_CATEGORIES, labelFor, statusColor } from '@/lib/support';
+
+// Plain-language digest of CHANGELOG.md, for end users -- not the raw
+// technical entries. Update alongside a real CHANGELOG.md release; see the
+// portfolio convention in cateqhub/liuma/puntos/radar/stockflow's own
+// changelog surfaces.
+const CHANGES = [
+  {
+    date: '2026-08-19',
+    title: 'Permisos y seguridad',
+    items: [
+      'Los permisos personalizados que un administrador asigna a un dispatcher o mecánico ahora se aplican también del lado del servidor, no solo en la pantalla.',
+      'Nuevo: descargar todos los datos de tu flota desde la Zona de Peligro (Admin).',
+    ],
+  },
+  {
+    date: '2026-08-11',
+    title: 'Auditoría de seguridad',
+    items: [
+      'Corregida una falla de seguridad en el registro de sesiones.',
+    ],
+  },
+];
 
 const badgeClasses = {
   warning: 'bg-warning/10 text-warning',
@@ -107,7 +129,23 @@ export default function Help() {
       <p className="text-xs text-muted-foreground mb-3 px-1">Guía paso a paso de cada módulo. Usa el buscador para encontrar un proceso.</p>
       <ManualGuide />
 
-      <p className="text-xs text-muted-foreground mt-6 px-1">Rumbo · versión {APP_VERSION}</p>
+      {/* Historial de cambios */}
+      <h2 className="font-semibold text-sm mt-6 mb-2 px-1 flex items-center gap-2">
+        <History className="w-4 h-4 text-primary" /> Historial de cambios
+      </h2>
+      <div className="space-y-3 mb-4">
+        {CHANGES.map((c) => (
+          <div key={c.date} className="bg-card border border-border rounded-xl p-4">
+            <p className="text-xs text-muted-foreground mb-1">{c.date}</p>
+            <p className="font-medium text-sm mb-1.5">{c.title}</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              {c.items.map((i) => <li key={i} className="text-xs text-muted-foreground">{i}</li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted-foreground mt-6 px-1">Rumbo · versión {APP_VERSION} · {RELEASE_DATE}</p>
 
       {showForm && <TicketForm onClose={() => setShowForm(false)} />}
     </div>

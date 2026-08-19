@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
 import { MapPin, FileText } from 'lucide-react';
 import { cellsForVehicle } from '@/lib/fleetMetricsRange';
 import { useTenant } from '@/lib/TenantContext';
@@ -7,6 +6,7 @@ import { useInvalidateEntity } from '@/hooks/useEntities';
 import { useUnitDayNotes } from '@/hooks/useFleetMetrics';
 import RegistrarMenu from '@/components/reports/RegistrarMenu';
 import NoteComposer from '@/components/reports/NoteComposer';
+import { guardedCreate } from '@/lib/guardedWrite';
 
 /**
  * Detalle de una celda de la matriz día × unidad: ingreso/gasto/utilidad del
@@ -61,8 +61,7 @@ export default function UnitDayCellDetail({ vehicle, bucket, buckets, vehicles, 
 
   const addNote = async (text, attachments) => {
     if (!text || !tenantId) return;
-    await base44.entities.UnitDayNote.create({
-      tenant_id: tenantId,
+    await guardedCreate('UnitDayNote', {
       vehicle_id: vehicle.vehicle_id,
       note_date: date,
       text,

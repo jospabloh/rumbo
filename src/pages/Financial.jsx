@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Plus, AlertTriangle, Shield, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -9,6 +8,7 @@ import CostPerKm from '@/components/financial/CostPerKm';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { useEntityList, useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate } from '@/lib/guardedWrite';
 
 const tabs = [
   { id: 'fines', label: 'Multas', icon: AlertTriangle },
@@ -17,7 +17,7 @@ const tabs = [
 ];
 
 export default function Financial() {
-  const { tenantId, readOnly } = useTenant();
+  const { readOnly } = useTenant();
   const { can } = useModulePerms();
   const [tab, setTab] = useState('fines');
   const [showForm, setShowForm] = useState(false);
@@ -120,8 +120,8 @@ export default function Financial() {
         <CostPerKm vehicles={vehicles} />
       )}
 
-      {showForm && tab === 'fines' && <FineForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.Fine.create({ ...d, tenant_id: tenantId }); setShowForm(false); invalidate('Fine'); }} onClose={() => setShowForm(false)} />}
-      {showForm && tab === 'insurance' && <InsuranceClaimForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await base44.entities.InsuranceClaim.create({ ...d, tenant_id: tenantId }); setShowForm(false); invalidate('InsuranceClaim'); }} onClose={() => setShowForm(false)} />}
+      {showForm && tab === 'fines' && <FineForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await guardedCreate('Fine', d); setShowForm(false); invalidate('Fine'); }} onClose={() => setShowForm(false)} />}
+      {showForm && tab === 'insurance' && <InsuranceClaimForm vehicles={vehicles} drivers={drivers} onSave={async (d) => { await guardedCreate('InsuranceClaim', d); setShowForm(false); invalidate('InsuranceClaim'); }} onClose={() => setShowForm(false)} />}
     </div>
   );
 }

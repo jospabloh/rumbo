@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
 import { MapPin, Clock, CheckCircle2, Plus, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMe, useVehicles, useDrivers, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
-import { useTenant } from '@/lib/TenantContext';
+import { guardedCreate, guardedUpdate } from '@/lib/guardedWrite';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -25,7 +24,6 @@ const statusConfig = {
 };
 
 export default function Location() {
-  const { tenantId } = useTenant();
   const { data: user, isLoading: meLoading } = useMe();
   const { data: vehicles = [], isLoading: vLoading } = useVehicles();
   const { data: drivers = [], isLoading: dLoading } = useDrivers();
@@ -65,10 +63,7 @@ export default function Location() {
     setCreating(true);
     setError('');
     try {
-      // tenant_id es obligatorio (RLS de create de LocationRequest); sin él la solicitud
-      // se rechazaba y el botón quedaba colgado en "Enviando...".
-      await base44.entities.LocationRequest.create({
-        tenant_id: tenantId,
+      await guardedCreate('LocationRequest', {
         vehicle_id: selectedVehicle,
         driver_id: vehicle.assigned_driver_id,
         requested_by: user?.id,
@@ -89,7 +84,7 @@ export default function Location() {
     setSharing(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        await base44.entities.LocationRequest.update(driverRequest.id, {
+        await guardedUpdate('LocationRequest', driverRequest.id, {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           status: 'fulfilled',

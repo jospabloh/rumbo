@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Plus, Pencil, Trash2, TrendingDown, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ExpenseForm from '@/components/financial/ExpenseForm';
 import { useTenant } from '@/lib/TenantContext';
 import { useEntityList, useVehicles, useInvalidateEntity } from '@/hooks/useEntities';
+import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 
 const currentMonthKey = () => format(new Date(), 'yyyy-MM');
 const inCurrentMonth = (dateStr) => String(dateStr || '').slice(0, 7) === currentMonthKey();
@@ -41,9 +41,9 @@ export default function Expenses() {
 
   const save = async (data) => {
     if (editing) {
-      await base44.entities.Expense.update(editing.id, data);
+      await guardedUpdate('Expense', editing.id, data);
     } else {
-      await base44.entities.Expense.create({ ...data, tenant_id: tenantId });
+      await guardedCreate('Expense', data);
     }
     closeForm();
     invalidate('Expense');
@@ -52,7 +52,7 @@ export default function Expenses() {
   const remove = async (item) => {
     setError('');
     try {
-      await base44.entities.Expense.delete(item.id);
+      await guardedDelete('Expense', item.id);
       invalidate('Expense');
     } catch (err) {
       setError('No se pudo eliminar el gasto. Inténtalo de nuevo.');

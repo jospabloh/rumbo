@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { Plus, DollarSign, Receipt, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -9,6 +8,7 @@ import { useInvalidateEntity } from '@/hooks/useEntities';
 import ExpenseForm from '@/components/financial/ExpenseForm';
 import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
 import QuickIncomeModal from '@/components/reports/QuickIncomeModal';
+import { guardedCreate } from '@/lib/guardedWrite';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -79,7 +79,7 @@ export default function RegistrarMenu({ vehicleId, plate, unitNumber, driverId, 
           vehicles={singleVehicleList}
           onClose={() => setOpenForm(null)}
           onSave={async (data) => {
-            await base44.entities.Expense.create({ ...data, tenant_id: tenantId });
+            await guardedCreate('Expense', data);
             afterSave('Expense');
           }}
         />
@@ -90,7 +90,7 @@ export default function RegistrarMenu({ vehicleId, plate, unitNumber, driverId, 
           vehicles={singleVehicleList}
           onClose={() => setOpenForm(null)}
           onSave={async (data) => {
-            await base44.entities.Maintenance.create({ ...data, tenant_id: tenantId });
+            await guardedCreate('Maintenance', data);
             afterSave('Maintenance');
           }}
         />

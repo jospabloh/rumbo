@@ -4,6 +4,58 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.31.0] — 2026-08-19 — Server-side enforcement of granular module permissions (module 3, "G1")
+
+### Security
+
+Closed the "G1" gap `docs/permissions_matrix.md` has documented since it was
+written: the granular per-tenant module permissions (Permisos por Rol panel,
+`TenantLicense.permissions_config`) only ever controlled the UI. Entity RLS
+enforced the *role*-level access (owner/admin/dispatcher/mechanic) but had no
+way to see a tenant admin's own per-role override — a dispatcher an admin
+explicitly denied "Rentas:create" could still create a `RentCharge` via a
+direct SDK call, since RLS's `role:dispatcher` branch doesn't know about
+`permissions_config` at all.
+
+- **New `base44/functions/guardedEntityWrite`** — the sanctioned write path
+  for all 17 module-scoped operational entities (Vehicle, VehicleDocument,
+  Driver, DriverDocument, DriverPrivateNote, Trip, Maintenance, Part,
+  FuelLog, Fine, InsuranceClaim, Alert, Message, Channel, LocationRequest,
+  Expense, RentCharge, UnitDayNote). Mirrors `src/lib/modulePerms.js`'s
+  `DEFAULT_PERMISSIONS`/`moduleCan` exactly, re-derives the caller's role
+  and tenant from their own profile (never the request), and reads
+  `TenantLicense.permissions_config` before delegating the write via
+  `asServiceRole`.
+- Preserves every driver self-record RLS branch that exists independently
+  of the configurable matrix — a driver's own `Trip`, their own `Driver`
+  profile edit, and confirming their own pending `LocationRequest` — by
+  re-deriving the same ownership check server-side (`asServiceRole`
+  bypasses per-record RLS, so this function has to).
+- Two entities (`Channel`, `LocationRequest`) needed a narrower role gate
+  than their nominal module implies: `Channel` shares the `messages` module
+  with `Message` for permission-config purposes, but its own RLS never
+  allowed driver/mechanic to create one (only send messages); `location`
+  has no `useModulePerms().can()` gate anywhere in the current UI, so
+  enforcing its documented-but-never-wired default for the first time would
+  have silently broken the live dispatcher "solicitar ubicación" flow —
+  both are handled as role-only allowlists that exactly mirror their own
+  `.jsonc` RLS, not the generic configurable-permission path.
+- **New `src/lib/guardedWrite.js`** client wrapper
+  (`guardedCreate`/`guardedUpdate`/`guardedDelete`) — same calling shape as
+  the entity SDK it replaces, so migrating a call site was a near-mechanical
+  swap. Migrated all 48 real write call sites across 20 files.
+
+No behavior change for anyone whose role/config combination already granted
+access — the only behavior change is that a user an admin explicitly denied
+a specific module action now correctly fails server-side instead of the
+write silently succeeding.
+
+Verified: `npm run lint`, `npm run build`, `npm run validate:rls` (27
+entities, unaffected — no `.jsonc` file changed), `npm test` (463/463) all
+pass. `deno` isn't available in this sandbox — `guardedEntityWrite` gets its
+first live check once deployed to the Base44 backend (a repo commit alone
+doesn't deploy a new backend function).
+
 ## [1.30.3] — 2026-08-11 — Automated security audit: fixed a cross-tenant AppSession RLS gap
 
 ### Security audit result — one Critical finding, four more confirmed and fixed
