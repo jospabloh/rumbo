@@ -6,14 +6,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint . --quiet",
+    "lint": "eslint . --quiet && npm run validate:functions",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "validate:rls": "node scripts/validate-rls.mjs",
-    "audit:tenant-scope": "node scripts/audit-tenant-scope.mjs"
+    "audit:tenant-scope": "node scripts/audit-tenant-scope.mjs",
+    "deploy": "node scripts/base44-deploy.mjs",
+    "deploy:entities": "node scripts/base44-deploy.mjs --entities",
+    "functions:audit": "node scripts/base44-audit.mjs",
+    "validate:functions": "node scripts/validate-functions.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.43",
