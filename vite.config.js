@@ -2,6 +2,7 @@ import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
+import { configDefaults } from 'vitest/config'
 import { defineConfig } from 'vite'
 
 // Bake the Base44 app id into the client bundle so the app authenticates on ANY
@@ -42,5 +43,11 @@ export default defineConfig({
     // import the base44 client (which reads window.location at import time).
     environment: 'jsdom',
     globals: true,
+    // tests/smoke/ is a Playwright suite that drives a real browser against the
+    // DEPLOYED site (`npm run test:smoke`). Vitest's default glob picks up its
+    // *.spec.js and dies importing Playwright's `test.describe`, so it is
+    // excluded here rather than renamed — the name matches the rest of the
+    // portfolio's copies of that suite.
+    exclude: [...configDefaults.exclude, 'tests/smoke/**'],
   },
 });
