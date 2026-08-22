@@ -1,12 +1,18 @@
 import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Monitor } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import {
   CommandDialog, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandShortcut,
 } from '@/components/ui/command';
 import { accessibleNavItems } from '@/lib/nav';
+
+const THEME_MODES = [
+  { value: 'light', label: 'claro', icon: Sun },
+  { value: 'dark', label: 'oscuro', icon: Moon },
+  { value: 'system', label: 'seguir al dispositivo', icon: Monitor },
+];
 
 /**
  * Paleta de comandos (⌘K / Ctrl+K) para navegación rápida.
@@ -54,14 +60,20 @@ export default function CommandPalette({ open, onOpenChange, role, isAppOwner = 
           ))}
         </CommandGroup>
         <CommandGroup heading="Acciones">
-          <CommandItem
-            value="Cambiar tema claro oscuro"
-            onSelect={() => run(() => setTheme(theme === 'dark' ? 'light' : 'dark'))}
-          >
-            {theme === 'dark' ? <Sun className="mr-2" /> : <Moon className="mr-2" />}
-            Cambiar a tema {theme === 'dark' ? 'claro' : 'oscuro'}
-            <CommandShortcut>tema</CommandShortcut>
-          </CommandItem>
+          {/* Three commands rather than one toggle: a toggle can only ever
+              reach two of the three modes, and "seguir al dispositivo" is the
+              one people look for by name. */}
+          {THEME_MODES.map(({ value, label, icon: Icon }) => (
+            <CommandItem
+              key={value}
+              value={`Tema ${label} claro oscuro sistema dispositivo`}
+              onSelect={() => run(() => setTheme(value))}
+            >
+              <Icon className="mr-2" />
+              Tema: {label}
+              {theme === value && <CommandShortcut>actual</CommandShortcut>}
+            </CommandItem>
+          ))}
         </CommandGroup>
       </CommandList>
     </CommandDialog>

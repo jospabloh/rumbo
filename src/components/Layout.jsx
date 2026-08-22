@@ -12,7 +12,6 @@ import { can, isDriver as checkIsDriver, isInvestor as checkIsInvestor } from '@
 import { SUPPORT_URL } from '@/lib/license';
 import { NAV_GROUPS, DRIVER_NAV, INVESTOR_NAV, PLATFORM_NAV, isNavItemActive } from '@/lib/nav';
 import { useMe, useAlerts, useMessages } from '@/hooks/useEntities';
-import ThemeToggle from '@/components/ThemeToggle';
 import CommandPalette from '@/components/CommandPalette';
 
 function LicenseBanner({ info }) {
@@ -220,7 +219,6 @@ export default function Layout() {
           <HelpCircle className="w-4 h-4" />
           Ayuda y soporte
         </Link>
-        <ThemeToggle />
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-sidebar-accent w-full transition-all"

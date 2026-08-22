@@ -1,4 +1,5 @@
 import { ThemeProvider } from 'next-themes';
+import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -158,7 +159,7 @@ const AppShell = () => {
 function App() {
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="rumbo-theme" disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem storageKey="rumbo-theme" disableTransitionOnChange>
       <AuthProvider>
         <QueryClientProvider client={queryClientInstance}>
           <Router>
@@ -170,6 +171,7 @@ function App() {
             </TenantProvider>
           </Router>
           <Toaster />
+          <ThemeSwitcher />
         </QueryClientProvider>
       </AuthProvider>
     </ThemeProvider>

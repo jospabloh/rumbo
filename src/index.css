@@ -146,3 +146,9 @@
     @apply bg-muted rounded-full;
   }
 }
+
+/* Corner theme switcher (src/components/ThemeSwitcher.jsx) — placement only. */
+:root {
+  --theme-switcher-bottom: 1rem;
+  --theme-switcher-right: 1rem;
+}
