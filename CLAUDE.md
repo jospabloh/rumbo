@@ -316,3 +316,72 @@ portafolio llegó a desplegar eran **sintácticamente válidos**: la rama de rol
 motor descartaba la cláusula hermana de `user_condition`, los campos de licencia
 escribibles por el propio inquilino en puntos y rumbo, y el `PermissionProfile`
 que ningún RLS puede consultar porque vive en otra fila.
+
+## Módulo 14 — auditoría de aislamiento multi-tenant
+
+### Resultado — 2026-08-23, contra el esquema desplegado
+
+**No se encontró ningún cruce entre inquilinos.** Un hallazgo real dentro del
+inquilino, abajo.
+
+**Las 16 funciones derivan el inquilino del servidor.** Ninguna lo toma del
+cuerpo de la petición — comprobado por grep sobre las 16, no por muestreo.
+
+`guardedEntityWrite` cubre las dos mitades que el módulo pide, y una tercera que
+no pide pero importa:
+
+- **create** fuerza `tenant_id: tenantId` **después** de esparcir `body.data`,
+  así que lo que mande el cliente no puede ganar;
+- **update/delete** re-leen el registro y comparan
+  `existing.tenant_id !== tenantId` → 404;
+- **update borra `tenant_id` del patch**, para que un registro existente no se
+  mueva de inquilino, y en `Message` borra también `sender_id`, para que un
+  mensaje ya enviado no se pueda re-atribuir a otra persona;
+- el camino de auto-alcance del conductor (`DRIVER_SELF_SCOPE`) se comprueba
+  contra el registro **almacenado**, incluido `requireStatus` — no contra lo que
+  venga en la petición.
+
+**Tres funciones de plataforma fallan CERRADO**, y eso merece nombrarse:
+`githubRepos`, `supabaseData` y `licensesAdmin` responden 403 si
+`APP_OWNER_EMAIL` no está configurado, en vez de abrirse. Es exactamente la
+lección contraria a la que flowfin aprendió por las malas con su
+`_internalGuard.ts`, y aquí está bien.
+
+**Los 10 candados de licencia del 2026-08-19 siguen desplegados** — releídos del
+esquema vivo: `plan`, `status`, `max_vehicles`, `max_drivers`, `features`,
+`trial_ends_at`, `current_period_end`, `billing_cycle`, `last_payment_at` y
+`renews_at` llevan `rls.write: false`.
+
+### Hallazgo: un `admin` puede hacerse `owner` y borrar el inquilino
+
+No cruza inquilinos, pero anula una puerta que el propio RLS quiso poner.
+
+`TenantLicense.delete` se llave a **una sola cosa**:
+`{"data.owner_email": "{{user.email}}"}`. La intención es clara: sólo el dueño
+borra. Pero:
+
+- `owner_email` **no** tiene candado de campo — a diferencia de los 10 de
+  licencia;
+- `TenantLicense.update` permite escribir el resto del registro a cualquier
+  `owner` **o `admin`** que sea miembro del propio inquilino;
+- `Admin.jsx:185` renderiza `DangerZone` bajo `isAdminOrOwner(user?.role)`, y
+  `DangerZone.jsx:55` escribe `owner_email` directamente.
+
+Así que un `admin` puede delegarse la propiedad a sí mismo **desde la interfaz**,
+sin tocar el SDK, y a partir de ahí cumple la condición de `delete`. La puerta
+"sólo el owner borra" no cierra nada mientras un admin pueda convertirse en
+owner en un clic.
+
+Dos formas de arreglarlo, según lo que se quiera: si delegar propiedad es cosa
+del dueño, bloquear `owner_email` a `owner` (o a rol de servicio, vía
+`licensesAdmin`) y gatear `DangerZone` en `isOwner`; si un admin sí debe poder
+delegar, entonces `delete` no debería depender de `owner_email` sino de una
+confirmación escrita como la que usan otras apps del portafolio.
+
+### No verificado
+
+Una sesión autenticada como `admin`, `dispatcher`, `mechanic` o `driver` de un
+segundo inquilino. Lo de arriba es lectura de código y del esquema desplegado:
+suficiente para descartar los defectos estructurales de aislamiento, y para
+afirmar el hallazgo de arriba leyendo las tres piezas que lo componen, pero no
+para decir que el motor evalúa cada regla como se lee.
