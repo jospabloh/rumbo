@@ -7,6 +7,7 @@
 // role. Single channel for reads (license sync, usage) and writes (Fase 6).
 // Same file deploys to every app.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { verifyAs } from './_acaciaSign.ts';
 
 // Build marker — bumped to force a fresh deploy artifact. No functional effect.
 const ACACIA_CONTROL_BUILD = 2;
@@ -106,8 +107,14 @@ Deno.serve(async (req) => {
     if (!action || !ts || !sig) return Response.json({ error: 'missing action/ts/sig' }, { status: 400 });
     if (Math.abs(Date.now() - Number(ts)) > MAX_SKEW_MS) return Response.json({ error: 'stale request' }, { status: 401 });
 
-    const expected = await hmacHex(secret, `${ts}.${action}.${stableStringify(params)}`);
-    if (!timingSafeEqual(expected, String(sig))) return Response.json({ error: 'bad signature' }, { status: 401 });
+    // Verified against THIS app's derived key — see _acaciaSign.ts, and Module
+    // 15 of jospabloh/acacia-app-standard. While ACCEPT_LEGACY_MASTER is true a
+    // signature made with the bare INGEST_HMAC_SECRET is still accepted, which
+    // is what lets Mission Control and the nine apps deploy in any order.
+    const slug = Deno.env.get('ACACIA_APP_SLUG') ?? '';
+    if (!(await verifyAs(secret, slug, { ts, action, params, sig }))) {
+      return Response.json({ error: 'bad signature' }, { status: 401 });
+    }
 
     // Anti-replay: SÓLO tras verificar la firma (así un atacante no autenticado no
     // puede inundar el store). `nonce`/`jti` es opcional y sólo se registra por
