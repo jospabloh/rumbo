@@ -470,7 +470,8 @@ Security, code quality, tenant isolation, permissions, and release-readiness aud
 | `src/lib/TenantContext.jsx` | Tenant resolution; revalidates every 15 min + on tab focus |
 | `base44/entities/*.jsonc` | Entity-level RLS rules — 27 entities total; 23 have a `tenant_id` field, all field-level `write:false` since v1.30.3 (A58) so an update payload can't repoint an existing record at another tenant, even post-entity-gate; the other 4 (`TenantLicense`, `AppSession`, `AcaciaReplayKey`, `JoinAttempt`) are scoped by identity/service-role instead |
 | `base44/entities/User.jsonc` | RLS: tenant-scoped read, role-gated update, server-authoritative fields (write:false) |
-| `base44/functions/resolveTenant/entry.ts` | Source of truth for tenant binding, write_access, driver_profile_id |
+| `base44/functions/resolveTenant/entry.ts` | Source of truth for tenant binding, write_access, driver_profile_id. Since Module 18 (`jospabloh/acacia-app-standard`): computes the caller's FULL candidate-tenant set (creator/owner_email/members[]), not just the first match — returns it as `candidates` on every response, and blocks on `needs_tenant_choice` instead of guessing when nothing is persisted and there is more than one |
+| `base44/functions/switchTenant/entry.ts` | Module 18: moves the persisted `tenant_id` from one candidate to another. Re-derives the caller's legitimate candidate set server-side from scratch (never trusts the requested id); a `tenant_id` outside that set gets the same 404 as a nonexistent one |
 | `base44/functions/generateAlerts/entry.ts` | Role guard: admin/owner only; tenant-scoped |
 | `base44/functions/calculateCostPerKm/entry.ts` | Role guard: owner/admin/dispatcher; tenant-scoped |
 | `base44/functions/fleetUnitMetrics/entry.ts` | Role guard: owner/admin only; tenant-scoped; powers `/reports` (utilidad, ranking, matriz día×unidad, pronóstico) |

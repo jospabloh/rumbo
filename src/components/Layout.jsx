@@ -13,6 +13,7 @@ import { SUPPORT_URL } from '@/lib/license';
 import { NAV_GROUPS, DRIVER_NAV, INVESTOR_NAV, PLATFORM_NAV, isNavItemActive } from '@/lib/nav';
 import { useMe, useAlerts, useMessages } from '@/hooks/useEntities';
 import CommandPalette from '@/components/CommandPalette';
+import TenantSwitcher from '@/components/TenantSwitcher';
 
 function LicenseBanner({ info }) {
   if (!info || !info.message || info.state === 'disabled') return null;
@@ -155,6 +156,11 @@ export default function Layout() {
             <p className="text-xs text-muted-foreground truncate leading-tight">{tenant.tenant_name}</p>
           )}
         </div>
+      </div>
+
+      {/* Selector de organización — solo se monta si el email pertenece a más de una (Módulo 18) */}
+      <div className="px-3 pt-2">
+        <TenantSwitcher />
       </div>
 
       {/* Nav */}
