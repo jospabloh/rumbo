@@ -36,6 +36,14 @@ function parseJsonc(text) {
 // Ámbitos propios globalmente únicos que aíslan aun sin data.tenant_id.
 const SELF_SCOPES = [
   '"id":"{{user.id}}"',
+  // TenantLicense: su propio `id` ES el tenant (no tiene campo `tenant_id` propio,
+  // ver docstring arriba), así que comparar el id del registro contra el
+  // `tenant_id` server-authoritative del caller es el equivalente exacto de
+  // `data.tenant_id == {{user.data.tenant_id}}` para las otras 26 entidades — no
+  // una fuga. Faltaba en esta lista: 2026-08-24, base44-builder[bot] simplificó
+  // el RLS en vivo de `read`/`update` de `data.members.email` a este patrón (ver
+  // CLAUDE.md, módulo 18) y el script lo marcó como sin acotar sin serlo.
+  '"id":"{{user.data.tenant_id}}"',
   'data.owner_email":"{{user.email}}"',
   'data.members.email":"{{user.email}}"',
   'data.requester_id":"{{user.id}}"',
