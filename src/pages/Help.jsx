@@ -15,6 +15,13 @@ import { TICKET_STATUSES, TICKET_CATEGORIES, labelFor, statusColor } from '@/lib
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-08-24',
+    title: 'Zona de Peligro: delegar propiedad ahora es solo del owner',
+    items: [
+      'Corregido: un administrador ya no puede delegarse la propiedad del tenant a sí mismo ni, con eso, eliminarlo. Delegar propiedad y eliminar el tenant son ahora acciones exclusivas del owner actual.',
+    ],
+  },
+  {
     date: '2026-08-19',
     title: 'Permisos y seguridad',
     items: [

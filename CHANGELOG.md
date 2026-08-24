@@ -4,6 +4,42 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.31.1] — 2026-08-24 — Close admin self-delegation of tenant ownership (module 14 finding)
+
+### Security
+
+Module 14's 2026-08-23 isolation audit found a within-tenant privilege
+escalation: `TenantLicense.delete` keys on nothing but
+`data.owner_email == {{user.email}}`, but `update` was open to any
+same-tenant `owner` **or `admin`**, and `owner_email` had no field-level
+lock. So an admin could self-delegate ownership from `DangerZone.jsx` and
+then satisfy the delete condition — the "only the owner deletes" gate closed
+nothing while an admin could become owner in one click. Documented but not
+yet fixed as of that audit; fixed here.
+
+- `base44/entities/TenantLicense.jsonc` — `owner_email` gets
+  `rls.write:false`, same mechanism as the ten license fields from module 1
+  (2026-08-19).
+- New `base44/functions/delegateOwnership` (service role) — the only
+  tenant-scoped path left to reassign `owner_email`. Re-reads the *stored*
+  record and requires the caller to already be its `owner_email` before
+  writing; the target must already be a member of the same tenant.
+  `licensesAdmin`'s `patch` action is the other writer, unaffected —
+  `APP_OWNER_EMAIL`-gated, platform owner only.
+- `src/components/admin/DangerZone.jsx` — delegate/delete controls now
+  render only for `isOwner(user.role)`; an admin sees an explanatory line
+  instead. Delegate now calls `delegateOwnership` instead of writing
+  `TenantLicense` directly.
+- `docs/permissions_matrix.md` — updated the two affected rows plus a new
+  footnote.
+
+**Verified:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm run
+validate:rls` (27 entities OK), `npm run test` all pass. Deploy to the live
+Base44 backend and an authenticated browser session as a non-owner tenant
+admin were not achievable in this environment — see CLAUDE.md.
+
+---
+
 ## [1.31.0] — 2026-08-19 — Server-side enforcement of granular module permissions (module 3, "G1")
 
 ### Security

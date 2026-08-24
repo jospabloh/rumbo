@@ -181,8 +181,16 @@ export default function Admin() {
       {/* Permisos granulares — solo admin del tenant */}
       <PermissionsPanel />
 
-      {/* Danger Zone — solo admin del tenant */}
-      {isAdminOrOwner(user?.role) && <DangerZone tenant={tenant} onDeleted={() => window.location.reload()} onDelegated={() => { reloadTenant(); refresh(); }} />}
+      {/* Danger Zone — visible a admin/owner del tenant; delegar/eliminar están gateados
+          adentro a solo owner (módulo 14, 2026-08-24) */}
+      {isAdminOrOwner(user?.role) && (
+        <DangerZone
+          tenant={tenant}
+          isOwner={isOwner(user?.role)}
+          onDeleted={() => window.location.reload()}
+          onDelegated={() => { reloadTenant(); refresh(); }}
+        />
+      )}
 
       {/* Super Admin Panel — solo owner de la app */}
       {isOwner(user?.role) && (

@@ -130,7 +130,16 @@
     },
     "owner_email": {
       "type": "string",
-      "title": "Email del owner"
+      "title": "Email del owner",
+      // Fixed 2026-08-24 (module 14 finding, 2026-08-23): TenantLicense.delete keys on
+      // nothing but `data.owner_email == {{user.email}}`, and update was open to any
+      // same-tenant owner OR admin — so an admin could self-delegate ownership from
+      // DangerZone.jsx and immediately satisfy delete. Field-level write:false here closes
+      // that (same mechanism as the 10 license fields above); the only remaining writers
+      // are asServiceRole callers: `delegateOwnership` (re-checks the caller IS the
+      // *stored* owner before reassigning — tenant self-service) and `licensesAdmin`'s
+      // `patch` action (APP_OWNER_EMAIL-gated platform override).
+      "rls": { "write": false }
     },
     "join_code": {
       "type": "string",
