@@ -7,14 +7,27 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  * depende de las RLS del cliente (que serían un problema de huevo-y-gallina: para leer su
  * licencia el usuario ya necesitaría su tenant_id).
  *
- * Resolución (en orden):
- *   1. tenant_id ya guardado en el perfil (se valida que aún exista).
- *   2. creador del TenantLicense (owner que hizo onboarding).
- *   3. owner_email del TenantLicense.
- *   4. miembro en members[] (invitados). El rol del invitado se toma de members[].
+ * Resolución:
+ *   1. Si ya hay tenant_id guardado en el perfil y sigue existiendo, se conserva —
+ *      sin cambios respecto a antes.
+ *   2. Si no, se calcula el conjunto COMPLETO de tenants candidatos (creador,
+ *      owner_email o miembro en members[] — un mismo email puede aparecer en más de
+ *      un TenantLicense a la vez). Con exactamente un candidato se autoasigna, igual
+ *      que siempre. Con más de uno NO se adivina cuál: se devuelve
+ *      `needs_tenant_choice` con la lista completa para que el cliente muestre un
+ *      selector (ver "Módulo 18" en jospabloh/acacia-app-standard → STANDARD.md).
+ *      Antes de este módulo se tomaba el primer match por orden de creación y se
+ *      persistía para siempre — el segundo tenant no estaba mal resuelto, era
+ *      invisible.
  *
- * En el primer login del invitado persiste tenant_id (y su rol invitado) en el perfil.
- * En logins posteriores NO toca el rol (lo administra el admin del tenant).
+ * En el primer enganche a un tenant persiste tenant_id (y el rol del invitado, si
+ * aplica) en el perfil. En logins posteriores NO toca el rol (lo administra el admin
+ * del tenant). Cambiar de un tenant candidato a otro después del primer enganche es
+ * responsabilidad de `switchTenant`, no de esta función.
+ *
+ * La respuesta siempre incluye `candidates` (id, nombre, logo de cada tenant al que
+ * el email pertenece) aunque ya haya uno asignado, para que el cliente pueda ofrecer
+ * un selector persistente sin tener que volver a calcular la pertenencia por su cuenta.
  *
  * Además calcula write_access (enabled/blocked) desde el estado de la licencia y lo
  * persiste en el perfil. Es la fuente de verdad del bloqueo de escritura por falta de
@@ -22,6 +35,18 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  * user_condition write_access='enabled', así que un tenant vencido no puede escribir
  * ni siquiera llamando al SDK directamente. La lectura no se ve afectada (solo lectura).
  */
+
+function matchesTenant(t: any, userId: string, email: string): boolean {
+  return (
+    t.created_by_id === userId ||
+    (t.owner_email || '').toLowerCase() === email ||
+    (Array.isArray(t.members) && t.members.some((m: any) => (m.email || '').toLowerCase() === email))
+  );
+}
+
+function summarize(t: any) {
+  return { id: t.id, tenant_name: t.tenant_name, logo_url: t.logo_url };
+}
 
 /**
  * Política de licencia (espejo de src/lib/license.js). Devuelve 'enabled' mientras la
@@ -60,21 +85,36 @@ Deno.serve(async (req) => {
 
     const tenants = await svc.entities.TenantLicense.list('-created_date', 1000);
 
+    // Conjunto completo de tenants a los que este email pertenece — no solo el
+    // primero. Se calcula siempre, incluso con tenant_id ya asignado, para que la
+    // respuesta de éxito también lleve `candidates` (switcher persistente).
+    const candidates = tenants.filter((t) => matchesTenant(t, user.id, email));
+    const candidateSummaries = candidates.map(summarize);
+
     // 1) tenant ya asignado y todavía válido
     let tenant = currentTenantId ? tenants.find((t) => t.id === currentTenantId) : null;
     const alreadyAssigned = !!tenant;
 
-    // 2-4) descubrir por creador, owner_email o miembro
     if (!tenant) {
-      tenant =
-        tenants.find((t) => t.created_by_id === user.id) ||
-        tenants.find((t) => (t.owner_email || '').toLowerCase() === email) ||
-        tenants.find(
-          (t) =>
-            Array.isArray(t.members) &&
-            t.members.some((m) => (m.email || '').toLowerCase() === email)
-        ) ||
-        null;
+      if (candidates.length > 1) {
+        // Ambiguo: más de un tenant candidato y nada persistido todavía. No se
+        // adivina — se devuelve la lista completa para que el cliente muestre un
+        // selector en vez de onboarding o una asignación silenciosa (Módulo 18).
+        if (user.data?.write_access === 'blocked') {
+          await svc.entities.User.update(user.id, { write_access: 'enabled' });
+        }
+        return Response.json({
+          tenant_id: null,
+          role: user.role,
+          is_app_owner: isAppOwner,
+          needs_onboarding: false,
+          needs_tenant_choice: true,
+          candidates: candidateSummaries,
+          write_access: 'enabled',
+        });
+      }
+      // 0 o 1 candidato: comportamiento de siempre (autoasignar el único, o nada).
+      tenant = candidates[0] || null;
     }
 
     if (!tenant) {
@@ -88,6 +128,8 @@ Deno.serve(async (req) => {
         role: user.role,
         is_app_owner: isAppOwner,
         needs_onboarding: ['owner', 'admin'].includes(user.role),
+        needs_tenant_choice: false,
+        candidates: candidateSummaries,
         write_access: 'enabled',
       });
     }
@@ -140,6 +182,8 @@ Deno.serve(async (req) => {
       role: patch.role || user.role,
       is_app_owner: isAppOwner,
       needs_onboarding: false,
+      needs_tenant_choice: false,
+      candidates: candidateSummaries,
       write_access: writeAccess,
       tenant: {
         id: tenant.id,

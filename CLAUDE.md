@@ -516,3 +516,83 @@ Lo que de verdad está bloqueado es `deno.land` y `jsr.io`, así que un test que
 importe de ahí no resuelve; uno que no importe nada corre igual que en CI. Es la
 misma lección que el `000` del proxy en Mission Control: **que una vía esté
 bloqueada no significa que la pregunta no tenga respuesta.**
+
+## Módulo 18 — selector de organización: un email, varios tenants (2026-08-24)
+
+Nuevo en `jospabloh/acacia-app-standard` → `STANDARD.md`. El disparador fue
+operativo, no un hallazgo de auditoría: el email dueño de esta instancia
+(`h.josepablo@gmail.com`) resultó ser `owner_email` de dos `TenantLicense` a la
+vez ("Car-Go Rent" y "Owner") mientras se cargaban datos reales de flotilla, y
+`resolveTenant` solo sabía resolver **uno**.
+
+**Lo que había:** `resolveTenant` recorría
+`created_by_id → owner_email → members[]` y devolvía el primer match; una vez
+persistido en el perfil (`tenant_id`, `write:false`), ese binding era
+permanente. `joinTenant` además rechazaba explícitamente unirse a un segundo
+tenant por código ("ya perteneces a otra organización"). Un email que
+legítimamente administra dos organizaciones quedaba encerrado en la que
+`resolveTenant` viera primero, sin error, sin aviso y sin salida — el segundo
+tenant no estaba mal resuelto, era invisible.
+
+**Fix (dos funciones de servidor + un control de cliente, sin tocar el modelo
+de tenant):**
+
+- `base44/functions/resolveTenant/entry.ts` — ahora calcula el conjunto
+  **completo** de tenants candidatos (mismo criterio de siempre: creador,
+  `owner_email` o miembro), no solo el primero. Con `tenant_id` ya persistido
+  y válido, el comportamiento no cambia — pero la respuesta ahora siempre
+  lleva `candidates` (id, nombre, logo) para que el cliente pueda ofrecer un
+  selector persistente. Sin nada persistido: un solo candidato se autoasigna
+  igual que antes; más de uno **no se adivina** — se devuelve
+  `needs_tenant_choice: true` en vez de onboarding o una asignación silenciosa.
+- Nueva `base44/functions/switchTenant/entry.ts` (service role) — el único
+  camino para mover `tenant_id` de un candidato a otro. Recalcula el conjunto
+  de candidatos legítimos del caller **desde cero**, igual que `resolveTenant`
+  — nunca confía en que el `tenant_id` que mandó el cliente sea uno de los
+  suyos. Un id fuera de ese conjunto responde exactamente igual que uno
+  inexistente (404 genérico — el endpoint no debe funcionar como oráculo de
+  existencia, módulo 14 §6 del estándar). El rol se re-deriva igual que en el
+  primer enganche (`owner_email` → owner; miembro con rol propio → ese rol;
+  creador → conserva el rol del perfil); `suspended` no se toca, para no
+  limpiar ni imponer un bloqueo que pertenece al tenant activo, no al switch.
+- `src/lib/TenantContext.jsx` — expone `candidates`, `needsTenantChoice` y
+  `switchTenant()`; este último invoca la función y **recarga la página
+  entera** al terminar en vez de intentar resetear cada hook/lista/caché
+  tenant-scoped en el lugar (es el único reset que no puede dejar nada del
+  tenant anterior vivo en un closure).
+- Nuevo `src/components/TenantPicker.jsx` — pantalla completa, mismo layout
+  que `Onboarding.jsx`; `App.jsx`'s `TenantGate` lo monta en vez del
+  onboarding cuando `needsTenantChoice` es verdadero (revisado **antes** que
+  `needsOnboarding`, porque ambos ven `tenantId` nulo).
+- Nuevo `src/components/TenantSwitcher.jsx` — control compacto en el pie del
+  logo/nombre del tenant en `Layout.jsx`; solo se monta si
+  `candidates.length > 1`, así que un operador con una sola organización
+  nunca ve un control sin nada que hacer.
+- `docs/permissions_matrix.md` — filas de `resolveTenant`/`switchTenant`
+  actualizadas en la tabla de funciones de backend.
+
+**Lo que NO cambió a propósito:** `joinTenant` sigue rechazando unirse a un
+segundo tenant *por código* mientras ya se pertenece a uno — es una red de
+seguridad distinta (evitar un código mal tecleado) y relajarla es una decisión
+de producto aparte, no parte de este módulo. El selector resuelve la
+ambigüedad para memberships que **ya existen** (como creador, `owner_email` o
+invitación previa a `members[]`), no abre una vía nueva para adquirir una.
+
+**Verificado:** `npm run lint` (incluye `validate:functions` — 18 endpoints,
+techo 40), `npm run build`, `npm run typecheck`, `npm run validate:rls` (27
+entidades OK, sin cambios de esquema), `npm test` (463/463) — todos limpios.
+`deno check` corrió contra `switchTenant/entry.ts` en este sandbox (mismo
+método del módulo 15/16: el binario se baja de GitHub releases) y compila
+limpio contra los tipos reales de `@base44/sdk`; de paso quedó documentado que
+`resolveTenant`/`joinTenant`/`manageMember` ya tenían un `error.message` sin
+`as Error` que `deno check` sí marca (pre-existente, no de este cambio — este
+repo no corre `deno check` en CI, así que nunca se había visto) —
+`switchTenant` se escribió con el cast, siguiendo el patrón más nuevo de
+`delegateOwnership`.
+
+**No verificado:** el deploy en vivo (pendiente de que este PR se mergee y el
+sync automático de `main` lo suba) ni una sesión de navegador real con un
+email que pertenezca a dos tenants — el caso real que lo disparó
+(`h.josepablo@gmail.com`) solo se confirmó por lectura directa de
+`TenantLicense` vía el MCP de Base44, no logueando con esa sesión en el
+navegador desde este entorno.
