@@ -386,6 +386,50 @@ suficiente para descartar los defectos estructurales de aislamiento, y para
 afirmar el hallazgo de arriba leyendo las tres piezas que lo componen, pero no
 para decir que el motor evalúa cada regla como se lee.
 
+### Hallazgo cerrado — 2026-08-24
+
+De las dos formas que el hallazgo de arriba proponía, se tomó la primera:
+delegar propiedad es cosa del dueño, así que `owner_email` se bloqueó y
+`DangerZone` se gateó a `isOwner`.
+
+- `base44/entities/TenantLicense.jsonc` — `owner_email` ahora `rls.write:
+  false`, mismo mecanismo que los diez campos de licencia del módulo 1. Ya
+  nadie puede escribirlo por SDK directo, ni el propio owner.
+- Nueva `base44/functions/delegateOwnership` (service role) — el único
+  camino tenant-scoped que queda para reasignarlo. Relee el registro
+  **almacenado** y exige que el caller sea ya su `owner_email` antes de
+  escribir uno nuevo; el destino debe ser ya miembro del mismo tenant. No
+  gatea por `user.role` del perfil — ese es justo el campo que el hallazgo
+  demostró que un admin también alcanza.
+  `licensesAdmin`'s `patch` sigue siendo el otro escritor de `owner_email`,
+  sin cambios — ese ya estaba gateado a `APP_OWNER_EMAIL` (el owner de la
+  plataforma), no al owner del tenant.
+- `src/components/admin/DangerZone.jsx` — recibe un prop `isOwner`; delegar
+  y eliminar solo se renderizan si es `true` (un admin ve una línea
+  explicativa en su lugar). `handleDelegate` pasó de
+  `base44.entities.TenantLicense.update()` a invocar `delegateOwnership`.
+  Exportar datos se queda disponible para admin también — no es una acción
+  de riesgo, no hacía falta tocarla.
+- `src/pages/Admin.jsx` — pasa `isOwner={isOwner(user?.role)}` a
+  `DangerZone` (el import ya existía en este archivo).
+- `docs/permissions_matrix.md` — las dos filas de la tabla de acciones y la
+  fila de `TenantLicense` en el resumen de RLS, más una nota⁶.
+
+**Verificado:** `npm run lint` (incluye `validate:functions` — 17
+endpoints, techo 40), `npm run build`, `npm run typecheck`, `npm run
+validate:rls` (27 entidades OK), `npm test` (463/463) — todos limpios.
+`deno check` sí corrió en este sandbox contra la función nueva (siguiendo la
+nota del módulo 15 de abajo: el binario se baja de GitHub releases y sí pasa
+por el proxy) — compila limpio contra los tipos reales de `@base44/sdk`.
+
+**No verificado:** el deploy en vivo (esta vez no se confirmó contra el
+esquema desplegado vía Base44 MCP, a diferencia del módulo 1 — pendiente de
+que este PR se mergee y el sync automático de `main` lo suba) ni una sesión
+de navegador autenticada como admin de un tenant intentando el flujo viejo.
+El riesgo está acotado: el cambio es un candado de campo más una función de
+servicio, mismo patrón ya probado en producción para los diez campos de
+licencia del módulo 1.
+
 ## Módulo 15 — el puente con Mission Control: una llave por app (2026-08-23)
 
 `INGEST_HMAC_SECRET` es **un solo valor compartido por todo el portafolio**, así
