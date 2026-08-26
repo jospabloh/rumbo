@@ -25,6 +25,18 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *     hace el fuerza-bruta impráctico por sí solo, pero esto añade una capa de
  *     defensa (JoinAttempt, ledger persistente — ver ese archivo) por si el
  *     espacio de códigos cambia o un atacante controla muchas cuentas.
+ *
+ * Módulo 18 (jospabloh/acacia-app-standard → STANDARD.md, revisado 2026-08-26):
+ * unirse por código ya NO se rechaza porque el caller pertenezca a otro tenant —
+ * el único rechazo legítimo es ya-ser-miembro-de-ESTE-tenant, y eso es idempotente
+ * (no un error). Antes esta función devolvía 409 "ya perteneces a otra
+ * organización" — el mismo antipatrón que CtrlHQ's `complete-onboarding` nunca
+ * tuvo. Unirse mueve el `tenant_id` activo al tenant recién unido de inmediato
+ * (como hace CtrlHQ), re-derivando el rol igual que `switchTenant`. Rumbo no
+ * tiene una entidad `Membership` separada — la pertenencia sigue viviendo en
+ * `TenantLicense.members[]` — así que `resolveTenant`/`switchTenant` siguen
+ * siendo quienes descubren y permiten volver a un tenant anterior; esta función
+ * solo deja de bloquear la entrada al nuevo.
  */
 
 const DEFAULT_JOIN_ROLE = 'driver';
@@ -102,15 +114,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Esta organización no está disponible para unirse en este momento.' }, { status: 403 });
     }
 
-    // Si el usuario ya pertenece a otro tenant, no lo movemos sin querer.
-    const existingTenantId = user.data?.tenant_id || null;
-    if (existingTenantId && existingTenantId !== tenant.id) {
-      return Response.json({
-        error: 'Ya perteneces a otra organización. Sal de ella antes de unirte a una nueva.',
-      }, { status: 409 });
-    }
-
     // Alta idempotente en members[] (no duplica si ya estaba, p. ej. lo invitaron por correo).
+    // Ya no importa a qué otro tenant pertenezca el caller — unirse a ESTE tenant siempre
+    // procede; lo único idempotente es no duplicar la fila si ya era miembro de este mismo.
     const members = Array.isArray(tenant.members) ? tenant.members : [];
     const already = members.find((m) => (m.email || '').toLowerCase() === email);
     if (!already) {
@@ -122,12 +128,26 @@ Deno.serve(async (req) => {
       await svc.entities.TenantLicense.update(tenant.id, { members: [...members, newMember] });
     }
 
-    // Vincula el perfil con el tenant (server-authoritative). El rol solo se asigna en el
-    // primer enganche; si ya era miembro con un rol asignado por el admin, se respeta.
-    const role = already?.role || DEFAULT_JOIN_ROLE;
+    // Vincula el perfil con el tenant recién unido y lo activa de inmediato — mismo
+    // comportamiento que CtrlHQ's `complete-onboarding` (mode: "join"): quien acaba de
+    // redimir un código espera aterrizar en ese tenant, no invocar un switch aparte.
+    // El rol se re-deriva con la misma regla que `switchTenant`: owner_email → owner;
+    // miembro ya existente → conserva el rol que le asignó el admin; nuevo → el de
+    // menor privilegio.
+    const tenantOwnerEmail = (tenant.owner_email || '').toLowerCase();
+    const role = tenantOwnerEmail === email ? 'owner' : (already?.role || DEFAULT_JOIN_ROLE);
+
+    let driverProfileId: string | null = null;
+    try {
+      const drivers = await svc.entities.Driver.filter({ profile_id: user.id });
+      const drv = Array.isArray(drivers) ? (drivers.find((d: any) => d.tenant_id === tenant.id) || null) : null;
+      driverProfileId = drv?.id || null;
+    } catch (_e) { /* sin registro Driver vinculado en este tenant */ }
+
     const patch: Record<string, unknown> = {};
     if (user.data?.tenant_id !== tenant.id) patch.tenant_id = tenant.id;
-    if (!existingTenantId && user.role !== role) patch.role = role;
+    if (user.role !== role) patch.role = role;
+    if ((user.data?.driver_profile_id || null) !== driverProfileId) patch.driver_profile_id = driverProfileId;
     if ((user.data?.write_access || 'enabled') !== 'enabled') patch.write_access = 'enabled';
     if (Object.keys(patch).length) {
       await svc.entities.User.update(user.id, patch);
