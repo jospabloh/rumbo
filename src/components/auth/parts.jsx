@@ -4,12 +4,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
-import AppleIcon from "@/components/AppleIcon";
 
 // Piezas compartidas por las pantallas de autenticación, para que Login /
 // Register / Forgot / Reset se vean idénticas y consistentes con la marca.
 
 export function SocialButtons({ onProvider }) {
+  // Solo se ofrecen proveedores realmente habilitados en el backend de Base44
+  // (acacia-app-standard, Módulo 10). "Continuar con Apple" se retiró de aquí:
+  // Sign in with Apple nunca se configuró para esta app, así que ese botón
+  // lanzaba el error crudo de la plataforma ("Apple authentication is not
+  // enabled for this app...") antes de que existiera ninguna cuenta —
+  // dejaba a quien lo tocara sin cuenta y sin forma de saber qué pasó.
   return (
     <div className="space-y-2.5">
       <Button
@@ -20,15 +25,6 @@ export function SocialButtons({ onProvider }) {
       >
         <GoogleIcon className="mr-2 h-5 w-5" />
         Continuar con Google
-      </Button>
-      <Button
-        variant="outline"
-        type="button"
-        className="h-12 w-full text-sm font-medium"
-        onClick={() => onProvider("apple")}
-      >
-        <AppleIcon className="mr-2 h-5 w-5" />
-        Continuar con Apple
       </Button>
     </div>
   );

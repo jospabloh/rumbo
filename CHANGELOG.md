@@ -4,6 +4,42 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.31.2] — 2026-08-26 — Dead login provider removed; guarded-write errors no longer swallowed
+
+Both found via real user feedback on a live tenant (Car-Go Rent): two
+prospective users hit three unrelated problems trying to get to work.
+The third (a `TenantLicense.max_vehicles` override left below its own
+plan's default, blocking new vehicles) was a data correction on that
+tenant, not a code change — nothing here to release for it.
+
+### Fixed
+
+- **"Continuar con Apple" removed from Login/Register.** Sign in with
+  Apple was never actually configured on this app's Base44 backend, so
+  tapping it threw the platform's raw error
+  (`Apple authentication is not enabled for this app...`) before any
+  account existed — a dead end with no account for anyone to even notice
+  was missing. `src/components/auth/parts.jsx`'s `SocialButtons` now
+  offers only Google; the now-unused `AppleIcon.jsx` was removed.
+  Generalized into a portfolio-wide rule:
+  `jospabloh/acacia-app-standard` Module 10.
+- **`guardedWrite.js` now surfaces the real error on a failed write.**
+  `base44.functions.invoke()`'s functions client is plain axios
+  (`interceptResponses: false`), so any non-2xx response from
+  `guardedEntityWrite` (permission denied, billing blocked, not found,
+  etc.) made the promise *reject* with a generic
+  `"Request failed with status code N"` — the actual Spanish message
+  `guardedEntityWrite` wrote into the response body was never read. The
+  wrapper now reads `err.response.data` on that path and throws the real
+  message instead, same as it already did for a 2xx response carrying
+  `ok: false`. Covers all 48 call sites through this one wrapper.
+
+**Verified:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm run
+test` (467/467, four new for `guardedWrite.js`) all pass. No RLS or schema
+change — `npm run validate:rls` unaffected.
+
+---
+
 ## [1.31.1] — 2026-08-24 — Close admin self-delegation of tenant ownership (module 14 finding)
 
 ### Security

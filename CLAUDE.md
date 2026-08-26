@@ -596,3 +596,58 @@ email que pertenezca a dos tenants — el caso real que lo disparó
 (`h.josepablo@gmail.com`) solo se confirmó por lectura directa de
 `TenantLicense` vía el MCP de Base44, no logueando con esa sesión en el
 navegador desde este entorno.
+
+## Login con Apple retirado; errores reales de guardedWrite ya no se ocultan (2026-08-26)
+
+Feedback real de dos usuarios intentando entrar al tenant **Car-Go Rent**
+destapó tres problemas sin relación entre sí. Los dos de código se arreglan
+aquí; el tercero era un dato de licencia, corregido directo en el tenant
+(abajo).
+
+**1. "Continuar con Apple" nunca funcionó.** Sign in with Apple no estaba
+habilitado en el backend de Base44 de esta app — el botón lanzaba el error
+crudo de la plataforma (`Apple authentication is not enabled for this
+app...`) antes de que existiera ninguna cuenta. Confirmado contra los
+usuarios reales de la app vía el MCP de Base44: no había ninguna cuenta a
+nombre de la persona que lo intentó — no había nada que notar hasta que lo
+reportó a mano. `src/components/auth/parts.jsx`'s `SocialButtons` ahora solo
+ofrece Google; se borró el `AppleIcon.jsx` que quedó sin uso. Generalizado en
+`jospabloh/acacia-app-standard` → Módulo 10: ningún botón de login social se
+muestra si su proveedor no está realmente habilitado.
+
+**2. `guardedWrite.js` nunca pudo mostrar el error real de una escritura
+fallida.** Confirmado leyendo el propio SDK (`node_modules/@base44/sdk`):
+el cliente de funciones se crea con `interceptResponses: false`, así que
+`base44.functions.invoke()` es axios puro — sin el interceptor que en el
+resto del SDK unenvuelve la respuesta y normaliza el error. Cualquier
+respuesta no-2xx de `guardedEntityWrite` (permiso denegado, licencia
+bloqueada, no encontrado — cualquiera de los `bad()` en `entry.ts`) hacía
+que la promesa se **rechazara** con el mensaje genérico de axios
+(`"Request failed with status code N"`), y el cuerpo real
+(`{ok:false, code, error}`) quedaba sin leer en `err.response.data`. Por
+eso un owner editando su propio vehículo solo veía "Request failed with
+status code 400" sin ninguna pista de la causa real. `invokeGuarded()` ahora
+también lee `err.response.data` en el catch — cubre los 48 puntos de llamada
+sin tocarlos, porque el fix vive solo en el wrapper. Nuevo
+`src/lib/__tests__/guardedWrite.test.js` fija el comportamiento en los dos
+casos (2xx con `ok:false`, y el rechazo de promesa que antes se escapaba sin
+parsear).
+
+**3. Dato de licencia corregido (no es código).** El mismo tenant (Car-Go
+Rent, plan `starter`) tenía `max_vehicles: 5` puesto a mano — por debajo del
+default de su propio plan (15) — mientras ya tenía 7 vehículos activos, así
+que cualquier alta nueva se bloqueaba correctamente contra ese tope
+incoherente. Se quitó el override vía el MCP de Base44
+(`$unset: {max_vehicles: ""}` sobre el `TenantLicense` id
+`6a4c67c5131100e9f96e1e51`) para que aplique el default real de `starter`
+(15). Sin PR ni deploy — es un dato, no código.
+
+**Verificado:** `npm run lint` (18 endpoints, sin cambio — este fix no toca
+`base44/functions/`), `npm run build`, `npm run typecheck`, `npm run test`
+(467/467, cuatro nuevos en `guardedWrite.test.js`) todos limpios. Sin cambio
+de RLS ni de esquema — `npm run validate:rls` no aplica. La corrección de
+dato en Car-Go Rent se verificó leyendo el registro de vuelta vía el MCP de
+Base44 (`max_vehicles` ausente del registro). **No verificado:** una sesión
+de navegador real completando el flujo de "Unirme a una organización" con el
+código de Car-Go Rent (`RUMBO-PB2JNH`) — no alcanzable desde este entorno;
+ese flujo ya existía sin cambios (`src/pages/Onboarding.jsx`'s `JoinTenant`).
