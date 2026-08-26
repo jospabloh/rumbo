@@ -5,7 +5,10 @@
     "tenant_id": {
       "type": "string",
       "title": "Tenant",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      },
+      "description": "Tenant al que pertenece este registro. Server-authoritative en la práctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, así que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garantía incluso si alguien llama a la entidad directo por SDK, saltándose guardedEntityWrite."
     },
     "plate": {
       "type": "string",
@@ -25,7 +28,7 @@
     },
     "year": {
       "type": "number",
-      "title": "A\u00f1o"
+      "title": "Año"
     },
     "vin": {
       "type": "string",
@@ -47,7 +50,7 @@
     },
     "insurance_policy_no": {
       "type": "string",
-      "title": "No. de p\u00f3liza"
+      "title": "No. de póliza"
     },
     "insurance_expiry": {
       "type": "string",
@@ -57,7 +60,7 @@
     "inspection_expiry": {
       "type": "string",
       "format": "date",
-      "title": "Vencimiento inspecci\u00f3n"
+      "title": "Vencimiento inspección"
     },
     "registration_expiry": {
       "type": "string",
@@ -71,7 +74,7 @@
     },
     "odometer": {
       "type": "number",
-      "title": "Od\u00f3metro (km)",
+      "title": "Odómetro (km)",
       "default": 0
     },
     "rent_amount": {
@@ -98,7 +101,7 @@
         "saturday",
         "sunday"
       ],
-      "title": "D\u00eda de cobro (semanal)"
+      "title": "Día de cobro (semanal)"
     },
     "insurance_company": {
       "type": "string",

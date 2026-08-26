@@ -42,7 +42,8 @@
       "default": "trial",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "status": {
       "type": "string",
@@ -57,23 +58,26 @@
       "default": "active",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "max_vehicles": {
       "type": "number",
-      "title": "Veh\u00edculos m\u00e1ximos",
+      "title": "Vehículos máximos",
       "default": 5,
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "max_drivers": {
       "type": "number",
-      "title": "Conductores m\u00e1ximos",
+      "title": "Conductores máximos",
       "default": 5,
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "features": {
       "type": "array",
@@ -83,7 +87,8 @@
       "title": "Funcionalidades habilitadas",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "trial_ends_at": {
       "type": "string",
@@ -91,7 +96,8 @@
       "title": "Fin del periodo de prueba",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "current_period_end": {
       "type": "string",
@@ -99,7 +105,8 @@
       "title": "Fin del periodo pagado",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "billing_cycle": {
       "type": "string",
@@ -111,34 +118,38 @@
       "default": "monthly",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "last_payment_at": {
       "type": "string",
       "format": "date",
-      "title": "\u00daltimo pago confirmado",
+      "title": "Último pago confirmado",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "renews_at": {
       "type": "string",
       "format": "date",
-      "title": "Fecha de renovaci\u00f3n",
+      "title": "Fecha de renovación",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "owner_email": {
       "type": "string",
       "title": "Email del owner",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Email del owner del tenant. Server-authoritative: los únicos escritores son delegateOwnership (re-lee el owner_email ALMACENADO y exige que el caller ya lo sea) y licensesAdmin's patch (APP_OWNER_EMAIL, el owner de la plataforma). write:false cierra el hallazgo del módulo 14 (2026-08-24): antes cualquier admin del tenant podía delegarse la propiedad a sí mismo vía DangerZone.jsx y, con eso, satisfacer la única condición de TenantLicense.delete (`data.owner_email == {{user.email}}`)."
     },
     "join_code": {
       "type": "string",
-      "title": "C\u00f3digo de uni\u00f3n del tenant"
+      "title": "Código de unión del tenant"
     },
     "notes": {
       "type": "string",
@@ -146,11 +157,11 @@
     },
     "permissions_config": {
       "type": "object",
-      "title": "Configuraci\u00f3n de permisos por rol"
+      "title": "Configuración de permisos por rol"
     },
     "settings": {
       "type": "object",
-      "title": "Configuraci\u00f3n de negocio del tenant (bono de referido, ventana de costo/km, etc.). Editable por owner/admin del tenant y por el platform owner v\u00eda licensesAdmin. Cada ajuste tiene un default en la app si no se personaliza."
+      "title": "Configuración de negocio del tenant (bono de referido, ventana de costo/km, etc.). Editable por owner/admin del tenant y por el platform owner vía licensesAdmin. Cada ajuste tiene un default en la app si no se personaliza."
     },
     "members": {
       "type": "array",
