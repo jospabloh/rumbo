@@ -17,6 +17,11 @@ export default function UserRow({ member, onRoleChange, onSetName, onSetOwnerGro
   const RoleIcon = conf.icon;
   const shownName = member.display_name || member.full_name || '—';
   const suspended = !!member.suspended;
+  // El rol del owner no se toca desde este selector — transferir propiedad es
+  // delegateOwnership (Zona de Peligro), no un cambio de rol; manageRole lo
+  // rechaza igual del lado del servidor, esto solo evita el intento confuso.
+  const isTargetOwner = member.role === 'owner';
+  const roleLocked = isCurrentUser || isTargetOwner;
 
   const saveRole = async () => {
     await onRoleChange(member.id, newRole);
@@ -109,7 +114,11 @@ export default function UserRow({ member, onRoleChange, onSetName, onSetOwnerGro
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(ROLE_CONFIG).map(([key, v]) => (
+                {/* 'owner' se excluye a propósito — transferir la propiedad tiene su
+                    propio camino, más estrecho (delegateOwnership desde la Zona de
+                    Peligro), no este selector. manageRole lo rechaza igual del lado
+                    del servidor si de alguna forma llegara aquí. */}
+                {Object.entries(ROLE_CONFIG).filter(([k]) => k !== 'owner').map(([key, v]) => (
                   <SelectItem key={key} value={key}>{v.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -119,12 +128,12 @@ export default function UserRow({ member, onRoleChange, onSetName, onSetOwnerGro
           </div>
         ) : (
           <button
-            onClick={() => !isCurrentUser && setEditing(true)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${conf.color} ${!isCurrentUser ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
+            onClick={() => !roleLocked && setEditing(true)}
+            className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all ${conf.color} ${!roleLocked ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
           >
             <RoleIcon className="w-3 h-3" />
             {conf.label}
-            {!isCurrentUser && <Edit2 className="w-2.5 h-2.5 opacity-50 ml-0.5" />}
+            {!roleLocked && <Edit2 className="w-2.5 h-2.5 opacity-50 ml-0.5" />}
           </button>
         )}
       </div>

@@ -66,9 +66,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'El nombre de la organización es requerido.' }, { status: 400 });
     }
 
-    // Primer mes gratis: la prueba vence en hoy + 1 mes.
-    const freeUntil = new Date();
-    freeUntil.setMonth(freeUntil.getMonth() + 1);
+    // Primer mes gratis: la prueba vence en hoy + 30 días — el estándar del portafolio
+    // (jospabloh/acacia-app-standard, Módulo 1) fija 30 días exactos, no "un mes calendario".
+    // setMonth(+1) drifta contra meses de 28-31 días (un tenant creado el 31 de enero
+    // recibía ~28 días de prueba; uno creado hoy, 31) — auditoría 2026-08-26.
+    const freeUntil = new Date(Date.now() + 30 * 86400000);
     const freeUntilStr = freeUntil.toISOString().slice(0, 10);
 
     const join_code = await uniqueJoinCode(svc);

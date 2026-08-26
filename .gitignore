@@ -34,3 +34,8 @@ base44/.app.jsonc
 # Playwright smoke-test output (tests/smoke) — local run artefacts
 test-results/
 playwright-report/
+
+# `deno check` lockfile — a local verification artifact (this repo doesn't
+# run deno in CI, per CLAUDE.md's módulo 15 note; ad-hoc checks shouldn't
+# leave this behind).
+deno.lock

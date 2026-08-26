@@ -16,7 +16,7 @@
     },
     "role": {
       "type": "string",
-      "description": "Rol del usuario en el sistema",
+      "description": "Rol del usuario en el sistema. Server-authoritative: solo lo escribe manageRole con service role (además de resolveTenant/joinTenant/switchTenant en el primer enganche o cambio de tenant). write:false evita que un admin se auto-ascienda a owner o degrade al último admin del tenant sin control — antes de este candado (rls.write solo exigía \"el caller ya sea owner/admin\", sin volver a comprobar nada del lado del servidor) una llamada directa al SDK bastaba para ambas cosas.",
       "enum": [
         "owner",
         "admin",
@@ -27,20 +27,7 @@
         "user"
       ],
       "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            }
-          ]
-        }
+        "write": false
       }
     },
     "owner_group_id": {
