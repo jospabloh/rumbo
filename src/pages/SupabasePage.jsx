@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { Database, Table, ChevronRight, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 
 function invoke(action, params = {}) {
-  return base44.functions.invoke('supabaseData', { action, ...params }).then(r => r.data);
+  return invokeFunction('supabaseData', { action, ...params });
 }
 
 export default function SupabasePage() {
@@ -27,7 +27,7 @@ export default function SupabasePage() {
       setProjects(p.projects || []);
       const tableNames = (t.tables || []).map(r => r.table_name).filter(Boolean);
       setTables(tableNames);
-    }).catch(() => setError('No se pudieron cargar las tablas de Supabase.'))
+    }).catch(e => setError(e?.message || 'No se pudieron cargar las tablas de Supabase.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -42,8 +42,8 @@ export default function SupabasePage() {
       if (data.length > 0) setColumns(Object.keys(data[0]));
       setRows(data);
       setTotal(res.total);
-    } catch {
-      setError('No se pudo cargar la tabla.');
+    } catch (e) {
+      setError(e?.message || 'No se pudo cargar la tabla.');
       setRows([]);
     } finally {
       setLoadingRows(false);

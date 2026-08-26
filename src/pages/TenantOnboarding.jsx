@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PalettePresets from '@/components/admin/PalettePresets';
@@ -96,7 +97,7 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
       // unión, marca la prueba de 30 días, crea la TenantLicense y eleva al usuario a owner
       // de SU organización. Es necesario porque un usuario recién registrado entra con rol
       // 'user' y la RLS no le dejaría crear el tenant ni cambiarse el rol desde el cliente.
-      const res = await base44.functions.invoke('createTenant', {
+      const data = await invokeFunction('createTenant', {
         tenant_name: form.tenant_name.trim(),
         slogan: form.slogan.trim(),
         logo_url,
@@ -105,9 +106,8 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
         color_accent: colors.accent,
         color_background: colors.background,
       });
-      const data = res?.data || res;
-      if (data?.error || !data?.tenant) {
-        setError(data?.error || 'No se pudo crear la organización. Intenta de nuevo.');
+      if (!data?.tenant) {
+        setError('No se pudo crear la organización. Intenta de nuevo.');
         setSaving(false);
         return;
       }
@@ -118,7 +118,7 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
       // No avanzamos solos: en el paso 3 mostramos el código de unión para que el
       // admin pueda copiarlo/compartirlo antes de entrar a la app.
     } catch (e) {
-      setError('Error al guardar. Intenta de nuevo.');
+      setError(e?.message || 'Error al guardar. Intenta de nuevo.');
     } finally {
       setSaving(false);
     }

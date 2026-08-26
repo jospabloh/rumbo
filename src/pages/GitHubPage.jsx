@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { GitCommit, Github, FileText, AlertCircle, GitPullRequest, Plus, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 
 function invoke(action, params = {}) {
-  return base44.functions.invoke('githubRepos', { action, ...params }).then(r => r.data);
+  return invokeFunction('githubRepos', { action, ...params });
 }
 
 export default function GitHubPage() {
@@ -25,7 +25,7 @@ export default function GitHubPage() {
     Promise.all([invoke('list_repos'), invoke('get_user')]).then(([r, u]) => {
       setRepos(r.repos || []);
       setGhUser(u.user);
-    }).catch(() => setError('No se pudieron cargar los repositorios de GitHub.'))
+    }).catch(e => setError(e?.message || 'No se pudieron cargar los repositorios de GitHub.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -37,8 +37,8 @@ export default function GitHubPage() {
     try {
       const res = await invoke('list_commits', { owner: repo.owner.login, repo: repo.name });
       setItems(res.commits || []);
-    } catch {
-      setError('No se pudieron cargar los commits.');
+    } catch (e) {
+      setError(e?.message || 'No se pudieron cargar los commits.');
     }
   };
 
@@ -54,8 +54,8 @@ export default function GitHubPage() {
       else if (v === 'pulls') res = await invoke('list_pulls', { owner: login, repo: name });
       else if (v === 'files') res = await invoke('list_contents', { owner: login, repo: name });
       setItems(res?.commits || res?.issues || res?.pulls || res?.contents || []);
-    } catch {
-      setError('No se pudo cargar la información.');
+    } catch (e) {
+      setError(e?.message || 'No se pudo cargar la información.');
     }
   };
 
@@ -68,8 +68,8 @@ export default function GitHubPage() {
       await invoke('create_issue', { owner: login, repo: name, title: newIssue.title, body: newIssue.body });
       setNewIssue(null);
       await loadView('issues');
-    } catch {
-      setError('No se pudo crear el issue.');
+    } catch (e) {
+      setError(e?.message || 'No se pudo crear el issue.');
     } finally {
       setSaving(false);
     }

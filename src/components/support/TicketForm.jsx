@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { BookOpen, CheckCircle2, LifeBuoy, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,14 +68,12 @@ export default function TicketForm({ onClose }) {
         payload.body = composeTicketBody(form.body, brief);
         payload.ai_brief = brief;
       }
-      const res = await base44.functions.invoke('submitTicket', payload);
-      const data = res?.data || res;
-      if (data?.error) { setError(data.error); setSaving(false); return; }
+      const data = await invokeFunction('submitTicket', payload);
       setFolio(data?.ticket?.ticket_number || '');
       invalidate('SupportTicket');
       setStep('done');
-    } catch {
-      setError('No se pudo enviar el ticket. Inténtalo de nuevo.');
+    } catch (err) {
+      setError(err?.message || 'No se pudo enviar el ticket. Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
