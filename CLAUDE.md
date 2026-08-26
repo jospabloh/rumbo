@@ -759,3 +759,116 @@ anterior (con el botón de Apple, con `guardedWrite.js` ocultando el error
 real). El dato de licencia de Car-Go Rent (arriba) sí es efectivo de
 inmediato porque se escribió directo en la base de datos vía MCP, sin pasar
 por el frontend desplegado.
+
+## Módulo 7 + 8 — cascada al eliminar un tenant, y el ticket que nadie conectaba (2026-08-26)
+
+`DangerZone.jsx`'s `handleDelete` solo llamaba
+`base44.entities.TenantLicense.delete(tenant.id)` directo: borraba el
+renglón de licencia y dejaba huérfano, con `tenant_id` apuntando a nada,
+cada `Vehicle`/`Driver`/`Trip`/… del tenant. El módulo 7 del estándar
+("Deletion must either cascade correctly through your own entities or
+explicitly document what it does not touch") y el módulo 8 ("the
+account-deletion request in Module 7's danger zone is a ticket too, and it
+is the one nobody remembers to wire") piden justo lo que faltaba.
+
+**`base44/functions/deleteTenant/entry.ts`** (nueva, service role), modelada
+sobre `exportTenantData`/`delegateOwnership`:
+
+- Deriva `tenant_id` del perfil del caller (`user.data.tenant_id`), nunca
+  del cuerpo de la petición.
+- Relee el `TenantLicense` **almacenado** y exige
+  `stored.owner_email === user.email` — el mismo criterio que
+  `delegateOwnership` (módulo 14, 2026-08-24: un `admin` no debe poder
+  borrar el tenant, solo su owner real).
+- Cascada de entidades: la lista se construyó con
+  `grep -l tenant_id base44/entities/*.jsonc` (20 entidades), más completa
+  que la lista de 14 de `exportTenantData` — esa es de 2026-08-18 y no
+  incluye `Channel`, `Message`, `LocationRequest`, `Catalog`, `UsefulLink`,
+  `DriverPrivateNote`, todas agregadas después. Por cada entidad,
+  `filter({tenant_id})` y luego borra fila por fila, cada una en su propio
+  try/catch — una entidad que falle no aborta el resto; se acumula un
+  conteo por entidad en la respuesta.
+- Tres casos NO entran al loop genérico, cada uno documentado en el propio
+  `entry.ts`:
+  - **`User`** — se **desvincula**, no se borra (`tenant_id: null, role:
+    'user', suspended: false, write_access: 'enabled', driver_profile_id:
+    null` — mismo shape que la acción `remove` de `manageMember/entry.ts`).
+    La cuenta sigue viva; la persona puede unirse o crear otro tenant
+    después (módulo 18).
+  - **`SupportTicket`** — se **conserva**, a propósito. Es el historial de
+    soporte/auditoría que un operador de plataforma puede necesitar después
+    de que el tenant se fue — el módulo 7 lo pide explícitamente ("billing
+    history retained for compliance"). No se toca su `tenant_id`: cada
+    renglón ya trae `tenant_name` denormalizado desde su creación
+    (`submitTicket/entry.ts`), así que sigue siendo legible por su propio
+    rastro de auditoría aunque `tenant_id` deje de resolver a un tenant
+    vivo, y no hay riesgo de que se confunda con uno porque el
+    `TenantLicense` con ese id ya no existe.
+  - **`TenantLicense`** — se borra **al final**, después de que la cascada
+    operativa terminó. Si ese borrado falla, la función responde 500 con lo
+    ya cascadeado en vez de fingir éxito.
+  `AppSession` no tiene campo `tenant_id` (confirmado por el comentario que
+  ya traía `AppSession.jsonc`), así que ni siquiera aparece en el grep y
+  queda fuera de alcance por completo.
+- Ticket de soporte documentando la eliminación (módulo 8): categoría
+  `other` (no existe `account_deletion` en el enum de `SupportTicket`, y no
+  se justificó inventar uno para esto — la fila del enum), asunto "Tenant
+  eliminado: {nombre}", cuerpo con el conteo por entidad, y push a Mission
+  Control igual que `submitTicket`. Todo esto es best-effort de punta a
+  punta (try/catch que traga el error) — un fallo de ticket o de push
+  **nunca** bloquea ni revierte la eliminación, que para entonces ya
+  ocurrió.
+
+**`_ticketHelpers.ts` — extraído de `submitTicket/entry.ts`, duplicado por
+directorio, no compartido entre directorios.** `nextTicketNumber`,
+`pushToMissionControl` y `stripHtml` vivían inline en `submitTicket/entry.ts`;
+`deleteTenant` necesita exactamente los mismos tres. La primera opción
+considerada fue un solo `base44/functions/_ticketHelpers.ts` compartido
+(importado por ambos con `../_ticketHelpers.ts`) — se descartó al revisar
+este mismo repo: `_acaciaSign.ts` ya lleva por escrito "Deno isolates each
+function directory ... an app with three bridge-touching functions carries
+three identical copies — that is expected", y no hay un solo ejemplo hoy de
+una función importando un archivo FUERA de su propio directorio. Sin sesión
+de CLI/deploy de Base44 autenticada en este sandbox para de verdad probar si
+el empaquetado de funciones de Base44 resuelve un import cruzado de
+directorios, la opción segura fue seguir el patrón que este repo ya prueba
+que funciona: `_ticketHelpers.ts` vive, byte a byte idéntico, en
+`submitTicket/` y en `deleteTenant/` — igual que `_acaciaSign.ts` ahora vive
+en tres directorios (`acaciaControl`, `submitTicket`, `deleteTenant`) en vez
+de dos.
+
+**`src/components/admin/DangerZone.jsx`** — sus tres llamadas a funciones
+(`exportTenantData`, `delegateOwnership`, y ahora `deleteTenant`) migraron
+de `base44.functions.invoke()` crudo a `src/lib/invokeFunction.js`'s
+`invokeOkFunction()`. La razón es la misma que ya documentó el fix de
+`guardedWrite.js` arriba (2026-08-26): `base44.functions.invoke()` en esta
+app es axios puro (`interceptResponses: false`), así que en una respuesta
+no-2xx la promesa se **rechaza** con el mensaje genérico de axios y el
+cuerpo real (`{error, ...}`) queda sin leer en `err.response.data`. Las tres
+funciones ya usaban `success: true` en vez de `ok: true` en su cuerpo de
+éxito; se les agregó `ok: true` (aditivo, sin quitar `success`) porque
+`invokeOkFunction` revisa `body.ok`. No había otro llamador de ninguna de
+las tres en todo el repo (confirmado por grep), así que el cambio no tiene
+efecto en ningún otro lugar.
+
+**Verificado:** `npm run lint` (20 endpoints, techo 40, margen 20), `npm run
+build`, `npm run typecheck`, `npm run validate:rls` (27 entidades OK — sin
+cambio de esquema), `npm run test` (468/468) todos limpios. `deno check
+--node-modules-dir=none` corrió en este sandbox (binario bajado de GitHub
+releases, método de los módulos 15/16/18) contra `deleteTenant/entry.ts`,
+`submitTicket/entry.ts` y las dos copias de `_ticketHelpers.ts` — los cuatro
+compilan limpio. De paso, `deno check` marcó un `error.message` sin `as
+Error` preexistente en el catch externo de `submitTicket/entry.ts` (mismo
+patrón que el módulo 18 ya documentó para `resolveTenant`/`joinTenant`/
+`manageMember` — este repo no corre `deno check` en CI, así que nunca se
+había visto); se corrigió de paso, ya que el archivo estaba abierto para
+este mismo cambio.
+
+**No verificado:** el deploy en vivo (pendiente de que este PR se mergee y
+alguien corra `npm run deploy` — módulo 11) y una sesión de navegador real
+como owner de un tenant completando el flujo de "Eliminar tenant" de punta a
+punta, incluyendo confirmar que el ticket de eliminación de verdad llega a
+Mission Control. Lo de arriba es lectura del código nuevo contra el patrón
+ya probado de `delegateOwnership`/`exportTenantData`/`submitTicket`, más la
+verificación local (`deno check`, lint, build, typecheck, tests) — no una
+ejecución real contra el backend desplegado de Base44.

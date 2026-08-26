@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
-import { signAs } from './_acaciaSign.ts';
+import { nextTicketNumber, pushToMissionControl, stripHtml, DEFAULT_SUPPORT_EMAIL } from './_ticketHelpers.ts';
 
 /**
  * submitTicket — alta de un ticket de soporte desde cualquier usuario autenticado.
@@ -10,81 +10,17 @@ import { signAs } from './_acaciaSign.ts';
  * (4) confirmarle al solicitante que su caso fue escalado (con el SLA de 48 h
  * hábiles y la sección del manual sugerida). Los correos son best-effort: si
  * fallan, el ticket igual se crea.
+ *
+ * `nextTicketNumber`/`pushToMissionControl`/`stripHtml` now live in
+ * `_ticketHelpers.ts` (2026-08-27) — `deleteTenant/entry.ts` needs the exact
+ * same three to log the ticket it fires on every tenant deletion (Module 8:
+ * "the account-deletion request in Module 7's danger zone is a ticket too").
+ * See that file's header for why it's a byte-identical per-directory copy
+ * rather than a single cross-directory shared file.
  */
 const CATEGORIES = ['bug', 'question', 'billing', 'feature', 'other'];
 const PRIORITIES = ['low', 'normal', 'high'];
-// Destino por defecto del escalamiento. Se puede sobrescribir con el secret SUPPORT_EMAIL.
-const DEFAULT_SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 const SLA_HOURS = 48;
-// Prefijo del folio ITSM. Se puede sobrescribir con el secret TICKET_PREFIX.
-const TICKET_PREFIX = 'RUM';
-const TICKET_PAD = 6;
-
-// Siguiente folio secuencial global (RUM-000001). Deriva del MÁXIMO folio ya
-// existente (no del conteo) para no repetir números si se borran tickets, y cae
-// al conteo cuando ningún registro trae folio todavía (tickets previos al cambio).
-async function nextTicketNumber(svc: { entities: Record<string, { list: (o: string, n: number) => Promise<Array<Record<string, unknown>>> }> }): Promise<string> {
-  const prefix = (Deno.env.get('TICKET_PREFIX') || TICKET_PREFIX).trim();
-  const re = new RegExp(`^${prefix}-(\\d+)$`);
-  let maxSeq = 0;
-  let total = 0;
-  try {
-    const rows = await svc.entities.SupportTicket.list('-created_date', 5000);
-    total = rows.length;
-    for (const r of rows) {
-      const m = re.exec(String((r as { ticket_number?: unknown }).ticket_number ?? ''));
-      if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
-    }
-  } catch { /* si la lista falla, el fallback de tiempo evita colisión total */ }
-  const seq = (maxSeq || total) + 1;
-  return `${prefix}-${String(seq).padStart(TICKET_PAD, '0')}`;
-}
-
-// stableStringify and hmacHex used to live here, hand-mirrored against Mission
-// Control's api/_lib/ingestSign.js. Both now come from _acaciaSign.ts, the
-// canonical copy in jospabloh/acacia-app-standard → shared/bridge/ — a
-// hand-kept mirror of a signing routine is exactly the thing that drifts, and
-// a drift here surfaces only as "bad signature" at runtime.
-
-// Los correos se envían como texto plano; si el cliente de correo del destinatario
-// igual renderiza HTML, esto evita que un asunto/descripción con markup (tags,
-// atributos con javascript:, etc.) se interprete como HTML e imite el phishing.
-function stripHtml(value: string): string {
-  return value.replace(/<[^>]*>/g, '');
-}
-
-
-// Real-time push of the new ticket to ACACIA Mission Control. This reflects the
-// ticket in Mission Control within seconds — no manual sync — and lets Mission
-// Control fire the unified ITIL alert (system ticket id + SLA anchored to the
-// customer's creation instant) to the support desk. Returns true on a 2xx so the
-// caller can skip Rumbo's own legacy support email and avoid a double-send.
-// Requires app secrets INGEST_HMAC_SECRET + ACACIA_MC_INGEST_URL (+ ACACIA_APP_SLUG=rumbo).
-async function pushToMissionControl(record: Record<string, unknown>): Promise<boolean> {
-  const secret = Deno.env.get('INGEST_HMAC_SECRET');
-  const url = Deno.env.get('ACACIA_MC_INGEST_URL');
-  const app = Deno.env.get('ACACIA_APP_SLUG') || 'rumbo';
-  if (!secret || !url) return false; // not configured → caller falls back to its own email
-  try {
-    const ts = Date.now().toString();
-    const params = { app, record };
-    // Signed with THIS app's derived key, not the bare INGEST_HMAC_SECRET.
-    // That secret is one value shared by the whole portfolio, so a signature
-    // made with it proves "someone holds the shared secret" and never "this is
-    // <app>" — and since the app name travels in the body, any app could sign
-    // a payload naming another. See _acaciaSign.ts, and Module 15 of
-    // jospabloh/acacia-app-standard.
-    const sig = await signAs(secret, app, ts, 'ticket.ingest', params);
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ app, record, ts, sig }),
-    });
-    return resp.ok;
-  } catch {
-    return false;
-  }
-}
 
 Deno.serve(async (req) => {
   try {
@@ -206,6 +142,12 @@ Deno.serve(async (req) => {
 
     return Response.json({ ticket, pushed, emailed, notified, sla_hours: SLA_HOURS, suggested_section: suggestedSection });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // Pre-existing `error.message` without an `as Error` cast — `deno check`
+    // flags this (found while touching this file for the module 7/8 fix;
+    // this repo doesn't run `deno check` in CI, so it had never surfaced,
+    // same as the resolveTenant/joinTenant/manageMember instances module 18
+    // already documented). Fixed as a drive-by since this file was already
+    // open.
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });
