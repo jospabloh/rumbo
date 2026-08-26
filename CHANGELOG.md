@@ -4,6 +4,53 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.31.3] — 2026-08-26 — Invite-a-teammate fixed: was calling Base44's platform invite, not the app's
+
+Found while verifying the invite path so a real user (Fer) could be added to
+a live tenant. `InviteForm.jsx` (Admin → "Invitar usuario") called
+`base44.users.inviteUser(email, role)` — **not**
+`base44.auth.inviteUser(email, role)`. These are two different SDK modules
+hitting two different endpoints:
+
+- `base44.users.inviteUser` → `POST /apps/{id}/runtime/users/invite-user`,
+  restricted client-side to `role: 'user' | 'admin'` (throws otherwise).
+  This is Base44's own **platform/builder** invite — inviting someone as a
+  collaborator on the app itself in Base44's studio. Passing `'admin'` here
+  grants **co-admin access to build/edit this app's schema, functions, and
+  deploys** — nothing to do with this app's own tenant role model.
+- `base44.auth.inviteUser` → `POST /apps/{id}/users/invite-user`, no role
+  restriction. This is the one meant for onboarding an actual **app end
+  user**; the invitee's real role in this app already comes from `members[]`
+  (written right below the call), the same server-authoritative path the
+  join-code flow uses (`joinTenant`/`resolveTenant`).
+
+Two real consequences of calling the wrong one:
+1. **Functional bug:** the role `<Select>` offers 6 options (everything but
+   Owner); only 2 (`admin`, `user`) pass the restricted call's check. The
+   other 4 — Dispatcher, Mecánico, **Conductor (the form's own default)**,
+   Socio — threw immediately, uncaught (`send()` had no try/catch), leaving
+   the button stuck on "Invitar" with no feedback at all.
+2. **Privilege-escalation risk:** picking "Admin" (meant as this tenant's
+   business-level admin) *did* pass the check — and would have silently
+   handed that invitee real Base44-studio co-admin rights over the entire
+   app, every tenant included, instead of just an admin role on their own
+   tenant.
+
+**Fix:** `InviteForm.jsx` now calls `base44.auth.inviteUser(email, 'user')`
+— always the neutral platform role every self-registered user starts with;
+the actual app role comes from the `members[]` write, unchanged. `send()`
+now has a real try/catch with an error state rendered via `FormError`,
+instead of an uncaught rejection.
+
+**Verified:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm run
+test` (467/467) all pass. No RLS/schema change. Not verified: an actual
+invite round-trip in the live app (no browser session in this environment)
+— confirmed instead by reading both SDK modules directly
+(`node_modules/@base44/sdk`, v0.8.44) and tracing exactly which one this
+form called and what each does.
+
+---
+
 ## [1.31.2] — 2026-08-26 — Dead login provider removed; guarded-write errors no longer swallowed
 
 Both found via real user feedback on a live tenant (Car-Go Rent): two

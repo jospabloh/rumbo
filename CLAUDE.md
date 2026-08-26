@@ -651,3 +651,84 @@ Base44 (`max_vehicles` ausente del registro). **No verificado:** una sesión
 de navegador real completando el flujo de "Unirme a una organización" con el
 código de Car-Go Rent (`RUMBO-PB2JNH`) — no alcanzable desde este entorno;
 ese flujo ya existía sin cambios (`src/pages/Onboarding.jsx`'s `JoinTenant`).
+
+## Invitar por correo llamaba al invite de la PLATAFORMA de Base44, no al de la app (2026-08-26)
+
+Al preparar la invitación real de un segundo usuario a Car-Go Rent se
+encontró un hallazgo más serio que un bug de UI. `InviteForm.jsx`
+("Administración → Invitar usuario") llamaba
+`base44.users.inviteUser(email, role)` — **no** `base44.auth.inviteUser`.
+Son dos módulos distintos del SDK contra dos endpoints distintos:
+
+- `base44.users.inviteUser` → `POST /apps/{id}/runtime/users/invite-user`,
+  con `role` restringido en el propio SDK a `'user' | 'admin'` (lanza
+  excepción con cualquier otro valor). Es el invite de **la plataforma/
+  builder de Base44** — invitar a alguien como colaborador de la app en el
+  estudio de Base44. Pasar `'admin'` aquí da **acceso de co-admin para
+  editar el schema, las funciones y los deploys de la app entera** — nada
+  que ver con el modelo de roles de este tenant.
+- `base44.auth.inviteUser` → `POST /apps/{id}/users/invite-user`, sin
+  restricción de rol. Es el pensado para dar de alta a un usuario final de
+  la app; el rol real dentro de la app ya sale de `members[]` (la misma
+  escritura que hace `joinTenant`/`resolveTenant` con el código de unión).
+
+El `<Select>` del formulario ofrece 6 roles (todos menos Owner); solo 2
+(`admin`, `user`) pasan la validación del que SÍ se llamaba. Los otros 4 —
+Dispatcher, Mecánico, **Conductor (el default del propio formulario)**,
+Socio — lanzaban una excepción no capturada (`send()` no tenía try/catch),
+dejando el botón trabado en "Invitar" sin ningún mensaje. Y elegir "Admin"
+sí pasaba la validación, pero le habría dado a esa persona co-admin real
+sobre TODA la app en Base44 — no el rol de admin de su propio tenant.
+
+**Fix:** `InviteForm.jsx` ahora llama `base44.auth.inviteUser(email,
+'user')` — siempre el rol de plataforma neutro con el que arranca
+cualquier usuario auto-registrado; el rol real de la app sigue viniendo de
+`members[]`, sin cambios. `send()` ahora tiene try/catch real con un estado
+de error renderizado vía `FormError`, en vez de una excepción sin capturar.
+
+**Verificado:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm
+run test` (467/467) todos limpios contra `@base44/sdk@0.8.44` (el repo
+recibió un bump automático del bot de reverse-sync entre el PR anterior y
+este). **No verificado:** un round-trip real de invitación en la app en
+vivo — no hay sesión de navegador en este entorno; confirmado en su lugar
+leyendo directamente los dos módulos del SDK instalado
+(`node_modules/@base44/sdk`) y rastreando cuál de los dos llamaba este
+formulario y qué hace cada uno.
+
+## Google y correo/contraseña verificados contra la red real; el deploy del sitio sigue pendiente (2026-08-26)
+
+Antes de invitar a un usuario real por Google o por correo, se verificó que
+esas dos opciones de verdad funcionan — no se asumió, igual que Apple no se
+había asumido roto hasta que un usuario real chocó con el error. El MCP de
+Base44 expone `run_command`, que corre dentro del sandbox de la propia app
+(con salida a internet real, a diferencia del proxy de este entorno de
+trabajo). Con eso:
+
+- **Google:** `GET /api/apps/auth/login?app_id=...` termina, tras sus
+  redirects, en `accounts.google.com/v3/signin/identifier?...client_id=
+  185178814199-...apps.googleusercontent.com`, HTTP 200 — una pantalla real
+  de consentimiento de Google con un `client_id` válido. **Funciona.**
+- **Apple (control):** el mismo camino termina en
+  `appleid.apple.com/auth/authorize?...` respondiendo **403 Forbidden** de
+  los propios servidores de Apple — confirma independientemente, con tráfico
+  real, lo que ya se sabía por el reporte del usuario.
+- **Correo/contraseña:** `POST /apps/{id}/auth/register` con cuerpo vacío
+  responde `422` con un error de validación limpio (`email`/`password`
+  requeridos) — el endpoint está vivo y validando normalmente para esta app.
+
+Los tres resultados están grabados (headers y cuerpos completos) en el
+historial de esta sesión de trabajo, no solo afirmados.
+
+**Pendiente — el sitio no se ha desplegado.** Los fixes de este archivo (el
+botón de Apple, `guardedWrite.js`, `InviteForm.jsx`) están en `main`, pero
+—como dice el módulo 11 de este mismo archivo— mergear no deploya el
+frontend. `npm run deploy:site` necesita una sesión de Base44 CLI
+autenticada que no existe en este entorno de trabajo (ni local ni en el
+sandbox de `run_command`, que no es lo mismo que una sesión de desarrollador
+logueada). **Alguien con esa sesión tiene que correr `npm run deploy:site`
+antes de que Fer o Christian vean cualquiera de estos arreglos en
+producción** — hasta entonces, el sitio en vivo sigue sirviendo el bundle
+anterior (con el botón de Apple, con `guardedWrite.js` ocultando el error
+real). El dato de licencia de Car-Go Rent (arriba) sí es efectivo de
+inmediato porque se escribió directo en la base de datos vía MCP, sin pasar
+por el frontend desplegado.
