@@ -695,6 +695,33 @@ leyendo directamente los dos módulos del SDK instalado
 (`node_modules/@base44/sdk`) y rastreando cuál de los dos llamaba este
 formulario y qué hace cada uno.
 
+## Módulo 21 — pantalla "Acerca de": contacto y reconocimiento ACACIA (2026-08-26)
+
+`Help.jsx` ya cubría tres de las cuatro piezas que pide el módulo 21 del
+estándar: manual buscable (`ManualGuide`), changelog en la app (módulo 6,
+el arreglo `CHANGES`) y el sello de versión (`APP_VERSION`/`RELEASE_DATE`).
+Faltaba la cuarta: **"Contacto, y la línea que dice de quién es la app"** —
+un correo y un canal directo que de verdad llegue a alguien, distinto del
+sistema de tickets (ese ya existe arriba, en la misma pantalla), más un
+reconocimiento corto de que esto es un producto ACACIA.
+
+Nueva tarjeta "Contacto" al fondo de `Help.jsx`:
+- `soporte@acaciaco.com.mx` — el mismo correo al que ya cae `submitTicket`
+  por defecto (`Support_email`/`SUPPORT_EMAIL`/`APP_OWNER_EMAIL`, ver
+  `USER_MANUAL.md`) y el que usa `acaciaco-site`'s Soporte a Apps; no un
+  valor nuevo inventado para esta tarjeta.
+- `SUPPORT_URL` (`src/lib/license.js`, `acaciaco.com.mx/rumbo`) — ya se usa
+  para el banner de renovación de licencia en `Layout.jsx`; reutilizado en
+  vez de un segundo enlace.
+- "Hecho con cariño para floteros y flotillas en México — un producto de
+  ACACIA Consultoría" + línea de derechos, con la misma voz que ya usa el
+  footer público de `Landing.jsx`.
+
+Bump a v1.32.0. Puramente aditivo — sin cambio de RLS, esquema ni función.
+
+**Verificado:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm
+run test` (468/468) todos limpios.
+
 ## Google y correo/contraseña verificados contra la red real; el deploy del sitio sigue pendiente (2026-08-26)
 
 Antes de invitar a un usuario real por Google o por correo, se verificó que
