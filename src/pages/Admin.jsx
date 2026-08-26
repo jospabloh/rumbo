@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { invokeOkFunction } from '@/lib/invokeFunction';
 import { isOwner, isAdminOrOwner } from '@/lib/permissions';
 import { useTenant } from '@/lib/TenantContext';
 import { Shield, Users, Building2, Mail, Crown, Car, RefreshCw } from 'lucide-react';
@@ -33,9 +34,16 @@ export default function Admin() {
   const loading = meLoading || (allowed && membersQ.isLoading);
   const accessDenied = !meLoading && !allowed;
 
+  // El rol pasa por manageRole (service role): User.role es write:false desde el
+  // fix del módulo 2 (2026-08-26) — un admin ya no puede auto-ascenderse a owner
+  // ni degradar al último admin del tenant vía una escritura directa del cliente.
   const handleRoleChange = async (userId, newRole) => {
-    await base44.entities.User.update(userId, { role: newRole });
-    refresh();
+    try {
+      await invokeOkFunction('manageRole', { userId, newRole });
+      refresh();
+    } catch (err) {
+      alert(err?.message || 'No se pudo cambiar el rol. Intenta de nuevo.');
+    }
   };
 
   // El nombre para la app (display_name) lo puede editar el admin del tenant (RLS de
@@ -58,12 +66,10 @@ export default function Admin() {
   const handleManage = async (userId, action, name) => {
     if (action === 'remove' && !window.confirm(`¿Quitar a ${name} de la organización? Perderá el acceso, pero su cuenta no se elimina.`)) return;
     try {
-      const res = await base44.functions.invoke('manageMember', { action, userId });
-      const data = res?.data || res;
-      if (data?.error) { alert(data.error); return; }
+      await invokeOkFunction('manageMember', { action, userId });
       refresh();
-    } catch {
-      alert('No se pudo completar la acción. Intenta de nuevo.');
+    } catch (err) {
+      alert(err?.message || 'No se pudo completar la acción. Intenta de nuevo.');
     }
   };
 

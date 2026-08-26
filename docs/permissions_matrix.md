@@ -117,7 +117,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | Action | Required Role | Enforcement Location | Notes |
 |--------|--------------|---------------------|-------|
 | Invite user | admin, owner | `Admin.jsx` client check | `base44.users.inviteUser()` |
-| Change user role | admin, owner | `Admin.jsx` client check + `User.jsonc` RLS | Cannot change own role |
+| Change user role | admin, owner | `manageRole` server function | Cannot change own role, cannot assign `owner` (use delegateOwnership), cannot demote the last admin/owner of the tenant. `User.role` is field-level `write:false` (2026-08-26 — an independent audit against acacia-app-standard's Module 2 found this had never actually been locked; the RLS only re-checked the caller's own role, so a direct SDK call let an admin self-escalate to owner or strand the tenant with zero admins) |
 | Suspend / reactivate user | admin, owner | `manageMember` server function | `write_access` + `suspended` are server-authoritative |
 | Remove user from tenant | admin, owner | `manageMember` server function | Unlinks from tenant; does not delete account |
 | Delete tenant | owner only⁶ | `Admin.jsx` DangerZone | Requires typing "ELIMINAR"; RLS keys delete on `data.owner_email` |
@@ -430,7 +430,8 @@ Security, code quality, tenant isolation, permissions, and release-readiness aud
 | A10 | PermissionsPanel save: persists to `TenantLicense.permissions_config`; error state via `setSaveError`; success confirmation via `setSaved` | — | **CONFIRMED WORKING** |
 | A11 | supabaseData / githubRepos / licensesAdmin / ticketsAdmin: all gated on `APP_OWNER_EMAIL` env var | — | **CONFIRMED CLEAN** |
 | A12 | joinTenant: new members get `driver` role (minimum privilege) | — | **CONFIRMED CLEAN** |
-| A13 | User entity: `tenant_id`, `role`, `suspended`, `write_access`, `driver_profile_id` all write:false (server-authoritative) | — | **CONFIRMED CLEAN** |
+| A13 | User entity: `tenant_id`, `suspended`, `write_access`, `driver_profile_id` all write:false (server-authoritative) | — | **CONFIRMED CLEAN** |
+| A13b | User entity: `role` was claimed write:false above but the live deployed schema showed it writable by any caller whose OWN role was owner/admin, with no re-check against the target or a lockout guard — a direct SDK call let an admin self-escalate to owner, or demote every other admin/owner leaving the tenant with none. Found by an independent audit (acacia-app-standard Module 2, 2026-08-26); not caught by the original A13 pass, which restated the claim without re-deriving it from the live schema. | HIGH | **FIXED 2026-08-26 — `role` is now genuinely `write:false`; `manageRole` is the sole writer, with self-target/last-admin/owner-assignment guards** |
 | A14 | CI: lint, typecheck, tests (367/367), build — all pass on current HEAD | — | **CONFIRMED PASSING** |
 
 ---
