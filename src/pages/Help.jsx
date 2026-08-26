@@ -15,6 +15,14 @@ import { TICKET_STATUSES, TICKET_CATEGORIES, labelFor, statusColor } from '@/lib
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-08-26',
+    title: 'Inicio de sesión y mensajes de error',
+    items: [
+      'Quitamos "Continuar con Apple" de la pantalla de acceso: ese método no estaba habilitado y dejaba a quien lo intentaba sin poder crear su cuenta. Usa Google o correo y contraseña.',
+      'Corregido: al editar o crear un registro, si la operación fallaba ahora se muestra el motivo real (permisos, licencia, etc.) en vez de un código de error genérico.',
+    ],
+  },
+  {
     date: '2026-08-24',
     title: 'Zona de Peligro: delegar propiedad ahora es solo del owner',
     items: [
