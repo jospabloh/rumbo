@@ -5,7 +5,10 @@
     "tenant_id": {
       "type": "string",
       "title": "Tenant",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      },
+      "description": "Tenant al que pertenece este registro. Server-authoritative en la práctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, así que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garantía incluso si alguien llama a la entidad directo por SDK, saltándose guardedEntityWrite."
     },
     "channel_id": {
       "type": "string",
@@ -23,7 +26,7 @@
     "channel_driver_id": {
       "type": "string",
       "title": "Conductor del canal (denormalizado)",
-      "description": "Copia de Channel.driver_id al crear el mensaje. Permite que la RLS de lectura deje a un conductor leer los mensajes de su propio canal directo (channel_driver_id == driver_profile_id), no solo los que \u00e9l mismo envi\u00f3."
+      "description": "Copia de Channel.driver_id al crear el mensaje. Permite que la RLS de lectura deje a un conductor leer los mensajes de su propio canal directo (channel_driver_id == driver_profile_id), no solo los que él mismo envió."
     },
     "sender_id": {
       "type": "string",
@@ -48,7 +51,7 @@
     },
     "read": {
       "type": "boolean",
-      "title": "Le\u00eddo",
+      "title": "Leído",
       "default": false
     }
   },

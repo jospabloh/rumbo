@@ -5,11 +5,14 @@
     "tenant_id": {
       "type": "string",
       "title": "Tenant",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      },
+      "description": "Tenant al que pertenece este registro. Server-authoritative en la práctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, así que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garantía incluso si alguien llama a la entidad directo por SDK, saltándose guardedEntityWrite."
     },
     "vehicle_id": {
       "type": "string",
-      "title": "Veh\u00edculo"
+      "title": "Vehículo"
     },
     "driver_id": {
       "type": "string",

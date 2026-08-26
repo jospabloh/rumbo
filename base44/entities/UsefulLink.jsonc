@@ -5,7 +5,10 @@
     "tenant_id": {
       "type": "string",
       "title": "Tenant",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      },
+      "description": "Tenant al que pertenece este registro. Se fija al crearse, directo desde el cliente — la regla `create` de esta entidad exige `data.tenant_id == user.data.tenant_id`, así que un valor ajeno nunca pasa la creación. write:false congela el valor después: nadie puede reasignar el registro a otro tenant una vez creado."
     },
     "label": {
       "type": "string",
@@ -17,7 +20,7 @@
     },
     "description": {
       "type": "string",
-      "title": "Descripci\u00f3n"
+      "title": "Descripción"
     },
     "active": {
       "type": "boolean",

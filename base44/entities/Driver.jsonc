@@ -5,7 +5,10 @@
     "tenant_id": {
       "type": "string",
       "title": "Tenant",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      },
+      "description": "Tenant al que pertenece este registro. Server-authoritative en la práctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, así que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garantía incluso si alguien llama a la entidad directo por SDK, saltándose guardedEntityWrite."
     },
     "full_name": {
       "type": "string",
@@ -113,7 +116,7 @@
       "type": "number",
       "minimum": 0,
       "maximum": 5,
-      "title": "Calificaci\u00f3n",
+      "title": "Calificación",
       "rls": {
         "write": {
           "$or": [
@@ -170,7 +173,7 @@
     "hire_date": {
       "type": "string",
       "format": "date",
-      "title": "Fecha de contrataci\u00f3n",
+      "title": "Fecha de contratación",
       "rls": {
         "write": {
           "$or": [
@@ -195,7 +198,7 @@
     },
     "phone": {
       "type": "string",
-      "title": "Tel\u00e9fono"
+      "title": "Teléfono"
     },
     "photo_url": {
       "type": "string",
@@ -350,9 +353,9 @@
     },
     "referral_credit": {
       "type": "number",
-      "title": "Cr\u00e9dito de bono por aplicar",
+      "title": "Crédito de bono por aplicar",
       "default": 0,
-      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta autom\u00e1ticamente de los pr\u00f3ximos cobros generados para este conductor.",
+      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta automáticamente de los próximos cobros generados para este conductor.",
       "rls": {
         "write": {
           "$or": [

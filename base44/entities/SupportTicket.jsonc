@@ -13,14 +13,18 @@
     "tenant_id": {
       "type": "string",
       "title": "Tenant",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      },
+      "description": "Tenant al que pertenece este ticket. Lo fija submitTicket del lado servidor al crear el registro, nunca el cliente. write:false evita que un ticket se reasigne a otro tenant después, y evita que un remitente declare pertenecer a un tenant ajeno al enviarlo."
     },
     "tenant_name": {
       "type": "string",
-      "title": "Organizaci\u00f3n",
+      "title": "Organización",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Nombre del tenant en el momento de crear el ticket (copia de despliegue, no una referencia viva al TenantLicense actual) — lo fija submitTicket del lado servidor. write:false evita que el remitente falsifique de qué organización dice venir el ticket."
     },
     "subject": {
       "type": "string",
@@ -28,7 +32,7 @@
     },
     "body": {
       "type": "string",
-      "title": "Descripci\u00f3n"
+      "title": "Descripción"
     },
     "category": {
       "type": "string",
@@ -40,7 +44,7 @@
         "other"
       ],
       "default": "question",
-      "title": "Categor\u00eda"
+      "title": "Categoría"
     },
     "priority": {
       "type": "string",
@@ -68,7 +72,8 @@
       "title": "Solicitante (ID)",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Id del usuario que envió el ticket. Lo fija submitTicket con el id de la sesión autenticada (`user.id`), nunca del cuerpo de la petición — write:false evita que un ticket se atribuya a otro usuario, cosa que también gobierna la regla `read` de esta entidad (`data.requester_id == {{user.id}}` es una de las formas en que alguien puede leer su propio ticket)."
     },
     "requester_name": {
       "type": "string",
@@ -79,7 +84,8 @@
       "title": "Correo del solicitante",
       "rls": {
         "write": false
-      }
+      },
+      "description": "Correo del usuario que envió el ticket, tomado de su sesión autenticada por submitTicket. write:false evita que el remitente declare un correo ajeno — importa porque es la dirección a la que se responde."
     },
     "responses": {
       "type": "array",
@@ -105,12 +111,12 @@
     },
     "last_activity_at": {
       "type": "string",
-      "title": "\u00daltima actividad"
+      "title": "Última actividad"
     },
     "ai_brief": {
       "type": "object",
       "title": "Brief BA/PO (IA)",
-      "description": "Especificaci\u00f3n estructurada que arma el asistente BA/PO al levantar un feature o incidencia (historia de usuario, criterios de aceptaci\u00f3n, pasos de reproducci\u00f3n, impacto, etc.). El mismo brief se incrusta en 'body' en Markdown, as\u00ed que este campo es aditivo para el render enriquecido en Mission Control."
+      "description": "Especificación estructurada que arma el asistente BA/PO al levantar un feature o incidencia (historia de usuario, criterios de aceptación, pasos de reproducción, impacto, etc.). El mismo brief se incrusta en 'body' en Markdown, así que este campo es aditivo para el render enriquecido en Mission Control."
     }
   },
   "required": [
