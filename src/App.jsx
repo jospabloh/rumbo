@@ -15,6 +15,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import Onboarding from './pages/Onboarding';
+import JoinOrganization from './pages/JoinOrganization';
 import TenantPicker from './components/TenantPicker';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -125,6 +126,9 @@ const AppShell = () => {
 
       {/* Protected routes — unauthenticated users redirect to /login */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        {/* Fuera de TenantGate a propósito (Módulo 18): un usuario que ya tiene
+            tenant activo también debe poder llegar aquí para unirse a otro. */}
+        <Route path="/join-organization" element={<JoinOrganization />} />
         <Route element={
           <TenantGate>
             <Layout />

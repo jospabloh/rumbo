@@ -10,13 +10,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *     organización" fallaba para todo usuario externo nuevo.
  *   - El cliente no puede auto-elevarse de rol (sería un agujero de seguridad). Aquí el
  *     service role hace la elevación de forma controlada: SOLO te vuelve owner del tenant
- *     que tú mismo acabas de crear, y solo si aún no perteneces a ninguno.
+ *     que tú mismo acabas de crear.
  *
  * Seguridad:
  *   - Requiere sesión.
- *   - Rechaza si el usuario ya pertenece a un tenant (evita duplicados y escaladas).
  *   - El join_code se genera en el servidor con entropía criptográfica.
  *   - Persiste rol=owner, tenant_id y write_access en el perfil (campos write:false en RLS).
+ *
+ * Módulo 18 (jospabloh/acacia-app-standard → STANDARD.md, revisado 2026-08-26):
+ * ya NO rechaza a un usuario que ya pertenece a otra organización — crear una
+ * organización adicional es un caso legítimo (el mismo email administra dos
+ * flotillas), igual que CtrlHQ's `complete-onboarding` (mode: "create") nunca
+ * lo rechazó. El caller queda como owner de la organización recién creada y
+ * su `tenant_id` activo se mueve a ella de inmediato; `resolveTenant` sigue
+ * siendo quien descubre y deja volver a la anterior.
  */
 
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -52,15 +59,6 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole;
     const email = (user.email || '').toLowerCase();
-
-    // No permitir crear una segunda organización si ya perteneces a una válida.
-    const existingTenantId = user.data?.tenant_id || null;
-    if (existingTenantId) {
-      const tenants = await svc.entities.TenantLicense.list('-created_date', 1000);
-      if (tenants.find((t: any) => t.id === existingTenantId)) {
-        return Response.json({ error: 'Ya perteneces a una organización.' }, { status: 409 });
-      }
-    }
 
     const body = await req.json().catch(() => ({}));
     const tenant_name = clampStr(body?.tenant_name, 80);

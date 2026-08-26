@@ -5,7 +5,7 @@ import { useTenant } from '@/lib/TenantContext';
 import { applyTenantColors } from '@/lib/palettes';
 import { LAST_PATH_KEY, shouldPersist, shouldRestore } from '@/lib/routePersistence';
 import {
-  LogOut, Menu, X, Bell, Shield, Search, HelpCircle,
+  LogOut, Menu, X, Bell, Shield, Search, HelpCircle, UserPlus,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { can, isDriver as checkIsDriver, isInvestor as checkIsInvestor } from '@/lib/permissions';
@@ -159,8 +159,24 @@ export default function Layout() {
       </div>
 
       {/* Selector de organización — solo se monta si el email pertenece a más de una (Módulo 18) */}
-      <div className="px-3 pt-2">
+      <div className="px-3 pt-2 space-y-1">
         <TenantSwitcher />
+        {/* Módulo 18: unirse por código a un segundo tenant ya no está bloqueado en
+            joinTenant — este enlace es la forma de LLEGAR a esa pantalla desde dentro
+            de la app, no solo desde el onboarding pre-tenant. Visible siempre (incluso
+            con una sola organización): es justo el "primer segundo tenant" el que un
+            TenantSwitcher gateado en candidates.length > 1 nunca puede exponer. El
+            owner de la app no se une por código (joinTenant lo rechaza server-side),
+            así que no tiene sentido mostrárselo. */}
+        {!isAppOwner && (
+          <Link
+            to="/join-organization"
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all"
+          >
+            <UserPlus className="w-3.5 h-3.5 shrink-0" />
+            Unirme a otra organización
+          </Link>
+        )}
       </div>
 
       {/* Nav */}
