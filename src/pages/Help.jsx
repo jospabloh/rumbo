@@ -1,19 +1,32 @@
 import { useState } from 'react';
-import { LifeBuoy, Command, MessageCircle, BookOpen, History } from 'lucide-react';
+import { LifeBuoy, Command, MessageCircle, BookOpen, History, Mail, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import TicketForm from '@/components/support/TicketForm';
 import ManualGuide from '@/components/help/ManualGuide';
 import { APP_VERSION, RELEASE_DATE } from '@/lib/version';
+import { SUPPORT_URL } from '@/lib/license';
 import { useEntityList } from '@/hooks/useEntities';
 import { TICKET_STATUSES, TICKET_CATEGORIES, labelFor, statusColor } from '@/lib/support';
+
+// Mismo correo por defecto que usa submitTicket del lado servidor
+// (Support_email / SUPPORT_EMAIL / APP_OWNER_EMAIL, ver USER_MANUAL.md) y que
+// acaciaco-site usa para Soporte a Apps — no un valor nuevo inventado aquí.
+const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 
 // Plain-language digest of CHANGELOG.md, for end users -- not the raw
 // technical entries. Update alongside a real CHANGELOG.md release; see the
 // portfolio convention in cateqhub/liuma/puntos/radar/stockflow's own
 // changelog surfaces.
 const CHANGES = [
+  {
+    date: '2026-08-26',
+    title: 'Contacto y créditos en el Centro de ayuda',
+    items: [
+      'Nuevo: un correo y un enlace directos a soporte, y una nota de que Rumbo es un producto de ACACIA Consultoría, en la parte de abajo de esta pantalla.',
+    ],
+  },
   {
     date: '2026-08-26',
     title: 'Inicio de sesión y mensajes de error',
@@ -159,6 +172,29 @@ export default function Help() {
             </ul>
           </div>
         ))}
+      </div>
+
+      {/* Contacto y créditos — módulo 21 del estándar ACACIA: un correo y un
+          canal directo que de verdad llegan a alguien (no el ticket de
+          arriba otra vez, solo el camino más corto hacia él), más el
+          reconocimiento de qué empresa está detrás de la app. */}
+      <div className="bg-card border border-border rounded-xl p-5 mb-4">
+        <h2 className="font-semibold text-sm mb-3 flex items-center gap-2">
+          <Mail className="w-4 h-4 text-primary" /> Contacto
+        </h2>
+        <div className="space-y-1.5 text-sm">
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary underline underline-offset-2 block w-fit">
+            {SUPPORT_EMAIL}
+          </a>
+          <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 block w-fit">
+            acaciaco.com.mx/rumbo
+          </a>
+        </div>
+        <div className="mt-4 pt-3 border-t border-border flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Heart className="w-3.5 h-3.5 text-destructive shrink-0" />
+          Hecho con cariño para floteros y flotillas en México — un producto de ACACIA Consultoría.
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1.5">© {new Date(RELEASE_DATE).getFullYear()} ACACIA Consultoría. Todos los derechos reservados.</p>
       </div>
 
       <p className="text-xs text-muted-foreground mt-6 px-1">Rumbo · versión {APP_VERSION} · {RELEASE_DATE}</p>

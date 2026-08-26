@@ -4,6 +4,32 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.32.0] — 2026-08-26 — About screen: contact + ACACIA acknowledgment (module 21)
+
+`acacia-app-standard`'s module 21 asks every portfolio app for one screen —
+reachable from account/settings, not buried — that answers "what does this
+app do, what changed, what version am I on, and who do I ask." Rumbo's
+`Help.jsx` already had three of the four (a searchable manual, the
+in-app changelog from module 6, the version stamp); this adds the fourth:
+a support email and a direct channel distinct from the in-app ticket system
+above it, plus a short acknowledgment of who stands behind the app.
+
+- New "Contacto" card in `Help.jsx`: `soporte@acaciaco.com.mx` (the same
+  default `submitTicket` already falls back to server-side) and
+  `SUPPORT_URL` (`acaciaco.com.mx/rumbo`, already used for the license
+  renewal banner in `Layout.jsx` — reused rather than a second URL
+  invented for this card).
+- "Hecho con cariño para floteros y flotillas en México — un producto de
+  ACACIA Consultoría," plus a rights line, matching the voice already used
+  in `Landing.jsx`'s public footer.
+
+Purely additive UI copy — no RLS, schema, or function change.
+
+**Verified:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm run
+test` (468/468) all pass.
+
+---
+
 ## [1.31.3] — 2026-08-26 — Invite-a-teammate fixed: was calling Base44's platform invite, not the app's
 
 Found while verifying the invite path so a real user (Fer) could be added to
