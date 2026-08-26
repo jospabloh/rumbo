@@ -20,6 +20,7 @@ const CHANGES = [
     items: [
       'Quitamos "Continuar con Apple" de la pantalla de acceso: ese método no estaba habilitado y dejaba a quien lo intentaba sin poder crear su cuenta. Usa Google o correo y contraseña.',
       'Corregido: al editar o crear un registro, si la operación fallaba ahora se muestra el motivo real (permisos, licencia, etc.) en vez de un código de error genérico.',
+      'Corregido: invitar a un usuario con rol Dispatcher, Mecánico, Conductor o Socio desde Administración ya no fallaba en silencio.',
     ],
   },
   {
