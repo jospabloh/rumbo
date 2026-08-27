@@ -49,6 +49,7 @@ import RequireAppOwner from './components/RequireAppOwner';
 import RequireAccess from './components/RequireAccess';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionHeartbeat from '@/lib/SessionHeartbeat';
+import SessionControl from '@/components/session/SessionControl';
 import { PageLoader, Spinner } from '@/components/ui/spinner';
 // Add page imports here
 
@@ -178,6 +179,7 @@ function App() {
           <Router>
             <TenantProvider>
               <SessionHeartbeat />
+              <SessionControl />
               <ErrorBoundary>
                 <AppShell />
               </ErrorBoundary>

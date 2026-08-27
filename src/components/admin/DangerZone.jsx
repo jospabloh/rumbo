@@ -3,6 +3,7 @@ import { invokeOkFunction } from '@/lib/invokeFunction';
 import { CheckCircle2, AlertTriangle, Trash2, ArrowRightLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ActiveSessions from '@/components/admin/ActiveSessions'; // Módulo 20 — ver ese archivo
 
 export default function DangerZone({ tenant, onDeleted, onDelegated, isOwner }) {
   const [delegateEmail, setDelegateEmail] = useState('');
@@ -104,6 +105,10 @@ export default function DangerZone({ tenant, onDeleted, onDelegated, isOwner }) 
         </Button>
         {exportError && <p className="text-xs text-destructive">{exportError}</p>}
       </div>
+
+      {/* Sesiones activas — módulo 20 (control de sesión). Componente aparte,
+          ver src/components/admin/ActiveSessions.jsx. */}
+      <ActiveSessions />
 
       {/* Delegar ownership y eliminar tenant — solo el owner (módulo 14: un admin no debe
           poder auto-delegarse la propiedad y luego borrar el tenant con ella). El export
