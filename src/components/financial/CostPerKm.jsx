@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Calculator } from 'lucide-react';
 
@@ -11,8 +11,8 @@ export default function CostPerKm({ vehicles }) {
   const calculate = async () => {
     setLoading(true);
     // Call backend function for server-side calculation
-    const response = await base44.functions.invoke('calculateCostPerKm', {});
-    setResults(response.data?.results || []);
+    const body = await invokeFunction('calculateCostPerKm', {});
+    setResults(body?.results || []);
     setCalculated(true);
     setLoading(false);
   };

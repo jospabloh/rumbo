@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { Crown, Building2, RefreshCw, Edit2, Save, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ function TenantRow({ license, onSave }) {
     // rls.write:false en TenantLicense.jsonc — solo asServiceRole (tras el gate
     // de APP_OWNER_EMAIL en la función) puede tocarlos.
     const { tenant_name, owner_email, plan, status, max_vehicles, max_drivers, trial_ends_at, renews_at, notes } = form;
-    await base44.functions.invoke('licensesAdmin', {
+    await invokeFunction('licensesAdmin', {
       action: 'patch',
       tenantId: license.id,
       patch: { tenant_name, owner_email, plan, status, max_vehicles, max_drivers, trial_ends_at, renews_at, notes },
@@ -147,8 +147,8 @@ export default function SuperAdminPanel() {
     // directo: bajo la RLS de entidad, un list() directo de un tenant owner
     // normal (no el owner real de la app) solo devolvería su propio tenant en
     // silencio, en vez de fallar — este panel es exclusivo del owner de la app.
-    const resp = await base44.functions.invoke('licensesAdmin', { action: 'list' });
-    setTenants(resp?.data?.tenants || []);
+    const body = await invokeFunction('licensesAdmin', { action: 'list' });
+    setTenants(body?.tenants || []);
     setLoading(false);
   };
 

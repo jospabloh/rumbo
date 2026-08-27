@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -42,10 +42,10 @@ export default function Alerts() {
     setGenerating(true);
     setError('');
     try {
-      await base44.functions.invoke('generateAlerts', {});
+      await invokeFunction('generateAlerts', {});
       invalidate('Alert');
     } catch (err) {
-      setError('No se pudieron verificar las alertas. Inténtalo de nuevo.');
+      setError(err?.message || 'No se pudieron verificar las alertas. Inténtalo de nuevo.');
     } finally {
       setGenerating(false);
     }

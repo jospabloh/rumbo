@@ -11,7 +11,7 @@
  * iOS), safe-area para el notch, y sin dependencias de hover.
  */
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Building2, Users, ArrowRight, ArrowLeft, Loader2, KeyRound, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
@@ -33,18 +33,12 @@ function JoinTenant({ onBack, onJoined }) {
     setLoading(true);
     setError('');
     try {
-      const res = await base44.functions.invoke('joinTenant', { code: normalized });
-      const data = res?.data || res;
-      if (data?.error) {
-        setError(data.error);
-        setLoading(false);
-        return;
-      }
+      const data = await invokeFunction('joinTenant', { code: normalized });
       setJoined(data?.tenant || { tenant_name: 'tu organización' });
       // Pequeña pausa para que el usuario vea la confirmación antes de recargar.
       setTimeout(() => onJoined(data), 1400);
     } catch (e) {
-      setError('No pudimos unirte. Revisa el código e intenta de nuevo.');
+      setError(e?.message || 'No pudimos unirte. Revisa el código e intenta de nuevo.');
       setLoading(false);
     }
   };

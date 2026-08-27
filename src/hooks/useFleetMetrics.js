@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useTenant } from '@/lib/TenantContext';
 import { useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 
@@ -25,15 +26,11 @@ export function useFleetUnitMetrics(range, vehicleIds, { trailingPeriods = 4 } =
   const { tenantId } = useTenant();
   return useQuery({
     queryKey: ['fleetUnitMetrics', tenantId, range?.start, range?.end, vehicleIds, trailingPeriods],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('fleetUnitMetrics', {
-        range: { type: range.type, start: range.start, end: range.end },
-        vehicle_ids: vehicleIds,
-        trailingPeriods,
-      });
-      if (res?.data?.error) throw new Error(res.data.error);
-      return res.data;
-    },
+    queryFn: () => invokeFunction('fleetUnitMetrics', {
+      range: { type: range.type, start: range.start, end: range.end },
+      vehicle_ids: vehicleIds,
+      trailingPeriods,
+    }),
     enabled: !!tenantId && !!range?.start && !!range?.end,
     placeholderData: keepPreviousData,
   });

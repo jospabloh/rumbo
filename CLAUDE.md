@@ -872,3 +872,82 @@ Mission Control. Lo de arriba es lectura del código nuevo contra el patrón
 ya probado de `delegateOwnership`/`exportTenantData`/`submitTicket`, más la
 verificación local (`deno check`, lint, build, typecheck, tests) — no una
 ejecución real contra el backend desplegado de Base44.
+
+## Migración completa: todo `base44.functions.invoke()` pasa por el helper (2026-08-26)
+
+El hallazgo del arreglo de arriba (#2, `guardedWrite.js`) — que
+`base44.functions.invoke()` es axios puro por `interceptResponses: false`, así
+que un no-2xx **rechaza** con el mensaje genérico de axios en vez de resolver
+con el cuerpo real (`{error, code?}`) — resultó no ser exclusivo de
+`guardedEntityWrite`. Un grep repo-wide encontró ~15 sitios más con el mismo
+patrón de invoke crudo, cada uno perdiendo el mensaje de error real de su
+función de la misma manera.
+
+`src/lib/invokeFunction.js` generaliza el fix: `invokeFunction(name, payload)`
+desenvuelve `{data: <body>}` y, en el catch, lee `err.response?.data` para
+recuperar `{error, code}`; `invokeOkFunction` además lanza si el cuerpo trae
+`ok: false` en una respuesta 2xx (la convención de `guardedEntityWrite`).
+`guardedWrite.js` se migró primero como la prueba del patrón; esta pasada migra
+el resto.
+
+**13 archivos migrados**, cada invoke call site revisado uno por uno (no un
+reemplazo de plantilla ciego) para no regresar ningún manejo de error ya
+cuidadoso:
+
+- `src/components/admin/SuperAdminPanel.jsx` — `licensesAdmin` (`list`,
+  `patch`) → `invokeFunction`.
+- `src/components/financial/CostPerKm.jsx` — `calculateCostPerKm` →
+  `invokeFunction`.
+- `src/components/support/TicketForm.jsx` — `submitTicket` → `invokeFunction`;
+  el catch ahora muestra `err.message` (el error real del servidor) con el
+  mismo texto genérico de antes como respaldo.
+- `src/hooks/useFleetMetrics.js` — `fleetUnitMetrics` (dentro de un
+  `queryFn` de React Query) → `invokeFunction`; se quitó el
+  `if (res?.data?.error) throw` manual, ya cubierto por el helper.
+- `src/lib/TenantContext.jsx` — `resolveTenant` y `switchTenant` →
+  `invokeFunction`.
+- `src/pages/Alerts.jsx` — `generateAlerts` → `invokeFunction`.
+- `src/pages/TenantOnboarding.jsx` — `createTenant` → `invokeFunction`; se
+  quitó el chequeo manual `data?.error` (código muerto: un no-2xx ya rechaza
+  antes de llegar ahí).
+- `src/pages/Licenses.jsx` — `licensesAdmin` (`list`, `renew`, `set_status`,
+  3 call sites) → `invokeFunction`.
+- `src/pages/GitHubPage.jsx` — el wrapper local `invoke()` (`githubRepos`)
+  pasó de `base44.functions.invoke(...).then(r => r.data)` a
+  `invokeFunction(...)` directo.
+- `src/pages/SupabasePage.jsx` — mismo patrón, wrapper local sobre
+  `supabaseData`.
+- `src/pages/Tickets.jsx` — `ticketsAdmin` (`list`, `set_status`, `reply`,
+  3 call sites) → `invokeFunction`.
+- `src/pages/Onboarding.jsx` — `joinTenant` → `invokeFunction`; mismo
+  chequeo `data?.error` muerto retirado.
+- `src/pages/TestData.jsx` — `createTestData` → `invokeFunction`; esta
+  función usa `{success: true, summary}` en 2xx y `{error}` en no-2xx (no
+  `{ok}`), así que `invokeFunction` (no `invokeOkFunction`) es la que
+  encaja — se quitó el `if (response.data?.success)` que ya no hacía falta.
+
+Ninguna de las 13 usa la convención `{ok: bool}` de `guardedEntityWrite` en un
+2xx (comprobado leyendo el `entry.ts` de cada función invocada): todas señalan
+error con no-2xx + `{error}`, así que `invokeFunction` —no
+`invokeOkFunction`— es la elección correcta en los 13 casos.
+
+**Deliberadamente NO tocado:** `src/components/admin/DangerZone.jsx` — sigue
+con dos invokes crudos (`exportTenantData`, `delegateOwnership`). Otro agente
+puede estar migrándolo en un branch paralelo sin mergear; tocarlo aquí
+arriesgaba un conflicto innecesario. Queda pendiente para esa migración o una
+pasada posterior. `src/lib/__tests__/guardedWrite.test.js` tampoco se tocó —
+no es un call site real, es el mock que fija el comportamiento de
+`guardedWrite.js` con un `invoke` falso.
+
+**Sin bump de versión.** Precedente en este mismo repo: `494aa29`
+(audit-tenant-scope), `06084e9`/`d07247a` (flag `ACCEPT_LEGACY_MASTER`),
+`57d4dd2` (solo CLAUDE.md) y `f2aceaf` (recomendaciones de RLS) — los cuatro
+son cambios internos sin funcionalidad nueva de cara al usuario y ninguno tocó
+`package.json`. Este cambio es la misma categoría: mensajes de error más
+específicos en fallo, comportamiento idéntico en éxito, sin RLS ni esquema ni
+función nuevos.
+
+**Verificado:** `npm run lint` (19 endpoints, sin cambio — esta migración no
+toca `base44/functions/`), `npm run build`, `npm run typecheck`, `npm run
+validate:rls` (27 entidades OK, sin cambio de esquema — no se tocó ningún
+`.jsonc`), `npm run test -- --run` (468/468) — todos limpios.
