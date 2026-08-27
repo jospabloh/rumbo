@@ -864,3 +864,195 @@ anterior (con el botón de Apple, con `guardedWrite.js` ocultando el error
 real). El dato de licencia de Car-Go Rent (arriba) sí es efectivo de
 inmediato porque se escribió directo en la base de datos vía MCP, sin pasar
 por el frontend desplegado.
+
+## Módulo 7 + 8 — cascada al eliminar un tenant, y el ticket que nadie conectaba (2026-08-26)
+
+`DangerZone.jsx`'s `handleDelete` solo llamaba
+`base44.entities.TenantLicense.delete(tenant.id)` directo: borraba el
+renglón de licencia y dejaba huérfano, con `tenant_id` apuntando a nada,
+cada `Vehicle`/`Driver`/`Trip`/… del tenant. El módulo 7 del estándar
+("Deletion must either cascade correctly through your own entities or
+explicitly document what it does not touch") y el módulo 8 ("the
+account-deletion request in Module 7's danger zone is a ticket too, and it
+is the one nobody remembers to wire") piden justo lo que faltaba.
+
+**`base44/functions/deleteTenant/entry.ts`** (nueva, service role), modelada
+sobre `exportTenantData`/`delegateOwnership`:
+
+- Deriva `tenant_id` del perfil del caller (`user.data.tenant_id`), nunca
+  del cuerpo de la petición.
+- Relee el `TenantLicense` **almacenado** y exige
+  `stored.owner_email === user.email` — el mismo criterio que
+  `delegateOwnership` (módulo 14, 2026-08-24: un `admin` no debe poder
+  borrar el tenant, solo su owner real).
+- Cascada de entidades: la lista se construyó con
+  `grep -l tenant_id base44/entities/*.jsonc` (20 entidades), más completa
+  que la lista de 14 de `exportTenantData` — esa es de 2026-08-18 y no
+  incluye `Channel`, `Message`, `LocationRequest`, `Catalog`, `UsefulLink`,
+  `DriverPrivateNote`, todas agregadas después. Por cada entidad,
+  `filter({tenant_id})` y luego borra fila por fila, cada una en su propio
+  try/catch — una entidad que falle no aborta el resto; se acumula un
+  conteo por entidad en la respuesta.
+- Tres casos NO entran al loop genérico, cada uno documentado en el propio
+  `entry.ts`:
+  - **`User`** — se **desvincula**, no se borra (`tenant_id: null, role:
+    'user', suspended: false, write_access: 'enabled', driver_profile_id:
+    null` — mismo shape que la acción `remove` de `manageMember/entry.ts`).
+    La cuenta sigue viva; la persona puede unirse o crear otro tenant
+    después (módulo 18).
+  - **`SupportTicket`** — se **conserva**, a propósito. Es el historial de
+    soporte/auditoría que un operador de plataforma puede necesitar después
+    de que el tenant se fue — el módulo 7 lo pide explícitamente ("billing
+    history retained for compliance"). No se toca su `tenant_id`: cada
+    renglón ya trae `tenant_name` denormalizado desde su creación
+    (`submitTicket/entry.ts`), así que sigue siendo legible por su propio
+    rastro de auditoría aunque `tenant_id` deje de resolver a un tenant
+    vivo, y no hay riesgo de que se confunda con uno porque el
+    `TenantLicense` con ese id ya no existe.
+  - **`TenantLicense`** — se borra **al final**, después de que la cascada
+    operativa terminó. Si ese borrado falla, la función responde 500 con lo
+    ya cascadeado en vez de fingir éxito.
+  `AppSession` no tiene campo `tenant_id` (confirmado por el comentario que
+  ya traía `AppSession.jsonc`), así que ni siquiera aparece en el grep y
+  queda fuera de alcance por completo.
+- Ticket de soporte documentando la eliminación (módulo 8): categoría
+  `other` (no existe `account_deletion` en el enum de `SupportTicket`, y no
+  se justificó inventar uno para esto — la fila del enum), asunto "Tenant
+  eliminado: {nombre}", cuerpo con el conteo por entidad, y push a Mission
+  Control igual que `submitTicket`. Todo esto es best-effort de punta a
+  punta (try/catch que traga el error) — un fallo de ticket o de push
+  **nunca** bloquea ni revierte la eliminación, que para entonces ya
+  ocurrió.
+
+**`_ticketHelpers.ts` — extraído de `submitTicket/entry.ts`, duplicado por
+directorio, no compartido entre directorios.** `nextTicketNumber`,
+`pushToMissionControl` y `stripHtml` vivían inline en `submitTicket/entry.ts`;
+`deleteTenant` necesita exactamente los mismos tres. La primera opción
+considerada fue un solo `base44/functions/_ticketHelpers.ts` compartido
+(importado por ambos con `../_ticketHelpers.ts`) — se descartó al revisar
+este mismo repo: `_acaciaSign.ts` ya lleva por escrito "Deno isolates each
+function directory ... an app with three bridge-touching functions carries
+three identical copies — that is expected", y no hay un solo ejemplo hoy de
+una función importando un archivo FUERA de su propio directorio. Sin sesión
+de CLI/deploy de Base44 autenticada en este sandbox para de verdad probar si
+el empaquetado de funciones de Base44 resuelve un import cruzado de
+directorios, la opción segura fue seguir el patrón que este repo ya prueba
+que funciona: `_ticketHelpers.ts` vive, byte a byte idéntico, en
+`submitTicket/` y en `deleteTenant/` — igual que `_acaciaSign.ts` ahora vive
+en tres directorios (`acaciaControl`, `submitTicket`, `deleteTenant`) en vez
+de dos.
+
+**`src/components/admin/DangerZone.jsx`** — sus tres llamadas a funciones
+(`exportTenantData`, `delegateOwnership`, y ahora `deleteTenant`) migraron
+de `base44.functions.invoke()` crudo a `src/lib/invokeFunction.js`'s
+`invokeOkFunction()`. La razón es la misma que ya documentó el fix de
+`guardedWrite.js` arriba (2026-08-26): `base44.functions.invoke()` en esta
+app es axios puro (`interceptResponses: false`), así que en una respuesta
+no-2xx la promesa se **rechaza** con el mensaje genérico de axios y el
+cuerpo real (`{error, ...}`) queda sin leer en `err.response.data`. Las tres
+funciones ya usaban `success: true` en vez de `ok: true` en su cuerpo de
+éxito; se les agregó `ok: true` (aditivo, sin quitar `success`) porque
+`invokeOkFunction` revisa `body.ok`. No había otro llamador de ninguna de
+las tres en todo el repo (confirmado por grep), así que el cambio no tiene
+efecto en ningún otro lugar.
+
+**Verificado:** `npm run lint` (20 endpoints, techo 40, margen 20), `npm run
+build`, `npm run typecheck`, `npm run validate:rls` (27 entidades OK — sin
+cambio de esquema), `npm run test` (468/468) todos limpios. `deno check
+--node-modules-dir=none` corrió en este sandbox (binario bajado de GitHub
+releases, método de los módulos 15/16/18) contra `deleteTenant/entry.ts`,
+`submitTicket/entry.ts` y las dos copias de `_ticketHelpers.ts` — los cuatro
+compilan limpio. De paso, `deno check` marcó un `error.message` sin `as
+Error` preexistente en el catch externo de `submitTicket/entry.ts` (mismo
+patrón que el módulo 18 ya documentó para `resolveTenant`/`joinTenant`/
+`manageMember` — este repo no corre `deno check` en CI, así que nunca se
+había visto); se corrigió de paso, ya que el archivo estaba abierto para
+este mismo cambio.
+
+**No verificado:** el deploy en vivo (pendiente de que este PR se mergee y
+alguien corra `npm run deploy` — módulo 11) y una sesión de navegador real
+como owner de un tenant completando el flujo de "Eliminar tenant" de punta a
+punta, incluyendo confirmar que el ticket de eliminación de verdad llega a
+Mission Control. Lo de arriba es lectura del código nuevo contra el patrón
+ya probado de `delegateOwnership`/`exportTenantData`/`submitTicket`, más la
+verificación local (`deno check`, lint, build, typecheck, tests) — no una
+ejecución real contra el backend desplegado de Base44.
+
+## Migración completa: todo `base44.functions.invoke()` pasa por el helper (2026-08-26)
+
+El hallazgo del arreglo de arriba (#2, `guardedWrite.js`) — que
+`base44.functions.invoke()` es axios puro por `interceptResponses: false`, así
+que un no-2xx **rechaza** con el mensaje genérico de axios en vez de resolver
+con el cuerpo real (`{error, code?}`) — resultó no ser exclusivo de
+`guardedEntityWrite`. Un grep repo-wide encontró ~15 sitios más con el mismo
+patrón de invoke crudo, cada uno perdiendo el mensaje de error real de su
+función de la misma manera.
+
+`src/lib/invokeFunction.js` generaliza el fix: `invokeFunction(name, payload)`
+desenvuelve `{data: <body>}` y, en el catch, lee `err.response?.data` para
+recuperar `{error, code}`; `invokeOkFunction` además lanza si el cuerpo trae
+`ok: false` en una respuesta 2xx (la convención de `guardedEntityWrite`).
+`guardedWrite.js` se migró primero como la prueba del patrón; esta pasada migra
+el resto.
+
+**13 archivos migrados**, cada invoke call site revisado uno por uno (no un
+reemplazo de plantilla ciego) para no regresar ningún manejo de error ya
+cuidadoso:
+
+- `src/components/admin/SuperAdminPanel.jsx` — `licensesAdmin` (`list`,
+  `patch`) → `invokeFunction`.
+- `src/components/financial/CostPerKm.jsx` — `calculateCostPerKm` →
+  `invokeFunction`.
+- `src/components/support/TicketForm.jsx` — `submitTicket` → `invokeFunction`;
+  el catch ahora muestra `err.message` (el error real del servidor) con el
+  mismo texto genérico de antes como respaldo.
+- `src/hooks/useFleetMetrics.js` — `fleetUnitMetrics` (dentro de un
+  `queryFn` de React Query) → `invokeFunction`; se quitó el
+  `if (res?.data?.error) throw` manual, ya cubierto por el helper.
+- `src/lib/TenantContext.jsx` — `resolveTenant` y `switchTenant` →
+  `invokeFunction`.
+- `src/pages/Alerts.jsx` — `generateAlerts` → `invokeFunction`.
+- `src/pages/TenantOnboarding.jsx` — `createTenant` → `invokeFunction`; se
+  quitó el chequeo manual `data?.error` (código muerto: un no-2xx ya rechaza
+  antes de llegar ahí).
+- `src/pages/Licenses.jsx` — `licensesAdmin` (`list`, `renew`, `set_status`,
+  3 call sites) → `invokeFunction`.
+- `src/pages/GitHubPage.jsx` — el wrapper local `invoke()` (`githubRepos`)
+  pasó de `base44.functions.invoke(...).then(r => r.data)` a
+  `invokeFunction(...)` directo.
+- `src/pages/SupabasePage.jsx` — mismo patrón, wrapper local sobre
+  `supabaseData`.
+- `src/pages/Tickets.jsx` — `ticketsAdmin` (`list`, `set_status`, `reply`,
+  3 call sites) → `invokeFunction`.
+- `src/pages/Onboarding.jsx` — `joinTenant` → `invokeFunction`; mismo
+  chequeo `data?.error` muerto retirado.
+- `src/pages/TestData.jsx` — `createTestData` → `invokeFunction`; esta
+  función usa `{success: true, summary}` en 2xx y `{error}` en no-2xx (no
+  `{ok}`), así que `invokeFunction` (no `invokeOkFunction`) es la que
+  encaja — se quitó el `if (response.data?.success)` que ya no hacía falta.
+
+Ninguna de las 13 usa la convención `{ok: bool}` de `guardedEntityWrite` en un
+2xx (comprobado leyendo el `entry.ts` de cada función invocada): todas señalan
+error con no-2xx + `{error}`, así que `invokeFunction` —no
+`invokeOkFunction`— es la elección correcta en los 13 casos.
+
+**Deliberadamente NO tocado:** `src/components/admin/DangerZone.jsx` — sigue
+con dos invokes crudos (`exportTenantData`, `delegateOwnership`). Otro agente
+puede estar migrándolo en un branch paralelo sin mergear; tocarlo aquí
+arriesgaba un conflicto innecesario. Queda pendiente para esa migración o una
+pasada posterior. `src/lib/__tests__/guardedWrite.test.js` tampoco se tocó —
+no es un call site real, es el mock que fija el comportamiento de
+`guardedWrite.js` con un `invoke` falso.
+
+**Sin bump de versión.** Precedente en este mismo repo: `494aa29`
+(audit-tenant-scope), `06084e9`/`d07247a` (flag `ACCEPT_LEGACY_MASTER`),
+`57d4dd2` (solo CLAUDE.md) y `f2aceaf` (recomendaciones de RLS) — los cuatro
+son cambios internos sin funcionalidad nueva de cara al usuario y ninguno tocó
+`package.json`. Este cambio es la misma categoría: mensajes de error más
+específicos en fallo, comportamiento idéntico en éxito, sin RLS ni esquema ni
+función nuevos.
+
+**Verificado:** `npm run lint` (19 endpoints, sin cambio — esta migración no
+toca `base44/functions/`), `npm run build`, `npm run typecheck`, `npm run
+validate:rls` (27 entidades OK, sin cambio de esquema — no se tocó ningún
+`.jsonc`), `npm run test -- --run` (468/468) — todos limpios.

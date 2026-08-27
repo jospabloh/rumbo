@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Database, CheckCircle2, AlertCircle, Loader2, Users, Truck, Bell, Wrench } from 'lucide-react';
@@ -15,12 +15,8 @@ export default function TestDataPage() {
     setResult(null);
 
     try {
-      const response = await base44.functions.invoke('createTestData', {});
-      if (response.data?.success) {
-        setResult({ success: true, summary: response.data.summary });
-      } else {
-        setError(response.data?.error || 'Error al crear datos de prueba');
-      }
+      const data = await invokeFunction('createTestData', {});
+      setResult({ success: true, summary: data.summary });
     } catch (err) {
       setError(err.message || 'Error al crear datos de prueba');
     } finally {

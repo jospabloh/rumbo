@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useTenant } from '@/lib/TenantContext';
 import { getLicenseInfo } from '@/lib/license';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,9 @@ export default function Licenses() {
 
   const load = () => {
     setLoading(true);
-    base44.functions.invoke('licensesAdmin', { action: 'list' })
-      .then(r => setTenants(r?.data?.tenants || []))
-      .catch(() => setError('No se pudieron cargar las licencias.'))
+    invokeFunction('licensesAdmin', { action: 'list' })
+      .then(body => setTenants(body?.tenants || []))
+      .catch(e => setError(e?.message || 'No se pudieron cargar las licencias.'))
       .finally(() => setLoading(false));
   };
 
@@ -37,10 +37,10 @@ export default function Licenses() {
     setBusyId(tenant.id);
     setError('');
     try {
-      await base44.functions.invoke('licensesAdmin', { action: 'renew', tenantId: tenant.id, cycle });
+      await invokeFunction('licensesAdmin', { action: 'renew', tenantId: tenant.id, cycle });
       load();
     } catch (e) {
-      setError('No se pudo renovar la licencia.');
+      setError(e?.message || 'No se pudo renovar la licencia.');
     } finally {
       setBusyId(null);
     }
@@ -50,10 +50,10 @@ export default function Licenses() {
     setBusyId(tenant.id);
     setError('');
     try {
-      await base44.functions.invoke('licensesAdmin', { action: 'set_status', tenantId: tenant.id, status });
+      await invokeFunction('licensesAdmin', { action: 'set_status', tenantId: tenant.id, status });
       load();
     } catch (e) {
-      setError('No se pudo actualizar el estado.');
+      setError(e?.message || 'No se pudo actualizar el estado.');
     } finally {
       setBusyId(null);
     }

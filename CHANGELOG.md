@@ -4,7 +4,7 @@ All notable changes to Rumbo are documented here.
 
 ---
 
-## [1.33.0] — 2026-08-27 — Session control: idle timeout, one active device, stale reap (module 20)
+## [1.34.0] — 2026-08-27 — Session control: idle timeout, one active device, stale reap (module 20)
 
 `acacia-app-standard`'s module 20, all three layers, extending the
 Mission-Control-oriented `AppSession`/`SessionHeartbeat.jsx` foundation this
@@ -39,6 +39,65 @@ read-back, matching the repo file).
 **Not verified:** a real browser session waiting out the 20-minute idle
 window, or hand-setting a session's `last_active_at` 49h into the past and
 running the reap job for real — see the module 20 CLAUDE.md entry.
+
+---
+
+## [1.33.0] — 2026-08-26 — Cascade delete on tenant deletion; account-deletion ticket (modules 7+8)
+
+`DangerZone.jsx`'s "Eliminar tenant" called
+`base44.entities.TenantLicense.delete(tenant.id)` directly — it removed the
+license row but left every operational entity (Vehicle, Driver, Trip, and 17
+others) orphaned in the database, still tagged with a `tenant_id` that no
+longer resolved to anything.
+
+- New `base44/functions/deleteTenant/entry.ts` (service role). Re-derives
+  `tenant_id` from the caller's own profile, re-reads the stored
+  `TenantLicense` row and requires `stored.owner_email === user.email` —
+  same discipline as `delegateOwnership` (module 14: an `admin` must not be
+  able to delete the tenant, only its actual current owner). Cascades
+  through every entity `grep -l tenant_id base44/entities/*.jsonc` finds (20
+  entities — a more complete list than `exportTenantData`'s older 14, which
+  predates Channel/Message/LocationRequest/Catalog/UsefulLink), deleting
+  each matching row per entity in its own try/catch so one bad entity can't
+  abort the rest. `User` rows are **detached**, not deleted (same shape as
+  `manageMember`'s `remove` action) — the account survives, only tenant
+  membership is cleared. `SupportTicket` rows are **kept** — a tenant's own
+  support/audit history, not tenant-owned operational data; each row already
+  carries a denormalized `tenant_name` from creation, so it stays readable
+  after `tenant_id` no longer resolves to a live tenant. `TenantLicense`
+  itself is deleted last, once the cascade is done.
+- Per module 8 ("the account-deletion request in Module 7's danger zone is a
+  ticket too, and it is the one nobody remembers to wire"), `deleteTenant`
+  now fires a `SupportTicket` (category `other`) documenting exactly which
+  entities were cascaded and their counts, and pushes it to Mission Control
+  the same way `submitTicket` does — best-effort, never blocks the deletion
+  that already happened.
+- `nextTicketNumber`/`pushToMissionControl`/`stripHtml` extracted out of
+  `submitTicket/entry.ts` into `_ticketHelpers.ts`, duplicated byte-identical
+  per function directory (`submitTicket/`, `deleteTenant/`) rather than
+  imported across directories — matching the same "Deno isolates each
+  function directory" pattern this repo already uses for `_acaciaSign.ts`.
+- `src/components/admin/DangerZone.jsx`'s three backend calls
+  (`exportTenantData`, `delegateOwnership`, `deleteTenant`) all migrated to
+  `src/lib/invokeFunction.js`'s `invokeOkFunction()` — raw
+  `base44.functions.invoke()` silently drops a function's real error message
+  on any non-2xx response (see the 2026-08-26 `guardedWrite.js` entry
+  below); this closes the same gap for the danger-zone's own three calls.
+
+**Verified:** `npm run lint` (20 endpoints, techo 40), `npm run build`, `npm
+run typecheck`, `npm run validate:rls` (27 entities OK, no schema change),
+`npm run test` (468/468) all pass. `deno check --node-modules-dir=none`
+against `deleteTenant/entry.ts`, `submitTicket/entry.ts`, and both
+`_ticketHelpers.ts` copies all pass clean (fixed a pre-existing
+`error.message` cast in `submitTicket/entry.ts`'s outer catch as a
+drive-by, found only because `deno check` now runs against that file).
+
+**Not verified:** live deploy (pending merge + `npm run deploy`) and an
+actual browser session as a tenant owner running the delete flow end to
+end. See `CLAUDE.md` for the full writeup, including what was deliberately
+NOT cascaded and why.
+
+---
 
 ## [1.32.0] — 2026-08-26 — About screen: contact + ACACIA acknowledgment (module 21)
 

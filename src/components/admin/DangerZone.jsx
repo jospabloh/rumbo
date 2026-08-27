@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeOkFunction } from '@/lib/invokeFunction';
 import { CheckCircle2, AlertTriangle, Trash2, ArrowRightLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,12 +20,8 @@ export default function DangerZone({ tenant, onDeleted, onDelegated, isOwner }) 
     setLoadingExport(true);
     setExportError(null);
     try {
-      const resp = await base44.functions.invoke('exportTenantData', {});
-      if (!resp?.data?.success) {
-        setExportError(resp?.data?.error || 'No se pudieron exportar los datos.');
-        return;
-      }
-      const blob = new Blob([JSON.stringify(resp.data, null, 2)], { type: 'application/json' });
+      const data = await invokeOkFunction('exportTenantData', {});
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -35,7 +31,7 @@ export default function DangerZone({ tenant, onDeleted, onDelegated, isOwner }) 
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setExportError('Error al exportar. Intenta de nuevo.');
+      setExportError(e.message || 'Error al exportar. Intenta de nuevo.');
       console.error('Export tenant data failed:', e);
     } finally {
       setLoadingExport(false);
@@ -56,15 +52,11 @@ export default function DangerZone({ tenant, onDeleted, onDelegated, isOwner }) 
       // Only the tenant's owner (module 14: not admin — see delegateOwnership/entry.ts)
       // can reassign owner_email. It's rls.write:false on the entity now, so this must
       // go through the service-role function rather than a direct entity update.
-      const resp = await base44.functions.invoke('delegateOwnership', { targetEmail: normalizedTarget });
-      if (!resp?.data?.success) {
-        setDelegateError(resp?.data?.error || 'Error al delegar. Intenta de nuevo.');
-        return;
-      }
+      await invokeOkFunction('delegateOwnership', { targetEmail: normalizedTarget });
       setDoneDelegate(true);
       setTimeout(() => { setDoneDelegate(false); setDelegateEmail(''); onDelegated(); }, 2000);
     } catch (e) {
-      setDelegateError('Error al delegar. Intenta de nuevo.');
+      setDelegateError(e.message || 'Error al delegar. Intenta de nuevo.');
       console.error('Delegate ownership failed:', e);
     } finally {
       setLoadingDelegate(false);
@@ -76,10 +68,15 @@ export default function DangerZone({ tenant, onDeleted, onDelegated, isOwner }) 
     setLoadingDelete(true);
     setDeleteError(null);
     try {
-      await base44.entities.TenantLicense.delete(tenant.id);
+      // Cascade-deletes every operational entity scoped to this tenant (and
+      // fires a support ticket documenting it) before removing the
+      // TenantLicense row itself — see base44/functions/deleteTenant/entry.ts.
+      // Only the tenant's owner can call this (same gate as delegateOwnership,
+      // re-checked server-side against the stored owner_email).
+      await invokeOkFunction('deleteTenant', {});
       onDeleted();
     } catch (e) {
-      setDeleteError('Error al eliminar. Intenta de nuevo.');
+      setDeleteError(e.message || 'Error al eliminar. Intenta de nuevo.');
       console.error('Delete tenant failed:', e);
     } finally {
       setLoadingDelete(false);

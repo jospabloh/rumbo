@@ -39,3 +39,7 @@ playwright-report/
 # run deno in CI, per CLAUDE.md's módulo 15 note; ad-hoc checks shouldn't
 # leave this behind).
 deno.lock
+
+# Claude Code agent worktree scratch dirs (isolation:"worktree" background agents) —
+# never real project content, never meant to be committed.
+.claude/worktrees/

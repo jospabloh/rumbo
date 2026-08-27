@@ -9,6 +9,7 @@
  */
 import { createContext, useContext, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { getLicenseInfo, isReadOnly, isWriteBlocked } from '@/lib/license';
 
 // Cada cuánto se revalida el tenant/licencia mientras la app está abierta. La licencia
@@ -45,11 +46,11 @@ export function TenantProvider({ children }) {
       // (y el rol del invitado en su primer login) con service role. Robusto y escalable.
       let resolvedId = null;
       try {
-        const res = await base44.functions.invoke('resolveTenant', {});
-        resolvedId = res?.data?.tenant_id || null;
-        setIsAppOwner(!!res?.data?.is_app_owner);
-        setCandidates(Array.isArray(res?.data?.candidates) ? res.data.candidates : []);
-        setNeedsTenantChoice(!!res?.data?.needs_tenant_choice);
+        const body = await invokeFunction('resolveTenant', {});
+        resolvedId = body?.tenant_id || null;
+        setIsAppOwner(!!body?.is_app_owner);
+        setCandidates(Array.isArray(body?.candidates) ? body.candidates : []);
+        setNeedsTenantChoice(!!body?.needs_tenant_choice);
       } catch (e) {
         console.error('resolveTenant falló, usando descubrimiento cliente:', e);
       }
@@ -112,7 +113,7 @@ export function TenantProvider({ children }) {
     if (!targetTenantId || targetTenantId === tenantId) return;
     setSwitching(true);
     try {
-      await base44.functions.invoke('switchTenant', { tenant_id: targetTenantId });
+      await invokeFunction('switchTenant', { tenant_id: targetTenantId });
       window.location.reload();
     } catch (e) {
       setSwitching(false);

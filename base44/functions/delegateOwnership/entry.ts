@@ -58,7 +58,9 @@ Deno.serve(async (req) => {
     }
 
     const updated = await svc.entities.TenantLicense.update(tenantId, { owner_email: targetEmail });
-    return Response.json({ success: true, tenant: updated });
+    // ok:true alongside success:true for src/lib/invokeFunction.js's invokeOkFunction(), the
+    // shared client wrapper that checks body.ok — see DangerZone.jsx's migration to it.
+    return Response.json({ ok: true, success: true, tenant: updated });
   } catch (error) {
     return Response.json({ error: (error as Error).message }, { status: 500 });
   }
