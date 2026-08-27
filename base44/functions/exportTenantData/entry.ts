@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({
+      ok: true, // for src/lib/invokeFunction.js's invokeOkFunction() — success is the pre-existing field this app's own DangerZone.jsx checked before the migration to that helper.
       success: true,
       exported_at: new Date().toISOString(),
       tenant: {

@@ -22,6 +22,14 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 const CHANGES = [
   {
     date: '2026-08-26',
+    title: 'Eliminar el tenant ahora borra los datos, no solo la licencia',
+    items: [
+      'Corregido: "Eliminar tenant" en la Zona de Peligro (solo owner) ahora borra vehículos, conductores, viajes y el resto de los datos operativos de la organización, no solo el registro de licencia. Los tickets de soporte se conservan como historial, y las cuentas de los usuarios no se borran, solo se desvinculan de la organización.',
+      'Cada eliminación de tenant queda registrada como un ticket de soporte, con el detalle de qué se borró.',
+    ],
+  },
+  {
+    date: '2026-08-26',
     title: 'Contacto y créditos en el Centro de ayuda',
     items: [
       'Nuevo: un correo y un enlace directos a soporte, y una nota de que Rumbo es un producto de ACACIA Consultoría, en la parte de abajo de esta pantalla.',
