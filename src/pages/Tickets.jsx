@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useTenant } from '@/lib/TenantContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,9 +43,9 @@ export default function Tickets() {
 
   const load = () => {
     setLoading(true);
-    base44.functions.invoke('ticketsAdmin', { action: 'list' })
-      .then((r) => setTickets(r?.data?.tickets || []))
-      .catch(() => setError('No se pudieron cargar los tickets.'))
+    invokeFunction('ticketsAdmin', { action: 'list' })
+      .then((body) => setTickets(body?.tickets || []))
+      .catch((e) => setError(e?.message || 'No se pudieron cargar los tickets.'))
       .finally(() => setLoading(false));
   };
 
@@ -69,9 +69,9 @@ export default function Tickets() {
     setBusy(true);
     setError('');
     try {
-      await base44.functions.invoke('ticketsAdmin', { action: 'set_status', ticketId: ticket.id, status });
+      await invokeFunction('ticketsAdmin', { action: 'set_status', ticketId: ticket.id, status });
       load();
-    } catch { setError('No se pudo actualizar el estatus.'); } finally { setBusy(false); }
+    } catch (e) { setError(e?.message || 'No se pudo actualizar el estatus.'); } finally { setBusy(false); }
   };
 
   const sendReply = async () => {
@@ -79,10 +79,10 @@ export default function Tickets() {
     setBusy(true);
     setError('');
     try {
-      await base44.functions.invoke('ticketsAdmin', { action: 'reply', ticketId: selectedTicket.id, body: reply.trim() });
+      await invokeFunction('ticketsAdmin', { action: 'reply', ticketId: selectedTicket.id, body: reply.trim() });
       setReply('');
       load();
-    } catch { setError('No se pudo enviar la respuesta.'); } finally { setBusy(false); }
+    } catch (e) { setError(e?.message || 'No se pudo enviar la respuesta.'); } finally { setBusy(false); }
   };
 
   return (
