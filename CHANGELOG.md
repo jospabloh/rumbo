@@ -4,6 +4,42 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.33.0] — 2026-08-27 — Session control: idle timeout, one active device, stale reap (module 20)
+
+`acacia-app-standard`'s module 20, all three layers, extending the
+Mission-Control-oriented `AppSession`/`SessionHeartbeat.jsx` foundation this
+app already had rather than replacing it.
+
+- **Layer 1 (new):** `src/hooks/useSessionManager.js` — 20 min idle → warning
+  dialog, 2 min countdown → "session expired" (explicit re-auth or full
+  sign-out). `src/components/session/{IdleWarningDialog,SessionExpiredDialog}.jsx`
+  copied from the portfolio canonical with minimal wiring to this app's own
+  `useAuth()`. A separate `useActivityTracker.js` writes a real-DOM-activity
+  signal to `AppSession.last_active_at`, throttled to once/hour.
+- **Layer 2 (extends `AppSession`):** new `status` field (`active`/`passive`,
+  no field-level RLS — inherits the entity's existing owner-writable `update`
+  rule, same as `last_active_at`, since this is a UX signal, not an access
+  boundary). A fresh login demotes the user's other sessions to `passive`
+  (`src/lib/session/sessionDemotion.js`, pure + unit-tested). New "Sesiones
+  activas" section in `DangerZone.jsx` (`src/components/admin/ActiveSessions.jsx`)
+  lists the caller's own devices with a "Revocar" button on every one but
+  the current session.
+- **Layer 3 (new):** `base44/functions/reapStaleSessions/entry.ts` — revokes
+  any `AppSession` (active or passive) whose `last_active_at` is more than
+  48h old. Fails closed on an unset `CRON_SECRET` (503, never "ran anyway").
+  **Known gap:** this repo has no existing scheduled-function mechanism —
+  nothing currently calls this function on a timer.
+
+**Verified:** `npm run lint` (20 endpoints), `npm run build`, `npm run
+typecheck`, `npm run validate:rls` (27 entities OK), `npm run test`
+(480/480, 12 new). `deno check` ran clean against the new function. Live
+schema push confirmed via the Base44 MCP (`status` field present on
+read-back, matching the repo file).
+
+**Not verified:** a real browser session waiting out the 20-minute idle
+window, or hand-setting a session's `last_active_at` 49h into the past and
+running the reap job for real — see the module 20 CLAUDE.md entry.
+
 ## [1.32.0] — 2026-08-26 — About screen: contact + ACACIA acknowledgment (module 21)
 
 `acacia-app-standard`'s module 21 asks every portfolio app for one screen —

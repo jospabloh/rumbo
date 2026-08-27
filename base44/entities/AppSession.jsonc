@@ -20,6 +20,17 @@
   // tenant's session rows (user_email, device, timestamps, and the ability to
   // force-revoke another tenant's users) via a direct SDK call — a cross-tenant
   // exposure with no legitimate use (the bridge never relied on this branch).
+  //
+  // MODULE 20 (session control, 2026-08-26): added `status`. It carries no
+  // per-field `rls` override, on purpose — it inherits the entity-level `update`
+  // rule, exactly like `last_active_at` already does (the owning user, via
+  // created_by_id, can already write both). This is deliberate, not an
+  // oversight: module 20's own text is explicit that "one active device,
+  // surfaced" is a UX signal, not an access-control boundary — a `passive`
+  // session keeps working exactly like an `active` one, so there is nothing to
+  // lock down by making the field service-role-only. The ten `rls.write:false`
+  // fields on TenantLicense (module 1) exist because THOSE fields gate billing
+  // and access; `status` here gates nothing.
   "name": "AppSession",
   "type": "object",
   "properties": {
@@ -28,6 +39,7 @@
     "device": { "type": "string", "description": "Etiqueta corta del navegador/dispositivo (p.ej. 'Chrome · macOS')" },
     "started_at": { "type": "string", "format": "date-time", "description": "Inicio de sesión" },
     "last_active_at": { "type": "string", "format": "date-time", "description": "Última actividad (movida por el latido)" },
+    "status": { "type": "string", "enum": ["active", "passive"], "default": "active", "description": "Módulo 20: 'active' es el dispositivo más reciente de este usuario, 'passive' cualquier otro. Señal de UX — no bloquea nada." },
     "revoked_at": { "type": "string", "format": "date-time", "description": "Marcada por Mission Control para forzar el cierre de sesión" },
     "revoked_by": { "type": "string", "description": "Operador que forzó el cierre (auditoría)" }
   },

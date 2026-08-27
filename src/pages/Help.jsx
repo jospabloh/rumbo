@@ -21,6 +21,15 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-08-27',
+    title: 'Cierre de sesión por inactividad y control de dispositivos',
+    items: [
+      'Nuevo: si no usas Rumbo por 20 minutos, aparece un aviso antes de cerrar tu sesión automáticamente; puedes elegir seguir trabajando.',
+      'Nuevo: en Administración → Zona de Peligro, "Sesiones activas" muestra en qué dispositivos ha entrado tu cuenta y desde cuándo, con un botón para cerrar la sesión de cualquiera que no reconozcas.',
+      'Las sesiones abandonadas (dispositivo apagado o sin conexión) ahora se cierran automáticamente después de 48 horas de inactividad.',
+    ],
+  },
+  {
     date: '2026-08-26',
     title: 'Contacto y créditos en el Centro de ayuda',
     items: [

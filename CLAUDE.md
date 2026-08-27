@@ -722,6 +722,111 @@ Bump a v1.32.0. Puramente aditivo — sin cambio de RLS, esquema ni función.
 **Verificado:** `npm run lint`, `npm run build`, `npm run typecheck`, `npm
 run test` (468/468) todos limpios.
 
+## Módulo 20 — control de sesión: inactividad, un dispositivo activo, sesiones muertas (2026-08-27)
+
+`jospabloh/acacia-app-standard` → `STANDARD.md` §20, las tres capas. Esta app
+ya tenía una base parcial de capa 2/3 — `AppSession.jsonc` +
+`src/lib/SessionHeartbeat.jsx` — construida para el force-logout de Mission
+Control, no para este módulo. Se extendió esa base en vez de reemplazarla.
+
+**Capa 1 — inactividad del lado del cliente (nueva).** `src/hooks/
+useSessionManager.js` es una adaptación, no una copia byte a byte, del canónico
+`shared/session/useSessionManager.js`: el canónico también gestiona el propio
+heartbeat/creación de sesión vía una función `session` (`manageSession`/
+`sessionHeartbeat`), que aquí ya hace `SessionHeartbeat.jsx` directamente contra
+la entidad `AppSession` — reimplementar eso habría sido un segundo escritor
+compitiendo por el mismo renglón. Así que este hook se quedó solo con lo que no
+existía: 20 min de inactividad → aviso, 2 min de cuenta regresiva → "sesión
+expirada" (con elección explícita: volver a iniciar sesión o cerrar del todo).
+`src/components/session/{IdleWarningDialog,SessionExpiredDialog}.jsx` son copias
+del canónico con el único cambio necesario: los botones usan `useAuth()` de
+este app (`logout`/`navigateToLogin`) en vez de `base44.auth.*` directo. Nuevo
+`src/hooks/useActivityTracker.js` — también adaptado, no copiado tal cual: el
+canónico alimenta la tabla `usage` de Mission Control vía una función que esta
+app no tiene; aquí escribe `AppSession.last_active_at` de la sesión actual,
+throttled a 1/hora, disparado por actividad real de DOM — una señal
+complementaria (no competidora) al heartbeat por intervalo que ya existía, que
+solo prueba "la pestaña sigue abierta", no "alguien hizo algo". Montado todo en
+`App.jsx` vía `src/components/session/SessionControl.jsx`, junto a
+`SessionHeartbeat`.
+
+**Capa 2 — un dispositivo activo, visible (extiende `AppSession`).** Campo
+nuevo `status` (`active`/`passive`, default `active`) **sin** `rls` por campo —
+hereda la regla de `update` de la entidad, igual que `last_active_at` ya hace
+(el dueño del renglón, vía `created_by_id`, ya puede escribir ambos). Es
+deliberado: el propio módulo 20 dice que "un dispositivo activo" es una señal
+de UX, no un límite de acceso — un `passive` sigue funcionando exactamente
+igual. `SessionHeartbeat.jsx`: un login que crea un renglón NUEVO (no uno
+reusado de `sessionStorage`) se marca `status:'active'` y degrada a `passive`
+cada OTRA sesión de ese usuario — `src/lib/session/sessionDemotion.js` es la
+lógica pura (`pickSessionsToDemote`, con test) que decide cuáles; la lectura ya
+está limitada por RLS a los renglones propios (`created_by_id`), así que no hay
+forma de que esto alcance a otro usuario. Nueva sección "Sesiones activas" en
+la Zona de Peligro — `src/components/admin/ActiveSessions.jsx`, importado y
+montado en `DangerZone.jsx` como una sola línea (deliberado: otro agente podía
+estar tocando ese archivo en paralelo por otro fix, así que el diff ahí se
+mantuvo mínimo). Lista los renglones propios del llamador (RLS de `read` ya
+los limita a los suyos — confirmado contra la regla desplegada, no asumido) con
+dispositivo, última actividad relativa (`date-fns` + locale `es`) y un botón
+"Revocar" en cada uno menos la sesión actual — identificada por el mismo id de
+`sessionStorage` que `SessionHeartbeat.jsx` ya cachea, ahora exportado desde un
+solo módulo compartido (`src/lib/session/sessionId.js`, constante `SS_KEY`) para
+que los dos archivos nunca puedan divergir sobre el nombre de la llave.
+"Revocar" es un `base44.entities.AppSession.update(id, {revoked_at, revoked_by})`
+directo — confirmado contra la RLS de `update` desplegada que ya permite al
+dueño escribir su propio renglón, así que no hizo falta una función nueva.
+
+**Capa 3 — sesiones muertas, recogidas por el servidor (nueva).**
+`base44/functions/reapStaleSessions/entry.ts` — revoca cualquier `AppSession`
+(`active` o `passive`, las dos por igual) cuyo `last_active_at` tenga más de
+48h. Falla CERRADO: sin `CRON_SECRET`, responde 503, nunca "corrió igual" — la
+misma disciplina que `requireCron.js` de Mission Control y que los tres
+`APP_OWNER_EMAIL`-gated de este repo ya seguían (módulo 14). Revocar es todo lo
+que hace falta: el `enforce()` que `SessionHeartbeat.jsx` ya tenía convierte un
+`revoked_at` en un logout forzado en el siguiente latido — ningún cambio de
+cliente adicional. El cálculo del umbral está duplicado a mano en el propio
+`entry.ts` (las funciones Deno de `base44/functions/` no pueden importar de
+`src/`, misma razón que el `moduleCan()` en línea de `guardedEntityWrite`) pero
+tiene su espejo con test en `src/lib/session/staleThreshold.js`.
+
+**Hueco conocido, dicho explícitamente y no asumido:** este repo no tiene
+ningún mecanismo de función programada — se grepeó `CRON`/`cron`/`schedule*`
+sobre `base44/` y `docs/` antes de escribir esto y no apareció nada (a
+diferencia de Mission Control, que sí tiene `api/cron/*` + `requireCron.js`).
+`reapStaleSessions` existe y funciona si se invoca, pero nada en este repo lo
+llama todavía con un timer. Conectar un programador de verdad (un cron nativo
+de Base44 si la plataforma lo expone para esta app, o uno externo que le
+pegue a esta URL con el secreto) queda fuera de este cambio — hace falta
+alguien con acceso a esa pieza.
+
+**Verificado:** `npm run lint` (20 endpoints, techo 40), `npm run build`, `npm
+run typecheck`, `npm run validate:rls` (27 entidades OK), `npm run test`
+(480/480, 12 nuevos en `sessionDemotion.test.js`/`staleThreshold.test.js`) —
+todos limpios. `deno check` corrió contra `reapStaleSessions/entry.ts` en este
+sandbox (mismo método del módulo 15/16: el binario se baja de GitHub releases)
+y compila limpio — hubo que fijar el import a `@base44/sdk@0.8.41` (las otras
+19 funciones de este repo usan esa versión; `0.8.44` no resolvió contra la
+política de edad mínima de dependencias de `deno check`, un detalle del
+sandbox de verificación, no del código).
+
+**Push de esquema en vivo confirmado** (vía Base44 MCP,
+`appId 6a15eceffe8dbf6602fa6c35`): `update_entity_schema` sobre `AppSession`
+con el esquema completo (los 8 campos + el mismo bloque `rls` de siempre, sin
+tocarlo), y una llamada de **lectura separada** (`list_entity_schemas`)
+confirma que el campo `status` vive en el esquema desplegado, con el mismo
+`enum`/`default`/descripción que el archivo del repo.
+
+**No verificado:** una sesión de navegador real esperando los 20 minutos de
+inactividad para ver el aviso y luego el cierre; y poner a mano el
+`last_active_at` de un renglón de prueba 49h en el pasado, correr
+`reapStaleSessions` de verdad, y confirmar que queda `revoked_at`/pasa a forzar
+logout en el siguiente latido — ninguno de los dos alcanzable desde este
+entorno de trabajo. El riesgo de la capa 1 está acotado por ser puramente
+aditiva (un hook + dos diálogos nuevos, sin tocar `SessionHeartbeat.jsx` más
+que para exportar la constante compartida); el de la capa 3, por seguir
+exactamente el patrón fail-closed ya usado y verificado en este repo para los
+tres `APP_OWNER_EMAIL`-gated del módulo 14.
+
 ## Google y correo/contraseña verificados contra la red real; el deploy del sitio sigue pendiente (2026-08-26)
 
 Antes de invitar a un usuario real por Google o por correo, se verificó que
