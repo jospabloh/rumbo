@@ -21,6 +21,13 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-08-31',
+    title: 'Cambiar de organización ahora sí funciona',
+    items: [
+      'Corregido: si tu correo administra más de una organización, elegir otra en el selector de organización ya cambia de verdad — antes la app volvía a mostrar la anterior después de recargar.',
+    ],
+  },
+  {
     date: '2026-08-27',
     title: 'Cierre de sesión por inactividad y control de dispositivos',
     items: [

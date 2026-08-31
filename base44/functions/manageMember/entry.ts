@@ -72,14 +72,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No puedes modificar al propietario de la organización.' }, { status: 403 });
     }
 
+    // suspended/write_access viven bajo `data` (así los lee auth.me()/RLS,
+    // {{user.data.write_access}}) — un objeto plano los escribiría en la raíz del
+    // documento y RLS seguiría viendo el valor anterior, dejando la suspensión sin
+    // efecto real aunque la llamada responda ok:true.
     if (action === 'suspend') {
-      await svc.entities.User.update(userId, { suspended: true, write_access: 'blocked' });
+      await svc.entities.User.update(userId, { data: { suspended: true, write_access: 'blocked' } });
       return Response.json({ ok: true, action, suspended: true });
     }
 
     if (action === 'reactivate') {
       const writeAccess = computeWriteAccess(tenant);
-      await svc.entities.User.update(userId, { suspended: false, write_access: writeAccess });
+      await svc.entities.User.update(userId, { data: { suspended: false, write_access: writeAccess } });
       return Response.json({ ok: true, action, suspended: false, write_access: writeAccess });
     }
 
@@ -91,14 +95,16 @@ Deno.serve(async (req) => {
       }
     }
     await svc.entities.User.update(userId, {
-      tenant_id: null,
       role: 'user',
-      suspended: false,
-      write_access: 'enabled',
-      driver_profile_id: null,
+      data: {
+        tenant_id: null,
+        suspended: false,
+        write_access: 'enabled',
+        driver_profile_id: null,
+      },
     });
     return Response.json({ ok: true, action, removed: true });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });

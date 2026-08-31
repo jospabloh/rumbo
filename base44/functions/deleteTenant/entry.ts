@@ -108,12 +108,18 @@ Deno.serve(async (req) => {
       const users = await svc.entities.User.filter({ tenant_id: tenantId });
       for (const u of users) {
         try {
+          // tenant_id/suspended/write_access/driver_profile_id van bajo `data` — es
+          // donde auth.me()/RLS los leen; un objeto plano los escribe en la raíz del
+          // documento (mismo bug encontrado y corregido en switchTenant/resolveTenant/
+          // joinTenant/manageMember/createTenant). `role` sí va plano.
           await svc.entities.User.update(u.id, {
-            tenant_id: null,
             role: 'user',
-            suspended: false,
-            write_access: 'enabled',
-            driver_profile_id: null,
+            data: {
+              tenant_id: null,
+              suspended: false,
+              write_access: 'enabled',
+              driver_profile_id: null,
+            },
           });
           detachedUsers++;
         } catch (e) {

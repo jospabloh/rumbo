@@ -1056,3 +1056,62 @@ función nuevos.
 toca `base44/functions/`), `npm run build`, `npm run typecheck`, `npm run
 validate:rls` (27 entidades OK, sin cambio de esquema — no se tocó ningún
 `.jsonc`), `npm run test -- --run` (468/468) — todos limpios.
+
+## `switchTenant` no cambiaba de tenant: los campos custom de User se escribían fuera de `data` (2026-08-31)
+
+Encontrado en vivo, en la propia cuenta de ACACIA (`h.josepablo@gmail.com`,
+recién re-agregada como miembro de un segundo tenant — Car-Go Rent — el mismo
+día). Al elegir la otra organización en el selector, la página se recargaba,
+no mostraba error, y volvía a caer en la organización original — siempre.
+
+**Causa raíz.** Los campos custom de `User` (`tenant_id`, `driver_profile_id`,
+`write_access`, `suspended` — todo lo que las RLS referencian como
+`{{user.data.X}}`) se guardan bajo un objeto anidado `data`, no en la raíz del
+registro. Confirmado leyendo el registro crudo vía el MCP de Base44: su
+`data.tenant_id` seguía apuntando al tenant original, mientras un `tenant_id`
+suelto en la raíz (escrito segundos antes por `switchTenant`) sí tenía el
+nuevo. Toda función que hace `svc.entities.User.update(id, {tenant_id, ...})`
+con un objeto **plano** estaba escribiendo esos campos en la raíz del
+documento en vez de dentro de `data` — así que `switchTenant` respondía
+`ok: true` y de verdad persistía *algo*, solo que no el campo que
+`resolveTenant`/las RLS en verdad leen.
+
+**Por qué nadie lo había encontrado antes.** `resolveTenant` recalcula la
+pertenencia desde cero (creador, `owner_email` o `members[]`) cada vez que no
+hay nada persistido y usable — y para un usuario de un solo tenant, ese
+recálculo siempre cae en la misma única respuesta, sin importar si el guardado
+anterior de verdad funcionó. El bug era invisible para cualquier cuenta normal
+de un tenant. Solo se vuelve observable con `switchTenant`, cuya única función
+es mover la elección **persistida** entre dos candidatos que ya son válidos
+por sí mismos.
+
+**El mismo bug, con menos escándalo, en otras cinco funciones** que hacen este
+mismo update plano: el propio patch de `resolveTenant`, `createTenant`,
+`joinTenant`, `manageMember` (suspend/reactivate/remove) y el desvincular por
+usuario de `deleteTenant`. `manageMember` merece nombrarse aparte: si
+`data.write_access`/`data.suspended` nunca se actualizaban de verdad, el
+bloqueo de escritura de un usuario "suspendido" puede no haber estado
+surtiendo efecto — misma causa raíz, síntoma distinto, que nadie había
+reportado todavía.
+
+**Arreglo:** las seis funciones ahora anidan
+`tenant_id`/`driver_profile_id`/`write_access`/`suspended` bajo una clave
+`data: {...}` explícita en la llamada a `update`; `role` se queda plano — es
+un campo genuino de plataforma, las RLS lo referencian como
+`user_condition: {role: ...}` sin el prefijo `data.`, nunca como `data.role`.
+
+**Verificado:** `npm run lint` (21 endpoints), `npm run build`, `npm run
+typecheck`, `npm run validate:rls` (27 entidades OK, sin cambio de esquema),
+`npm run test -- --run` (480/480) — todos limpios. `deno check
+--node-modules-dir=none` corrió contra las seis funciones cambiadas (binario
+de GitHub releases, método ya documentado en este archivo) y las seis
+compilan limpio — de paso se corrigieron cuatro `error.message` sin
+`as Error` preexistentes en `createTenant`/`manageMember`/`resolveTenant`/
+`joinTenant` (mismo patrón que otras funciones de este repo ya tenían,
+nunca antes visto porque este repo no corre `deno check` en CI).
+
+**No verificado:** una repetición en vivo del switch después de que esto se
+despliegue — pendiente de que alguien con sesión de CLI de Base44 autenticada
+corra `npm run deploy` (módulo 11: mergear no deploya). La cuenta que
+encontró el bug debe reintentar el cambio de organización una vez esté en
+producción.

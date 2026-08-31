@@ -94,14 +94,20 @@ Deno.serve(async (req) => {
     });
 
     // Elevar al creador a owner de SU tenant y enlazar el perfil (server-authoritative).
+    // tenant_id/write_access van bajo `data` — es donde auth.me()/RLS los leen
+    // ({{user.data.tenant_id}}); un objeto plano los escribiría en la raíz del
+    // documento y `data.tenant_id` se quedaría sin fijar. `role` sí va plano: es un
+    // campo de plataforma (RLS lo referencia sin el prefijo `data.`).
     await svc.entities.User.update(user.id, {
       role: 'owner',
-      tenant_id: tenant.id,
-      write_access: 'enabled',
+      data: {
+        tenant_id: tenant.id,
+        write_access: 'enabled',
+      },
     });
 
     return Response.json({ ok: true, tenant_id: tenant.id, tenant });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });
