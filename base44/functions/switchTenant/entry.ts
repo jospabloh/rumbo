@@ -101,19 +101,34 @@ Deno.serve(async (req) => {
     // próxima resolución de tenant sigue viendo el valor viejo. `role` sí va plano:
     // es un campo de plataforma, no de `data` (las RLS lo referencian sin el prefijo,
     // p. ej. user_condition:{role:"owner"}).
-    await svc.entities.User.update(user.id, {
-      role,
-      data: {
-        tenant_id: candidate.id,
-        driver_profile_id: driverProfileId,
-        write_access: writeAccess,
-      },
-    });
+    // Solo se envían los campos que realmente cambiaron (mismo patrón que
+    // resolveTenant): un `data` completo reemplazaría el subdocumento entero y
+    // borraría cualquier otro campo que el usuario tuviera ahí (owner_group_id,
+    // suspended, display_name).
+    //
+    // El app owner NUNCA recibe `role` en el patch: la plataforma bloquea el
+    // cambio de rol del owner de la app incluso con service role ("You cannot
+    // update the role of the owner of the app"), y como el update es atómico,
+    // incluir `role` hace que TODO el update falle — incluyendo data.tenant_id,
+    // que es justo lo que el switch debe mover. Era el bug que hacía que el
+    // switch "no funcionara" para el usuario que pertenece a más tenants.
+    const patch: Record<string, unknown> = {};
+    if (!isAppOwner && role !== user.role) patch.role = role;
+
+    const dataPatch: Record<string, unknown> = {};
+    if (user.data?.tenant_id !== candidate.id) dataPatch.tenant_id = candidate.id;
+    if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
+    if (user.data?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
+    if (Object.keys(dataPatch).length) patch.data = dataPatch;
+
+    if (Object.keys(patch).length) {
+      await svc.entities.User.update(user.id, patch);
+    }
 
     return Response.json({
       ok: true,
       tenant_id: candidate.id,
-      role,
+      role: (!isAppOwner && role !== user.role) ? role : user.role,
       write_access: writeAccess,
       tenant: {
         id: candidate.id,
