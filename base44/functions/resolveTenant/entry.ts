@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
         // adivina — se devuelve la lista completa para que el cliente muestre un
         // selector en vez de onboarding o una asignación silenciosa (Módulo 18).
         if (user.data?.write_access === 'blocked') {
-          await svc.entities.User.update(user.id, { write_access: 'enabled' });
+          await svc.entities.User.update(user.id, { data: { write_access: 'enabled' } });
         }
         return Response.json({
           tenant_id: null,
@@ -157,10 +157,20 @@ Deno.serve(async (req) => {
       ? 'enabled'
       : (user.data?.suspended ? 'blocked' : computeWriteAccess(tenant));
 
-    // Persistir cambios en el perfil del usuario (service role, salta RLS de forma segura)
+    // Persistir cambios en el perfil del usuario (service role, salta RLS de forma segura).
+    // tenant_id/driver_profile_id/write_access van bajo `data` — es donde auth.me()/RLS
+    // los leen ({{user.data.tenant_id}}, etc.); un objeto plano los escribe en la raíz
+    // del documento y `data.*` se queda con el valor viejo. `role` sí va plano: es un
+    // campo de plataforma (RLS lo referencia sin el prefijo `data.`). Encontrado al
+    // depurar por qué `switchTenant` no cambiaba de tenant para un email dueño de dos
+    // TenantLicense a la vez: el switch respondía ok:true pero `data.tenant_id` nunca
+    // se movía, porque escribía en la raíz — este mismo patch tenía el bug agazapado,
+    // solo que nunca se había ejercitado como un CAMBIO real (con un solo tenant
+    // candidato, cada llamada recalcula desde cero y el patch roto pasaba inadvertido).
+    const dataPatch: Record<string, unknown> = {};
     const patch: Record<string, unknown> = {};
-    if (user.data?.tenant_id !== tenant.id) patch.tenant_id = tenant.id;
-    if ((user.data?.driver_profile_id || null) !== driverProfileId) patch.driver_profile_id = driverProfileId;
+    if (user.data?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
+    if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
     // Sin `|| 'enabled'`: si el campo nunca se persistió (undefined), debe escribirse
     // explícitamente en cuanto writeAccess computa 'enabled' — de lo contrario el campo
     // se queda ausente para siempre (el fallback hacía que 'enabled' === 'enabled' y el
@@ -170,9 +180,10 @@ Deno.serve(async (req) => {
     // write_access jamás se hubiera fijado antes (ej. un app owner probando por primera
     // vez "Generar cobros del periodo" — los datos de prueba se crean vía service role,
     // que no pasa por RLS, así que esto nunca se había ejercitado).
-    if (user.data?.write_access !== writeAccess) patch.write_access = writeAccess;
+    if (user.data?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
     // El rol invitado solo se aplica en el primer enganche al tenant; después lo maneja el admin.
     if (!alreadyAssigned && member?.role && member.role !== user.role) patch.role = member.role;
+    if (Object.keys(dataPatch).length) patch.data = dataPatch;
     if (Object.keys(patch).length) {
       await svc.entities.User.update(user.id, patch);
     }
@@ -199,6 +210,6 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });

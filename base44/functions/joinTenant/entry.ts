@@ -144,11 +144,17 @@ Deno.serve(async (req) => {
       driverProfileId = drv?.id || null;
     } catch (_e) { /* sin registro Driver vinculado en este tenant */ }
 
+    // tenant_id/driver_profile_id/write_access van bajo `data` — es donde auth.me()/RLS
+    // los leen ({{user.data.tenant_id}}); un objeto plano los escribe en la raíz del
+    // documento y `data.*` se queda con el valor viejo (mismo bug encontrado y corregido
+    // en switchTenant/resolveTenant). `role` sí va plano: es un campo de plataforma.
+    const dataPatch: Record<string, unknown> = {};
     const patch: Record<string, unknown> = {};
-    if (user.data?.tenant_id !== tenant.id) patch.tenant_id = tenant.id;
+    if (user.data?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
     if (user.role !== role) patch.role = role;
-    if ((user.data?.driver_profile_id || null) !== driverProfileId) patch.driver_profile_id = driverProfileId;
-    if ((user.data?.write_access || 'enabled') !== 'enabled') patch.write_access = 'enabled';
+    if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
+    if ((user.data?.write_access || 'enabled') !== 'enabled') dataPatch.write_access = 'enabled';
+    if (Object.keys(dataPatch).length) patch.data = dataPatch;
     if (Object.keys(patch).length) {
       await svc.entities.User.update(user.id, patch);
     }
@@ -165,6 +171,6 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });

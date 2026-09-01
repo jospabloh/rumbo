@@ -4,6 +4,63 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.34.1] — 2026-08-31 — `switchTenant` didn't actually switch: User's custom fields were writing to the wrong place
+
+Found live, from a real account (`h.josepablo@gmail.com`, re-added as a member
+of a second tenant, "Car-Go Rent", earlier the same day): picking the other
+organization in the tenant switcher reloaded the page, showed no error, and
+landed back on the original tenant every time.
+
+**Root cause.** `User`'s app-specific custom fields (`tenant_id`,
+`driver_profile_id`, `write_access`, `suspended` — everything RLS templates
+reference as `{{user.data.X}}`) are stored under a nested `data` object, not
+at the record root — confirmed by directly inspecting the raw record via the
+Base44 MCP: the account's `data.tenant_id` held the original tenant while a
+sibling root-level `tenant_id` (written moments earlier by `switchTenant`)
+held the new one. Every function that does
+`svc.entities.User.update(id, {tenant_id, ...})` with a **flat** object was
+writing those fields to the document root instead of into `data` — so
+`switchTenant` returned `ok: true` and genuinely persisted *something*, just
+not the field `resolveTenant`/RLS actually read.
+
+**Why nobody had hit this before.** `resolveTenant` recomputes tenant
+membership from scratch (creator, `owner_email`, or `members[]`) whenever
+nothing usable is already persisted, and for a single-tenant user that
+recomputation always lands on the same one answer regardless of whether the
+earlier persist actually worked — so the bug was invisible for every normal,
+one-tenant account. It only became observable for `switchTenant`, whose whole
+job is to move the *persisted* choice between two candidates that are both
+already valid.
+
+**Same bug, quieter blast radius, in the other five functions doing this
+exact flat-object update:** `resolveTenant`'s own patch, `createTenant`,
+`joinTenant`, `manageMember` (suspend/reactivate/remove), and `deleteTenant`'s
+per-user detach. `manageMember`'s suspend/reactivate is the one worth
+naming explicitly: if `data.write_access`/`data.suspended` never actually
+updated, a "suspended" user's RLS-enforced write block may not have been
+taking effect either — same root cause, different symptom, not yet reported
+by anyone.
+
+**Fix:** all six now nest `tenant_id`/`driver_profile_id`/`write_access`/
+`suspended` under an explicit `data: {...}` key in the update call; `role`
+stays flat (it's a genuine platform field — RLS references it as bare
+`user_condition: {role: ...}`, never `data.role`).
+
+**Verified:** `npm run lint` (21 endpoints), `npm run build`, `npm run
+typecheck`, `npm run validate:rls` (27 entities OK, no schema change), `npm
+run test` (480/480) all pass. `deno check --node-modules-dir=none` on all six
+changed functions passes clean (fixed four pre-existing `error.message`
+casts along the way, same pattern already documented elsewhere in this repo
+for functions that had never been run through `deno check` before).
+
+**Not verified:** a live re-test of the actual switch after this deploys —
+pending someone with an authenticated Base44 CLI session running
+`npm run deploy`, per this repo's own Module 11 rule that merging doesn't
+deploy. The account that hit this bug should retry switching organizations
+once this is live.
+
+---
+
 ## [1.34.0] — 2026-08-27 — Session control: idle timeout, one active device, stale reap (module 20)
 
 `acacia-app-standard`'s module 20, all three layers, extending the

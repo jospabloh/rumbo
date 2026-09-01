@@ -93,11 +93,21 @@ Deno.serve(async (req) => {
       ? 'enabled'
       : (user.data?.suspended ? 'blocked' : computeWriteAccess(candidate));
 
+    // Los campos custom de User (tenant_id, driver_profile_id, write_access) viven
+    // bajo `data` — así los lee auth.me()/RLS ({{user.data.tenant_id}}), y así quedó
+    // guardado el tenant_id original de este usuario. Un objeto plano en este mismo
+    // .update() los escribe en la raíz del documento en vez de en `data`, dejando
+    // `data.tenant_id` sin tocar: el switch "funciona" (responde ok:true) pero la
+    // próxima resolución de tenant sigue viendo el valor viejo. `role` sí va plano:
+    // es un campo de plataforma, no de `data` (las RLS lo referencian sin el prefijo,
+    // p. ej. user_condition:{role:"owner"}).
     await svc.entities.User.update(user.id, {
-      tenant_id: candidate.id,
       role,
-      driver_profile_id: driverProfileId,
-      write_access: writeAccess,
+      data: {
+        tenant_id: candidate.id,
+        driver_profile_id: driverProfileId,
+        write_access: writeAccess,
+      },
     });
 
     return Response.json({
