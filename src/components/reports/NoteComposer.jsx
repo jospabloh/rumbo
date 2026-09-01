@@ -53,8 +53,20 @@ export default function NoteComposer({ onSave }) {
   };
 
   const addLink = () => {
-    const url = linkValue.trim();
-    if (!url) return;
+    const raw = linkValue.trim();
+    if (!raw) return;
+    // Solo se admiten esquemas http/https: un `javascript:` o `data:` aquí se
+    // persiste en la nota y se ejecuta en la sesión de quien la lea después (XSS
+    // almacenado). Si no trae esquema, se antepone https://; si trae uno no
+    // permitido, se descarta.
+    let url = raw;
+    if (!/^https?:\/\//i.test(url)) {
+      if (/^[a-z][a-z0-9+.-]*:/i.test(url)) {
+        setLinkValue('');
+        return; // esquema no seguro (javascript:, data:, etc.)
+      }
+      url = `https://${url}`;
+    }
     setAttachments((prev) => [...prev, { file_url: url, file_name: url.split('/').pop() || 'enlace', file_type: 'link' }]);
     setLinkValue('');
     setLinkOpen(false);
