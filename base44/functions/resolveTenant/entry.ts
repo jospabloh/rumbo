@@ -184,11 +184,22 @@ Deno.serve(async (req) => {
     // vez "Generar cobros del periodo" — los datos de prueba se crean vía service role,
     // que no pasa por RLS, así que esto nunca se había ejercitado).
     if (user.data?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
+    // El rol va en su PROPIA llamada, nunca junto a `data`. La plataforma rechaza
+    // cambiar el rol del owner de la app aunque sea service role ("You cannot update
+    // the role of the owner of the app") y el update es atómico: mezclarlos hace que
+    // se pierda TAMBIÉN el tenant_id. Esta función corre en cada carga de página, así
+    // que un fallo aquí deja al usuario sin binding de tenant sin ningún error visible.
+    if (Object.keys(dataPatch).length) {
+      await svc.entities.User.update(user.id, { data: dataPatch });
+    }
     // El rol invitado solo se aplica en el primer enganche al tenant; después lo maneja el admin.
-    if (!alreadyAssigned && member?.role && member.role !== user.role) patch.role = member.role;
-    if (Object.keys(dataPatch).length) patch.data = dataPatch;
-    if (Object.keys(patch).length) {
-      await svc.entities.User.update(user.id, patch);
+    if (!alreadyAssigned && member?.role && member.role !== user.role) {
+      try {
+        await svc.entities.User.update(user.id, { role: member.role });
+        patch.role = member.role;
+      } catch (e) {
+        console.error(`[resolveTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
+      }
     }
 
     return Response.json({

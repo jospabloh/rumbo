@@ -98,13 +98,22 @@ Deno.serve(async (req) => {
     // ({{user.data.tenant_id}}); un objeto plano los escribiría en la raíz del
     // documento y `data.tenant_id` se quedaría sin fijar. `role` sí va plano: es un
     // campo de plataforma (RLS lo referencia sin el prefijo `data.`).
+    // El rol va en su PROPIA llamada, nunca junto a `data`: la plataforma rechaza
+    // cambiar el rol del owner de la app aunque sea service role ("You cannot update
+    // the role of the owner of the app") y el update es atómico — mezclados, el
+    // `tenant_id` del creador nunca se fijaría y el tenant recién creado quedaría
+    // huérfano de su propio dueño.
     await svc.entities.User.update(user.id, {
-      role: 'owner',
       data: {
         tenant_id: tenant.id,
         write_access: 'enabled',
       },
     });
+    try {
+      if (user.role !== 'owner') await svc.entities.User.update(user.id, { role: 'owner' });
+    } catch (e) {
+      console.error(`[createTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
+    }
 
     return Response.json({ ok: true, tenant_id: tenant.id, tenant });
   } catch (error) {

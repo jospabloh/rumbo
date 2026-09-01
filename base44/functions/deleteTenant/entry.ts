@@ -112,8 +112,11 @@ Deno.serve(async (req) => {
           // donde auth.me()/RLS los leen; un objeto plano los escribe en la raíz del
           // documento (mismo bug encontrado y corregido en switchTenant/resolveTenant/
           // joinTenant/manageMember/createTenant). `role` sí va plano.
+          // El rol va en su PROPIA llamada, nunca junto a `data`: la plataforma
+          // rechaza cambiar el rol del owner de la app aunque sea service role, y el
+          // update es atómico — mezclados, el owner de la app se quedaría atado a un
+          // tenant que ya no existe.
           await svc.entities.User.update(u.id, {
-            role: 'user',
             data: {
               tenant_id: null,
               suspended: false,
@@ -121,6 +124,11 @@ Deno.serve(async (req) => {
               driver_profile_id: null,
             },
           });
+          try {
+            await svc.entities.User.update(u.id, { role: 'user' });
+          } catch (e) {
+            console.error(`[deleteTenant] role update rejected for ${u.id}: ${(e as Error).message}`);
+          }
           detachedUsers++;
         } catch (e) {
           console.error(`[deleteTenant] User.update(${u.id}) failed: ${(e as Error).message}`);

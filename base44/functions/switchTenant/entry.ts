@@ -112,23 +112,36 @@ Deno.serve(async (req) => {
     // incluir `role` hace que TODO el update falle — incluyendo data.tenant_id,
     // que es justo lo que el switch debe mover. Era el bug que hacía que el
     // switch "no funcionara" para el usuario que pertenece a más tenants.
-    const patch: Record<string, unknown> = {};
-    if (!isAppOwner && role !== user.role) patch.role = role;
-
+    // El rol se manda SIEMPRE en su propia llamada, nunca junto a `data`. El guard
+    // `!isAppOwner` de arriba depende de que APP_OWNER_EMAIL esté configurada: si no
+    // lo está, isAppOwner es false, el rol se cuela en el patch y volvemos al mismo
+    // fallo atómico. Separadas, un rechazo de rol no puede arrastrarse el tenant.
     const dataPatch: Record<string, unknown> = {};
     if (user.data?.tenant_id !== candidate.id) dataPatch.tenant_id = candidate.id;
     if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
     if (user.data?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
-    if (Object.keys(dataPatch).length) patch.data = dataPatch;
 
-    if (Object.keys(patch).length) {
-      await svc.entities.User.update(user.id, patch);
+    // Primero el tenant: es el objetivo de la función y no debe depender del rol.
+    if (Object.keys(dataPatch).length) {
+      await svc.entities.User.update(user.id, { data: dataPatch });
+    }
+
+    // Después el rol, best-effort: si la plataforma lo rechaza (app owner), el
+    // switch ya quedó hecho y se registra el motivo en vez de perderlo todo.
+    let roleApplied = user.role;
+    if (!isAppOwner && role !== user.role) {
+      try {
+        await svc.entities.User.update(user.id, { role });
+        roleApplied = role;
+      } catch (e) {
+        console.error(`[switchTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
+      }
     }
 
     return Response.json({
       ok: true,
       tenant_id: candidate.id,
-      role: (!isAppOwner && role !== user.role) ? role : user.role,
+      role: roleApplied,
       write_access: writeAccess,
       tenant: {
         id: candidate.id,

@@ -22,6 +22,14 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 const CHANGES = [
   {
     date: '2026-09-01',
+    title: 'Cambiar de organización ya funciona',
+    items: [
+      'Corregido: si tu correo administra más de una organización, elegir otra en el selector ahora sí cambia. El guardado fallaba por completo y en silencio cuando la operación intentaba ajustar tu rol al mismo tiempo; ahora son dos pasos y el cambio de organización ya no depende del otro.',
+      'El mismo problema afectaba a crear una organización, unirse con código, quitar a alguien de la organización y eliminarla — corregido en los cinco casos.',
+    ],
+  },
+  {
+    date: '2026-09-01',
     title: 'Corrección adicional al cambio de organización',
     items: [
       'Corregido un caso más del mismo problema de ayer: si perdías el acceso a tu única organización mientras tu cuenta estaba marcada como bloqueada, ese bloqueo podía no levantarse.',
