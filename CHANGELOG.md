@@ -4,6 +4,39 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.34.2] — 2026-09-01 — one more `write_access` reset missed by the 1.34.1 fix
+
+Found while independently re-reading the *deployed* `resolveTenant` source
+(via the Base44 MCP) right after the 1.34.1 fix was live — the standard
+"verify the deploy, don't just trust the CLI" pass from module 14.
+
+1.34.1 fixed five call sites where `User`'s custom fields (`tenant_id`,
+`driver_profile_id`, `write_access`, `suspended`) were written as a flat
+object instead of nested under `data`, and explicitly said it fixed "both
+fast-path `write_access: 'enabled'` calls" in `resolveTenant`. It only fixed
+one. The second — the reset that runs when a user has **zero** tenant
+candidates left (e.g. they left or lost access to their only tenant) — was
+still writing `{ write_access: 'enabled' }` flat. Same consequence as every
+other instance of this bug: the write "succeeds" but `data.write_access`
+never actually moves off `'blocked'`, so a user who lost their last tenant
+while marked blocked could stay silently locked out even after the reset
+that was supposed to clear it.
+
+**Fix:** nested under `data: { write_access: 'enabled' }`, matching the
+sibling call eleven lines above it and the pattern used everywhere else in
+this file.
+
+**Verified:** `npm run lint` (21 endpoints), `npm run build`, `npm run
+typecheck`, `npm run validate:rls` (27 entities OK, no schema change),
+`npm run test -- --run` (480/480) all pass. `deno check
+--node-modules-dir=none` on the changed file passes clean.
+
+**Not verified:** a live re-test of this exact branch (a user with zero
+tenant candidates and `write_access` already `'blocked'`) — a narrow edge
+case not easy to reproduce safely against production data from here;
+confirmed instead by re-reading the deployed function source directly and
+matching the diff against the already-proven fix pattern from 1.34.1.
+
 ## [1.34.1] — 2026-08-31 — `switchTenant` didn't actually switch: User's custom fields were writing to the wrong place
 
 Found live, from a real account (`h.josepablo@gmail.com`, re-added as a member
