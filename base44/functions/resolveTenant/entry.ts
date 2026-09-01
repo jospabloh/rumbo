@@ -120,8 +120,11 @@ Deno.serve(async (req) => {
     if (!tenant) {
       // Sin tenant la escritura ya está bloqueada por la RLS de tenant_id; reseteamos
       // write_access a 'enabled' para no dejar marcado a un usuario que dejó un tenant vencido.
+      // Bajo `data`, no plano — mismo bug del 2026-08-31 (ver CLAUDE.md), que este mismo
+      // call site se quedó fuera de esa pasada: un objeto plano escribe en la raíz del
+      // documento y `data.write_access` se queda en 'blocked' para siempre.
       if (user.data?.write_access === 'blocked') {
-        await svc.entities.User.update(user.id, { write_access: 'enabled' });
+        await svc.entities.User.update(user.id, { data: { write_access: 'enabled' } });
       }
       return Response.json({
         tenant_id: null,

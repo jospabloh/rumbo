@@ -1115,3 +1115,41 @@ despliegue — pendiente de que alguien con sesión de CLI de Base44 autenticada
 corra `npm run deploy` (módulo 11: mergear no deploya). La cuenta que
 encontró el bug debe reintentar el cambio de organización una vez esté en
 producción.
+
+## Un segundo `write_access` sin anidar, encontrado releyendo el propio deploy (2026-09-01)
+
+El fix de arriba (2026-08-31) dijo por escrito que arreglaba "los dos resets
+rápidos de `write_access: 'enabled'`" en `resolveTenant`. Arregló uno.
+
+Se encontró releyendo el **código desplegado de verdad** vía el MCP de
+Base44 justo después de que el deploy manual de esta corrección terminara —
+la misma disciplina del módulo 14 ("contra el esquema desplegado, no contra
+el archivo del repo"), aplicada aquí a una función en vez de a un esquema.
+El segundo call site — el reset que corre cuando un usuario se queda con
+**cero** tenants candidatos (perdió o dejó su única organización) — seguía
+escribiendo `{ write_access: 'enabled' }` plano. Misma consecuencia que
+cualquier otra instancia de este bug: el write "funciona" pero
+`data.write_access` nunca se mueve de `'blocked'` — un usuario que se quedó
+sin su último tenant estando bloqueado podía seguir bloqueado en silencio
+después de un reset que se suponía que lo liberaba.
+
+**Arreglo:** anidado bajo `data: { write_access: 'enabled' }`, igual que el
+call site hermano once líneas arriba y que el resto del archivo.
+
+**Verificado:** `npm run lint` (21 endpoints), `npm run build`, `npm run
+typecheck`, `npm run validate:rls` (27 entidades OK, sin cambio de esquema),
+`npm run test -- --run` (480/480) — todos limpios. `deno check
+--node-modules-dir=none` sobre el archivo cambiado compila limpio.
+
+**No verificado:** una repetición en vivo de este caso exacto (un usuario
+con cero tenants candidatos y `write_access` ya en `'blocked'`) — un borde
+angosto, no fácil de reproducir a salvo contra datos reales desde este
+entorno; confirmado en su lugar releyendo el código fuente desplegado
+directamente y comparando el diff contra el patrón ya probado del fix de
+2026-08-31.
+
+**Lo que esto enseña:** "arreglé los N call sites" es una afirmación que
+hay que releer del código desplegado, no del propio resumen del fix — el
+mismo archivo que documentó por qué "ya estaba puesto" no vale sin
+comprobarlo (módulo 15, 2026-08-24) casi repite el error un día después,
+solo que sobre un `grep` incompleto en vez de una variable de entorno.

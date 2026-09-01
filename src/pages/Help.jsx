@@ -21,6 +21,13 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-09-01',
+    title: 'Corrección adicional al cambio de organización',
+    items: [
+      'Corregido un caso más del mismo problema de ayer: si perdías el acceso a tu única organización mientras tu cuenta estaba marcada como bloqueada, ese bloqueo podía no levantarse.',
+    ],
+  },
+  {
     date: '2026-08-31',
     title: 'Cambiar de organización ahora sí funciona',
     items: [
