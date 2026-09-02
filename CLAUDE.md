@@ -1153,3 +1153,51 @@ hay que releer del código desplegado, no del propio resumen del fix — el
 mismo archivo que documentó por qué "ya estaba puesto" no vale sin
 comprobarlo (módulo 15, 2026-08-24) casi repite el error un día después,
 solo que sobre un `grep` incompleto en vez de una variable de entorno.
+
+## El `role` en el patch tumbaba el `tenant_id`: un update atómico que fallaba entero (2026-09-01)
+
+**La causa real del selector de organización, y no era ninguna de las dos que
+este archivo documentó antes.** La encontró un agente externo (el builder de
+Base44) y la dejó escrita en `switchTenant` con el error literal de la
+plataforma:
+
+> `You cannot update the role of the owner of the app`
+
+Base44 **rechaza cambiar el rol del owner de la app aunque la llamada corra con
+service role**. Y `User.update` es **atómico**: mandar `role` en el mismo patch
+que `data.tenant_id` hace que se pierda **todo** el update. Por eso el switch
+respondía `ok: true` sin cambiar nada — la escritura nunca ocurría.
+
+**Las dos correcciones anteriores de este archivo (1.34.1 y 1.34.2) eran ruido.**
+Se dedicaron a mover el dato entre `data` y la raíz razonando sobre **un solo
+registro roto**, sin haber comprobado nunca que la escritura siquiera se
+ejecutaba. La pista estaba en el log de la función, que nadie leyó — exactamente
+el mismo error que el módulo 15 ya documentó ("un respaldo que nombra culpables
+no vale nada si nadie lee lo que nombró"), repetido con otra ropa.
+
+**Lo que esta versión añade sobre el hallazgo del agente:**
+
+1. **El guard dependía de `APP_OWNER_EMAIL`.** El arreglo original omite `role`
+   sólo si `isAppOwner`, y eso se deriva de esa variable. Sin ella, `isAppOwner`
+   es `false` y el bug vuelve entero — el modo de fallo que este repo ya
+   documentó dos veces (módulo 14 con `CRON_SECRET`, módulo 15 con
+   `ACACIA_APP_SLUG`). Ahora **el rol se manda siempre en su propia llamada**,
+   así que un rechazo no puede arrastrarse el tenant, esté puesta o no.
+2. **El mismo fallo vivía en otras cinco funciones**, todas con `role` junto a
+   `data` en un update atómico: `resolveTenant` (corre en **cada carga de
+   página** — un rechazo deja al usuario sin binding de tenant, en silencio),
+   `createTenant` (el owner de la app creando una organización: su `tenant_id`
+   nunca se fija y el tenant nace sin su dueño enganchado), `joinTenant`,
+   `manageMember` (remove) y `deleteTenant` (desvincular usuarios).
+
+En las seis: primero los campos de tenant, después el rol en una llamada aparte
+con `try/catch` que **registra el rechazo** en vez de perder la operación
+entera. La respuesta devuelve el rol **realmente aplicado**, no el pretendido.
+
+**La lección, y esta vez es sobre método, no sobre Base44:** tres intentos de
+arreglo y los dos primeros fueron míos razonando sobre la forma del dato. Nunca
+comprobé lo primero que había que comprobar — **si la escritura se estaba
+ejecutando siquiera**. Un `ok: true` prueba que la función terminó, no que
+escribió; y el registro con tres copias del `tenant_id` invitaba a teorizar
+sobre cuál era la buena en vez de preguntar por qué ninguna se movía. Cuando un
+write "no toma", mira el log de la escritura antes que la forma del documento.

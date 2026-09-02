@@ -94,8 +94,10 @@ Deno.serve(async (req) => {
         await svc.entities.TenantLicense.update(tenant.id, { members });
       }
     }
+    // El rol va en su PROPIA llamada, nunca junto a `data`: la plataforma rechaza
+    // cambiar el rol del owner de la app aunque sea service role, y el update es
+    // atómico — mezclados, quitar del tenant al owner de la app no desligaría nada.
     await svc.entities.User.update(userId, {
-      role: 'user',
       data: {
         tenant_id: null,
         suspended: false,
@@ -103,6 +105,11 @@ Deno.serve(async (req) => {
         driver_profile_id: null,
       },
     });
+    try {
+      await svc.entities.User.update(userId, { role: 'user' });
+    } catch (e) {
+      console.error(`[manageMember] role update rejected for ${userId}: ${(e as Error).message}`);
+    }
     return Response.json({ ok: true, action, removed: true });
   } catch (error) {
     return Response.json({ error: (error as Error).message }, { status: 500 });

@@ -149,20 +149,30 @@ Deno.serve(async (req) => {
     // documento y `data.*` se queda con el valor viejo (mismo bug encontrado y corregido
     // en switchTenant/resolveTenant). `role` sí va plano: es un campo de plataforma.
     const dataPatch: Record<string, unknown> = {};
-    const patch: Record<string, unknown> = {};
     if (user.data?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
-    if (user.role !== role) patch.role = role;
     if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
     if ((user.data?.write_access || 'enabled') !== 'enabled') dataPatch.write_access = 'enabled';
-    if (Object.keys(dataPatch).length) patch.data = dataPatch;
-    if (Object.keys(patch).length) {
-      await svc.entities.User.update(user.id, patch);
+
+    // El rol va en su PROPIA llamada, nunca junto a `data`: la plataforma rechaza
+    // cambiar el rol del owner de la app aunque sea service role, y como el update
+    // es atómico, mezclarlos haría que la unión al tenant se pierda entera.
+    if (Object.keys(dataPatch).length) {
+      await svc.entities.User.update(user.id, { data: dataPatch });
+    }
+    let roleApplied = user.role;
+    if (user.role !== role) {
+      try {
+        await svc.entities.User.update(user.id, { role });
+        roleApplied = role;
+      } catch (e) {
+        console.error(`[joinTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
+      }
     }
 
     return Response.json({
       ok: true,
       tenant_id: tenant.id,
-      role,
+      role: roleApplied,
       tenant: {
         id: tenant.id,
         tenant_name: tenant.tenant_name,

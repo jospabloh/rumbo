@@ -4,6 +4,54 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.34.3] — 2026-09-01 — el cambio de rol tumbaba el cambio de organización (en 6 funciones, no en 1)
+
+Un agente externo encontró la causa real del selector de organización y la dejó
+en `switchTenant`: **la plataforma rechaza cambiar el rol del owner de la app
+aunque la llamada use service role** ("You cannot update the role of the owner
+of the app"), y como `User.update` es **atómico**, mandar `role` junto a
+`data.tenant_id` hace que se pierda **todo** el update — incluido el tenant_id,
+que es justo lo que el switch tenía que mover. La llamada respondía `ok: true`
+y no cambiaba nada.
+
+Esta versión toma ese hallazgo y cierra las dos cosas que le faltaban.
+
+**1. El guard dependía de una variable de entorno.** El arreglo original evitaba
+mandar `role` sólo cuando `isAppOwner` era cierto, y eso se deriva de
+`APP_OWNER_EMAIL`. Si esa variable no está puesta —el modo de fallo que este
+mismo repo ya documentó dos veces— `isAppOwner` es `false`, el rol se cuela en
+el patch y el bug vuelve entero. Ahora el rol se manda **siempre en su propia
+llamada**, así que un rechazo no puede arrastrarse el tenant, esté o no
+configurada la variable.
+
+**2. El mismo fallo estaba en otras cinco funciones**, todas escribiendo `role`
+junto a `data` en un update atómico:
+
+- `resolveTenant` — corre en **cada carga de página**; un rechazo dejaba al
+  usuario sin binding de tenant, en silencio.
+- `createTenant` — el owner de la app creando una organización: el update entero
+  falla y su `tenant_id` nunca se fija, dejando el tenant recién creado sin su
+  propio dueño enganchado.
+- `joinTenant` — unirse por código con un rol distinto al actual.
+- `manageMember` (remove) y `deleteTenant` (desvincular usuarios) — quitar del
+  tenant al owner de la app no desligaba nada.
+
+En las seis, los campos de tenant se escriben primero y el rol después, en una
+llamada aparte con `try/catch` que registra el rechazo en el log en vez de
+perder la operación completa. La respuesta devuelve el rol **realmente
+aplicado**, no el que se pretendía aplicar.
+
+**Verificado:** `npm run lint` (21 endpoints), `npm run typecheck`, `npm run
+validate:rls` (27 entidades OK, sin cambio de esquema), `npm run test -- --run`
+(480/480) y `deno check --node-modules-dir=none` sobre las 6 funciones — todo
+limpio.
+
+**No verificado:** el switch en vivo. Requiere desplegar (`npm run deploy`):
+mergear no despliega, y el arreglo del agente externo tampoco estaba desplegado
+todavía — el último deploy reportó `switchTenant unchanged` y ese commit es
+posterior.
+
+
 ## [1.34.2] — 2026-09-01 — one more `write_access` reset missed by the 1.34.1 fix
 
 Found while independently re-reading the *deployed* `resolveTenant` source
