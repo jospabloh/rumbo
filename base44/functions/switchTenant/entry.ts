@@ -51,6 +51,18 @@ Deno.serve(async (req) => {
     const svc = base44.asServiceRole;
     const email = (user.email || '').toLowerCase();
 
+    // DIAGNÓSTICO TEMPORAL: capturar el arranque de la función en sí, por si
+    // el problema estuviera en algo ANTES de llegar al write (p.ej. no
+    // encontrar el tenant, o una excepción en TenantLicense.list).
+    try {
+      await svc.entities.DebugProbe.create({
+        context: 'entry',
+        user_id: user.id,
+        user_email: email,
+        details: JSON.stringify({ requestedId, rawUserData: user.data, rawUserRole: user.role, rawUserTenantId: (user as any).tenant_id }, null, 2).slice(0, 9000),
+      });
+    } catch (_e) { /* no bloquear el flujo real por el diagnóstico */ }
+
     const tenants = await svc.entities.TenantLicense.list('-created_date', 1000);
     const candidate = tenants.find((t) =>
       t.id === requestedId &&
