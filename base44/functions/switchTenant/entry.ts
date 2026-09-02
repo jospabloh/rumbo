@@ -121,9 +121,46 @@ Deno.serve(async (req) => {
     if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
     if (user.data?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
 
+    // DIAGNÓSTICO TEMPORAL — borrar junto con la entidad DebugProbe cuando se
+    // resuelva. El registro de User no se movía ni un campo y hacía falta ver
+    // el resultado REAL de cada escritura (éxito o excepción completa) en vez
+    // de seguir infiriéndolo desde afuera.
+    async function probe(context: string, extra: Record<string, unknown>) {
+      try {
+        await svc.entities.DebugProbe.create({
+          context,
+          user_id: user.id,
+          user_email: email,
+          details: JSON.stringify(extra, null, 2).slice(0, 9000),
+        });
+      } catch (probeErr) {
+        console.error(`[switchTenant] probe write failed: ${(probeErr as Error).message}`);
+      }
+    }
+
+    await probe('before_data_write', {
+      dataPatch,
+      candidateId: candidate.id,
+      currentDataTenantId: user.data?.tenant_id,
+      userIdRaw: user.id,
+    });
+
     // Primero el tenant: es el objetivo de la función y no debe depender del rol.
     if (Object.keys(dataPatch).length) {
-      await svc.entities.User.update(user.id, { data: dataPatch });
+      try {
+        const updateResult = await svc.entities.User.update(user.id, { data: dataPatch });
+        await probe('data_write_ok', { updateResult });
+      } catch (e) {
+        const err = e as Error;
+        await probe('data_write_FAILED', {
+          message: err?.message,
+          name: err?.name,
+          stack: err?.stack,
+          stringified: String(e),
+        });
+      }
+    } else {
+      await probe('data_write_skipped_empty_patch', {});
     }
 
     // Después el rol, best-effort: si la plataforma lo rechaza (app owner), el
@@ -133,9 +170,23 @@ Deno.serve(async (req) => {
       try {
         await svc.entities.User.update(user.id, { role });
         roleApplied = role;
+        await probe('role_write_ok', { role });
       } catch (e) {
-        console.error(`[switchTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
+        const err = e as Error;
+        console.error(`[switchTenant] role update rejected for ${user.id}: ${err.message}`);
+        await probe('role_write_FAILED', { message: err?.message, name: err?.name, stringified: String(e) });
       }
+    } else {
+      await probe('role_write_skipped', { isAppOwner, role, userRole: user.role });
+    }
+
+    // Confirma qué quedó de verdad, re-leyendo el registro (no lo que la
+    // llamada anterior devolvió, sino un fetch fresco).
+    try {
+      const fresh = await svc.entities.User.filter({ id: user.id });
+      await probe('post_write_reread', { fresh: Array.isArray(fresh) ? fresh[0] : fresh });
+    } catch (e) {
+      await probe('post_write_reread_FAILED', { message: (e as Error)?.message });
     }
 
     return Response.json({

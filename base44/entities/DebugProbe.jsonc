@@ -1,0 +1,46 @@
+{
+  "name": "DebugProbe",
+  "type": "object",
+  "description": "Diagn\u00f3stico temporal para investigar por qu\u00e9 switchTenant no persiste el cambio de tenant. Se borra cuando se resuelva. Solo service role escribe; nadie m\u00e1s necesita leerlo desde el cliente.",
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Qu\u00e9 funci\u00f3n/paso gener\u00f3 este registro"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string",
+      "description": "JSON.stringify del estado relevante en ese punto"
+    }
+  },
+  "required": [
+    "context"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "owner"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "owner"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "owner"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "owner"
+      }
+    }
+  }
+}
