@@ -220,6 +220,23 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
+    // DIAGNÓSTICO TEMPORAL: si algo revienta antes de llegar a las sondas de
+    // arriba (p.ej. dentro de auth.me() o TenantLicense.list), que quede
+    // registrado igual — sin esto un 500 temprano es indistinguible de un
+    // éxito silencioso desde fuera de la función.
+    try {
+      const base44Retry = createClientFromRequest(req);
+      const svcRetry = base44Retry.asServiceRole;
+      await svcRetry.entities.DebugProbe.create({
+        context: 'outer_catch',
+        details: JSON.stringify({
+          message: (error as Error)?.message,
+          name: (error as Error)?.name,
+          stack: (error as Error)?.stack,
+          stringified: String(error),
+        }, null, 2).slice(0, 9000),
+      });
+    } catch (_probeErr) { /* si hasta esto falla, no hay nada más que hacer */ }
     return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });
