@@ -24,6 +24,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *     conserva el rol que ya tenía el perfil. No se toca `suspended`: es una acción
  *     de un admin sobre el tenant activo, no algo que un switch deba limpiar ni
  *     imponer — write_access sigue la misma fórmula que resolveTenant.
+ *
+ * CORRECCIÓN 2026-09-03 — nunca diagnosticar/decidir con `user.data` de auth.me():
+ * el switch llevaba días fallando en silencio para un email dueño de dos tenants
+ * (h.josepablo@gmail.com) porque `auth.me()` devolvía, en `user.data.tenant_id`, un
+ * valor que YA COINCIDÍA con el tenant destino — así que `dataPatch` salía vacío y
+ * la función terminaba sin escribir nada, respondiendo `ok:true` sobre una no-op.
+ * Una relectura del documento real vía `asServiceRole` (`svc.entities.User.filter`),
+ * hecha en el mismo request, mostró el valor VERDADERO y persistido: el tenant
+ * anterior, sin mover ni un campo desde días atrás (`updated_date` congelado). La
+ * causa: este perfil arrastraba un campo `tenant_id` suelto en la RAÍZ del
+ * documento (residuo de un intento de fix anterior que escribía plano en vez de
+ * bajo `data`) y `auth.me()` reconstruye su `.data` de conveniencia contaminado por
+ * ese resto — no por el `data.tenant_id` real que las RLS sí leen. `auth.me()` no
+ * es confiable para decidir si hay que escribir; una relectura por servicio, del
+ * documento real, sí. Esta función ya no consulta `user.data` para nada — todo el
+ * cálculo de "qué cambió" usa `selfData`, la relectura fresca de abajo.
  */
 
 function computeWriteAccess(tenant: any): 'enabled' | 'blocked' {
@@ -51,17 +67,13 @@ Deno.serve(async (req) => {
     const svc = base44.asServiceRole;
     const email = (user.email || '').toLowerCase();
 
-    // DIAGNÓSTICO TEMPORAL: capturar el arranque de la función en sí, por si
-    // el problema estuviera en algo ANTES de llegar al write (p.ej. no
-    // encontrar el tenant, o una excepción en TenantLicense.list).
-    try {
-      await svc.entities.DebugProbe.create({
-        context: 'entry',
-        user_id: user.id,
-        user_email: email,
-        details: JSON.stringify({ requestedId, rawUserData: user.data, rawUserRole: user.role, rawUserTenantId: (user as any).tenant_id }, null, 2).slice(0, 9000),
-      });
-    } catch (_e) { /* no bloquear el flujo real por el diagnóstico */ }
+    // Relectura fresca y autoritativa del propio perfil — nunca `user.data` de
+    // auth.me() (ver nota de arriba). `selfData` es lo único que este archivo usa
+    // para decidir qué cambió.
+    const selfRows = await svc.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const selfData = self?.data || {};
+    const selfRole = self?.role ?? user.role;
 
     const tenants = await svc.entities.TenantLicense.list('-created_date', 1000);
     const candidate = tenants.find((t) =>
@@ -90,7 +102,7 @@ Deno.serve(async (req) => {
       ? candidate.members.find((m: any) => (m.email || '').toLowerCase() === email)
       : null;
     const tenantOwnerEmail = (candidate.owner_email || '').toLowerCase();
-    const role = tenantOwnerEmail === email ? 'owner' : (member?.role || user.role);
+    const role = tenantOwnerEmail === email ? 'owner' : (member?.role || selfRole);
 
     // Vincula el perfil con su registro Driver EN ESTE tenant (mismo patrón que
     // resolveTenant) — un mismo email puede tener un Driver distinto por tenant.
@@ -103,102 +115,47 @@ Deno.serve(async (req) => {
 
     const writeAccess = isAppOwner
       ? 'enabled'
-      : (user.data?.suspended ? 'blocked' : computeWriteAccess(candidate));
+      : (selfData?.suspended ? 'blocked' : computeWriteAccess(candidate));
 
     // Los campos custom de User (tenant_id, driver_profile_id, write_access) viven
-    // bajo `data` — así los lee auth.me()/RLS ({{user.data.tenant_id}}), y así quedó
-    // guardado el tenant_id original de este usuario. Un objeto plano en este mismo
-    // .update() los escribe en la raíz del documento en vez de en `data`, dejando
-    // `data.tenant_id` sin tocar: el switch "funciona" (responde ok:true) pero la
-    // próxima resolución de tenant sigue viendo el valor viejo. `role` sí va plano:
-    // es un campo de plataforma, no de `data` (las RLS lo referencian sin el prefijo,
-    // p. ej. user_condition:{role:"owner"}).
-    // Solo se envían los campos que realmente cambiaron (mismo patrón que
-    // resolveTenant): un `data` completo reemplazaría el subdocumento entero y
-    // borraría cualquier otro campo que el usuario tuviera ahí (owner_group_id,
-    // suspended, display_name).
+    // bajo `data` — así los lee auth.me()/RLS ({{user.data.tenant_id}}). Un objeto
+    // plano en este mismo .update() los escribiría en la raíz del documento en vez
+    // de en `data`, dejando `data.tenant_id` sin tocar. `role` sí va plano: es un
+    // campo de plataforma (las RLS lo referencian sin el prefijo, p. ej.
+    // user_condition:{role:"owner"}).
     //
     // El app owner NUNCA recibe `role` en el patch: la plataforma bloquea el
     // cambio de rol del owner de la app incluso con service role ("You cannot
     // update the role of the owner of the app"), y como el update es atómico,
     // incluir `role` hace que TODO el update falle — incluyendo data.tenant_id,
-    // que es justo lo que el switch debe mover. Era el bug que hacía que el
-    // switch "no funcionara" para el usuario que pertenece a más tenants.
-    // El rol se manda SIEMPRE en su propia llamada, nunca junto a `data`. El guard
-    // `!isAppOwner` de arriba depende de que APP_OWNER_EMAIL esté configurada: si no
-    // lo está, isAppOwner es false, el rol se cuela en el patch y volvemos al mismo
-    // fallo atómico. Separadas, un rechazo de rol no puede arrastrarse el tenant.
+    // que es justo lo que el switch debe mover. El rol se manda SIEMPRE en su
+    // propia llamada, nunca junto a `data`. El guard `!isAppOwner` de arriba
+    // depende de que APP_OWNER_EMAIL esté configurada: si no lo está, isAppOwner
+    // es false, el rol se cuela en el patch y volvemos al mismo fallo atómico.
+    // Separadas, un rechazo de rol no puede arrastrarse el tenant.
     const dataPatch: Record<string, unknown> = {};
-    if (user.data?.tenant_id !== candidate.id) dataPatch.tenant_id = candidate.id;
-    if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
-    if (user.data?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
+    if (selfData?.tenant_id !== candidate.id) dataPatch.tenant_id = candidate.id;
+    if ((selfData?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
+    if (selfData?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
 
-    // DIAGNÓSTICO TEMPORAL — borrar junto con la entidad DebugProbe cuando se
-    // resuelva. El registro de User no se movía ni un campo y hacía falta ver
-    // el resultado REAL de cada escritura (éxito o excepción completa) en vez
-    // de seguir infiriéndolo desde afuera.
-    async function probe(context: string, extra: Record<string, unknown>) {
-      try {
-        await svc.entities.DebugProbe.create({
-          context,
-          user_id: user.id,
-          user_email: email,
-          details: JSON.stringify(extra, null, 2).slice(0, 9000),
-        });
-      } catch (probeErr) {
-        console.error(`[switchTenant] probe write failed: ${(probeErr as Error).message}`);
-      }
-    }
-
-    await probe('before_data_write', {
-      dataPatch,
-      candidateId: candidate.id,
-      currentDataTenantId: user.data?.tenant_id,
-      userIdRaw: user.id,
-    });
-
-    // Primero el tenant: es el objetivo de la función y no debe depender del rol.
     if (Object.keys(dataPatch).length) {
-      try {
-        const updateResult = await svc.entities.User.update(user.id, { data: dataPatch });
-        await probe('data_write_ok', { updateResult });
-      } catch (e) {
-        const err = e as Error;
-        await probe('data_write_FAILED', {
-          message: err?.message,
-          name: err?.name,
-          stack: err?.stack,
-          stringified: String(e),
-        });
-      }
-    } else {
-      await probe('data_write_skipped_empty_patch', {});
+      // Se manda `selfData` completo + el patch encima: si `data:{...}` reemplaza el
+      // subdocumento entero en vez de mezclarlo (la asunción con la que este archivo
+      // ya trabajaba), esto evita perder `suspended`/`owner_group_id`/`display_name`
+      // que no cambiaron en este request.
+      await svc.entities.User.update(user.id, { data: { ...selfData, ...dataPatch } });
     }
 
     // Después el rol, best-effort: si la plataforma lo rechaza (app owner), el
-    // switch ya quedó hecho y se registra el motivo en vez de perderlo todo.
-    let roleApplied = user.role;
-    if (!isAppOwner && role !== user.role) {
+    // switch ya quedó hecho y el motivo queda en el log en vez de perderse todo.
+    let roleApplied = selfRole;
+    if (!isAppOwner && role !== selfRole) {
       try {
         await svc.entities.User.update(user.id, { role });
         roleApplied = role;
-        await probe('role_write_ok', { role });
       } catch (e) {
-        const err = e as Error;
-        console.error(`[switchTenant] role update rejected for ${user.id}: ${err.message}`);
-        await probe('role_write_FAILED', { message: err?.message, name: err?.name, stringified: String(e) });
+        console.error(`[switchTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
       }
-    } else {
-      await probe('role_write_skipped', { isAppOwner, role, userRole: user.role });
-    }
-
-    // Confirma qué quedó de verdad, re-leyendo el registro (no lo que la
-    // llamada anterior devolvió, sino un fetch fresco).
-    try {
-      const fresh = await svc.entities.User.filter({ id: user.id });
-      await probe('post_write_reread', { fresh: Array.isArray(fresh) ? fresh[0] : fresh });
-    } catch (e) {
-      await probe('post_write_reread_FAILED', { message: (e as Error)?.message });
     }
 
     return Response.json({
@@ -220,23 +177,6 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
-    // DIAGNÓSTICO TEMPORAL: si algo revienta antes de llegar a las sondas de
-    // arriba (p.ej. dentro de auth.me() o TenantLicense.list), que quede
-    // registrado igual — sin esto un 500 temprano es indistinguible de un
-    // éxito silencioso desde fuera de la función.
-    try {
-      const base44Retry = createClientFromRequest(req);
-      const svcRetry = base44Retry.asServiceRole;
-      await svcRetry.entities.DebugProbe.create({
-        context: 'outer_catch',
-        details: JSON.stringify({
-          message: (error as Error)?.message,
-          name: (error as Error)?.name,
-          stack: (error as Error)?.stack,
-          stringified: String(error),
-        }, null, 2).slice(0, 9000),
-      });
-    } catch (_probeErr) { /* si hasta esto falla, no hay nada más que hacer */ }
     return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });
