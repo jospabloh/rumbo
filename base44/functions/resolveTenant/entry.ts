@@ -34,6 +34,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  * pago: las RLS de create/update/delete de cada entidad operativa exigen
  * user_condition write_access='enabled', así que un tenant vencido no puede escribir
  * ni siquiera llamando al SDK directamente. La lectura no se ve afectada (solo lectura).
+ *
+ * CORRECCIÓN 2026-09-03 — nunca decidir con `user.data` de auth.me(): el mismo bug
+ * que rompía `switchTenant` (ver su propio comentario) vive aquí también, y esta
+ * función corre en CADA carga de página — es la más peligrosa de las dos, porque
+ * puede reafirmar en silencio un tenant viejo si `auth.me()` reporta un
+ * `data.tenant_id` que no coincide con el documento real. Toda esta función usa
+ * `selfData`, una relectura fresca vía `asServiceRole`, nunca `user.data`.
  */
 
 function matchesTenant(t: any, userId: string, email: string): boolean {
@@ -77,7 +84,16 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole;
     const email = (user.email || '').toLowerCase();
-    const currentTenantId = user.data?.tenant_id || null;
+
+    // Relectura fresca y autoritativa del propio perfil — nunca `user.data` de
+    // auth.me(). Ver la nota de arriba: `auth.me()` puede reconstruir `.data`
+    // contaminado por restos de campos en la raíz del documento (de un bug de
+    // escritura ya corregido) y reportar un `tenant_id` que no es el real.
+    const selfRows = await svc.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const selfData = self?.data || {};
+    const selfRole = self?.role ?? user.role;
+    const currentTenantId = selfData?.tenant_id || null;
 
     // El owner de la app (gestor de licencias) se define por variable de entorno.
     const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
@@ -100,12 +116,12 @@ Deno.serve(async (req) => {
         // Ambiguo: más de un tenant candidato y nada persistido todavía. No se
         // adivina — se devuelve la lista completa para que el cliente muestre un
         // selector en vez de onboarding o una asignación silenciosa (Módulo 18).
-        if (user.data?.write_access === 'blocked') {
-          await svc.entities.User.update(user.id, { data: { write_access: 'enabled' } });
+        if (selfData?.write_access === 'blocked') {
+          await svc.entities.User.update(user.id, { data: { ...selfData, write_access: 'enabled' } });
         }
         return Response.json({
           tenant_id: null,
-          role: user.role,
+          role: selfRole,
           is_app_owner: isAppOwner,
           needs_onboarding: false,
           needs_tenant_choice: true,
@@ -120,17 +136,14 @@ Deno.serve(async (req) => {
     if (!tenant) {
       // Sin tenant la escritura ya está bloqueada por la RLS de tenant_id; reseteamos
       // write_access a 'enabled' para no dejar marcado a un usuario que dejó un tenant vencido.
-      // Bajo `data`, no plano — mismo bug del 2026-08-31 (ver CLAUDE.md), que este mismo
-      // call site se quedó fuera de esa pasada: un objeto plano escribe en la raíz del
-      // documento y `data.write_access` se queda en 'blocked' para siempre.
-      if (user.data?.write_access === 'blocked') {
-        await svc.entities.User.update(user.id, { data: { write_access: 'enabled' } });
+      if (selfData?.write_access === 'blocked') {
+        await svc.entities.User.update(user.id, { data: { ...selfData, write_access: 'enabled' } });
       }
       return Response.json({
         tenant_id: null,
-        role: user.role,
+        role: selfRole,
         is_app_owner: isAppOwner,
-        needs_onboarding: ['owner', 'admin'].includes(user.role),
+        needs_onboarding: ['owner', 'admin'].includes(selfRole),
         needs_tenant_choice: false,
         candidates: candidateSummaries,
         write_access: 'enabled',
@@ -158,45 +171,33 @@ Deno.serve(async (req) => {
     // suspendió manualmente (suspended=true), permanece bloqueado sin importar la licencia.
     const writeAccess = isAppOwner
       ? 'enabled'
-      : (user.data?.suspended ? 'blocked' : computeWriteAccess(tenant));
+      : (selfData?.suspended ? 'blocked' : computeWriteAccess(tenant));
 
     // Persistir cambios en el perfil del usuario (service role, salta RLS de forma segura).
     // tenant_id/driver_profile_id/write_access van bajo `data` — es donde auth.me()/RLS
-    // los leen ({{user.data.tenant_id}}, etc.); un objeto plano los escribe en la raíz
-    // del documento y `data.*` se queda con el valor viejo. `role` sí va plano: es un
-    // campo de plataforma (RLS lo referencia sin el prefijo `data.`). Encontrado al
-    // depurar por qué `switchTenant` no cambiaba de tenant para un email dueño de dos
-    // TenantLicense a la vez: el switch respondía ok:true pero `data.tenant_id` nunca
-    // se movía, porque escribía en la raíz — este mismo patch tenía el bug agazapado,
-    // solo que nunca se había ejercitado como un CAMBIO real (con un solo tenant
-    // candidato, cada llamada recalcula desde cero y el patch roto pasaba inadvertido).
+    // los leen ({{user.data.tenant_id}}, etc.); un objeto plano los escribiría en la raíz
+    // del documento. `role` sí va plano: es un campo de plataforma (RLS lo referencia sin
+    // el prefijo `data.`). El rol va en su PROPIA llamada, nunca junto a `data`: la
+    // plataforma rechaza cambiar el rol del owner de la app aunque sea service role, y el
+    // update es atómico — mezclados, se pierde también el tenant_id. Esta función corre en
+    // cada carga de página, así que un fallo aquí deja al usuario sin binding de tenant sin
+    // ningún error visible.
     const dataPatch: Record<string, unknown> = {};
-    const patch: Record<string, unknown> = {};
-    if (user.data?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
-    if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
+    if (selfData?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
+    if ((selfData?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
     // Sin `|| 'enabled'`: si el campo nunca se persistió (undefined), debe escribirse
     // explícitamente en cuanto writeAccess computa 'enabled' — de lo contrario el campo
-    // se queda ausente para siempre (el fallback hacía que 'enabled' === 'enabled' y el
-    // patch nunca se disparaba), y las RLS que exigen el string literal "enabled" en
-    // `data.write_access` (RentCharge, Alert, …) rechazan cualquier escritura directa del
-    // cliente aunque la licencia esté activa. Bug real: bloqueaba a todo usuario cuyo
-    // write_access jamás se hubiera fijado antes (ej. un app owner probando por primera
-    // vez "Generar cobros del periodo" — los datos de prueba se crean vía service role,
-    // que no pasa por RLS, así que esto nunca se había ejercitado).
-    if (user.data?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
-    // El rol va en su PROPIA llamada, nunca junto a `data`. La plataforma rechaza
-    // cambiar el rol del owner de la app aunque sea service role ("You cannot update
-    // the role of the owner of the app") y el update es atómico: mezclarlos hace que
-    // se pierda TAMBIÉN el tenant_id. Esta función corre en cada carga de página, así
-    // que un fallo aquí deja al usuario sin binding de tenant sin ningún error visible.
+    // se queda ausente para siempre.
+    if (selfData?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
     if (Object.keys(dataPatch).length) {
-      await svc.entities.User.update(user.id, { data: dataPatch });
+      await svc.entities.User.update(user.id, { data: { ...selfData, ...dataPatch } });
     }
     // El rol invitado solo se aplica en el primer enganche al tenant; después lo maneja el admin.
-    if (!alreadyAssigned && member?.role && member.role !== user.role) {
+    let roleApplied = selfRole;
+    if (!alreadyAssigned && member?.role && member.role !== selfRole) {
       try {
         await svc.entities.User.update(user.id, { role: member.role });
-        patch.role = member.role;
+        roleApplied = member.role;
       } catch (e) {
         console.error(`[resolveTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
       }
@@ -204,7 +205,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       tenant_id: tenant.id,
-      role: patch.role || user.role,
+      role: roleApplied,
       is_app_owner: isAppOwner,
       needs_onboarding: false,
       needs_tenant_choice: false,
