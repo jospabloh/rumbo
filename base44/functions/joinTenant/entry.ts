@@ -84,6 +84,15 @@ Deno.serve(async (req) => {
     const email = (user.email || '').toLowerCase();
     const svc = base44.asServiceRole;
 
+    // Relectura fresca del propio perfil — nunca `user.data` de auth.me(), que
+    // puede reconstruir `.data` contaminado por restos de campos en la raíz del
+    // documento (mismo bug encontrado y corregido en switchTenant/resolveTenant,
+    // 2026-09-03: ver el comentario de esas dos funciones).
+    const selfRows = await svc.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const selfData = self?.data || {};
+    const selfRole = self?.role ?? user.role;
+
     // Rate limit: cuenta los intentos recientes de ESTE usuario antes de tocar el
     // código o escanear tenants. Se registra el intento aunque el código termine
     // siendo inválido — es la búsqueda por código lo que se limita, no solo los
@@ -149,18 +158,18 @@ Deno.serve(async (req) => {
     // documento y `data.*` se queda con el valor viejo (mismo bug encontrado y corregido
     // en switchTenant/resolveTenant). `role` sí va plano: es un campo de plataforma.
     const dataPatch: Record<string, unknown> = {};
-    if (user.data?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
-    if ((user.data?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
-    if ((user.data?.write_access || 'enabled') !== 'enabled') dataPatch.write_access = 'enabled';
+    if (selfData?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
+    if ((selfData?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
+    if ((selfData?.write_access || 'enabled') !== 'enabled') dataPatch.write_access = 'enabled';
 
     // El rol va en su PROPIA llamada, nunca junto a `data`: la plataforma rechaza
     // cambiar el rol del owner de la app aunque sea service role, y como el update
     // es atómico, mezclarlos haría que la unión al tenant se pierda entera.
     if (Object.keys(dataPatch).length) {
-      await svc.entities.User.update(user.id, { data: dataPatch });
+      await svc.entities.User.update(user.id, { data: { ...selfData, ...dataPatch } });
     }
-    let roleApplied = user.role;
-    if (user.role !== role) {
+    let roleApplied = selfRole;
+    if (selfRole !== role) {
       try {
         await svc.entities.User.update(user.id, { role });
         roleApplied = role;
