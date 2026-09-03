@@ -40,7 +40,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Solo un administrador puede gestionar usuarios.' }, { status: 403 });
     }
 
-    const tenantId = caller.data?.tenant_id || null;
+    const svcSelf = base44.asServiceRole;
+    // Relectura fresca del propio perfil — nunca `caller.data` de auth.me(), que
+    // puede reconstruir `.data` contaminado por restos de campos en la raíz del
+    // documento (mismo bug encontrado y corregido en switchTenant/resolveTenant/
+    // joinTenant, 2026-09-03).
+    const callerSelfRows = await svcSelf.entities.User.filter({ id: caller.id });
+    const callerSelf = Array.isArray(callerSelfRows) ? callerSelfRows[0] : callerSelfRows;
+    const tenantId = callerSelf?.data?.tenant_id || null;
     if (!tenantId) return Response.json({ error: 'No perteneces a ninguna organización.' }, { status: 400 });
 
     const body = await req.json().catch(() => ({}));
@@ -76,14 +83,18 @@ Deno.serve(async (req) => {
     // {{user.data.write_access}}) — un objeto plano los escribiría en la raíz del
     // documento y RLS seguiría viendo el valor anterior, dejando la suspensión sin
     // efecto real aunque la llamada responda ok:true.
+    // `target.data` viene de un `User.get()` por service role (no de auth.me()),
+    // así que es confiable; se incluye completo para que `data:{...}` no borre
+    // tenant_id/driver_profile_id del objetivo si la plataforma reemplaza el
+    // subdocumento entero en vez de mezclarlo.
     if (action === 'suspend') {
-      await svc.entities.User.update(userId, { data: { suspended: true, write_access: 'blocked' } });
+      await svc.entities.User.update(userId, { data: { ...target.data, suspended: true, write_access: 'blocked' } });
       return Response.json({ ok: true, action, suspended: true });
     }
 
     if (action === 'reactivate') {
       const writeAccess = computeWriteAccess(tenant);
-      await svc.entities.User.update(userId, { data: { suspended: false, write_access: writeAccess } });
+      await svc.entities.User.update(userId, { data: { ...target.data, suspended: false, write_access: writeAccess } });
       return Response.json({ ok: true, action, suspended: false, write_access: writeAccess });
     }
 
