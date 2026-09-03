@@ -1201,3 +1201,68 @@ ejecutando siquiera**. Un `ok: true` prueba que la función terminó, no que
 escribió; y el registro con tres copias del `tenant_id` invitaba a teorizar
 sobre cuál era la buena en vez de preguntar por qué ninguna se movía. Cuando un
 write "no toma", mira el log de la escritura antes que la forma del documento.
+
+## La causa real, por fin: `auth.me()` no es confiable para decidir si hay que escribir (2026-09-03)
+
+El fix del `role` de arriba (2026-09-01) era necesario pero no era el bug que
+seguía impidiendo el switch para h.josepablo@gmail.com — su rol en Car-Go Rent
+(`admin`) ya coincidía con su rol global, así que la rama de `role` nunca se
+ejecutaba para este caso concreto. El switch seguía sin mover nada, sin
+error visible, tras dos intentos reales más (uno en ventana de incógnito, para
+descartar caché del navegador — mismo resultado).
+
+**Se instrumentó `switchTenant` con una entidad de diagnóstico (`DebugProbe`,
+ya retirada de este archivo) que grababa el estado exacto en cada paso.** El
+registro `entry` de un intento real mostró esto, sin interpretación:
+
+```
+requestedId:      6a4c67c5131100e9f96e1e51  (Car-Go Rent, el destino)
+user.data (de auth.me()).tenant_id: 6a4c67c5131100e9f96e1e51  (¡ya igual al destino!)
+```
+
+Con `user.data.tenant_id` (leído de `auth.me()`) YA IGUAL al candidato, el
+`dataPatch` salía vacío — la función concluía "nada que cambiar" y respondería
+`ok:true` sin escribir un solo campo. Pero una relectura del documento real,
+en el MISMO request, vía `asServiceRole` (`svc.entities.User.filter`), mostró
+el valor verdadero: el tenant anterior, sin mover un campo desde días atrás
+(`updated_date` congelado). Una consulta independiente mía, minutos después,
+confirmó el mismo valor verdadero — no era un problema de réplica que se
+resolviera solo.
+
+**`auth.me()` estaba devolviendo un `user.data.tenant_id` que NUNCA existió en
+el documento persistido.** La explicación: este perfil arrastraba un campo
+`tenant_id` suelto en la **raíz** del documento (`6a4c67c5131100e9f96e1e51`,
+residuo de un intento de fix anterior en esta misma investigación que escribió
+plano en vez de bajo `data`) — y ese valor coincide EXACTO con lo que `auth.me()`
+reportó como `user.data.tenant_id`. `auth.me()` reconstruye su `.data` de
+conveniencia contaminado por ese resto en la raíz, no por el `data.tenant_id`
+real que las RLS sí leen. Cualquier función que compare contra `user.data` de
+`auth.me()` para decidir si escribir puede terminar comparando contra un valor
+que nunca estuvo realmente persistido — y saltarse la escritura que en verdad
+hacía falta, exactamente como aquí.
+
+**Fix: ninguna de las seis funciones de este flujo vuelve a leer `user.data` de
+`auth.me()`.** `switchTenant`, `resolveTenant`, `joinTenant`, `manageMember` y
+`deleteTenant` ahora hacen una relectura fresca del propio perfil por servicio
+(`svc.entities.User.filter({id: user.id})`) al entrar, y todo el cálculo de
+"qué cambió" usa esa relectura (`selfData`/`selfRole`), nunca `user.data`/
+`user.role` del objeto que entregó `auth.me()`. `createTenant` no necesitaba el
+cambio: su escritura ya era incondicional, sin diff. De paso, los `data:{...}`
+que solo mandaban los campos cambiados ahora esparcen `selfData`/`target.data`
+completo debajo (`{...selfData, ...dataPatch}`) — por si la plataforma reemplaza
+el subdocumento entero en vez de mezclarlo, como los comentarios de este mismo
+archivo venían advirtiendo sin que nadie lo hiciera explícito hasta ahora.
+
+La entidad `DebugProbe` y su instrumentación ya se retiraron de `switchTenant`
+(el archivo quedó limpio); el esquema `DebugProbe` en sí se puede borrar a mano
+desde el panel de Base44 cuando alguien pase por ahí — no tiene tráfico ni RLS
+abierta (solo owner), así que no urge.
+
+**Verificado:** `deno check --node-modules-dir=none` sobre las cinco funciones
+cambiadas (binario de GitHub releases, método ya documentado en este archivo) —
+las cinco compilan limpio. Confirmado en vivo en GitHub que el commit llegó a
+`main` byte por byte igual a lo escrito. **No verificado todavía:** el deploy a
+producción (pendiente de `npm run deploy` — solo funciones, sin cambio de
+esquema, `deploy:entities` no hace falta esta vez) ni un intento real de switch
+contra el código corregido. Es la pieza que falta antes de dar esto por
+resuelto.
