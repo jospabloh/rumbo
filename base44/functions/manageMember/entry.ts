@@ -40,12 +40,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Solo un administrador puede gestionar usuarios.' }, { status: 403 });
     }
 
-    const svcSelf = base44.asServiceRole;
+    const svc = base44.asServiceRole;
     // Relectura fresca del propio perfil — nunca `caller.data` de auth.me(), que
     // puede reconstruir `.data` contaminado por restos de campos en la raíz del
     // documento (mismo bug encontrado y corregido en switchTenant/resolveTenant/
     // joinTenant, 2026-09-03).
-    const callerSelfRows = await svcSelf.entities.User.filter({ id: caller.id });
+    const callerSelfRows = await svc.entities.User.filter({ id: caller.id });
     const callerSelf = Array.isArray(callerSelfRows) ? callerSelfRows[0] : callerSelfRows;
     const tenantId = callerSelf?.data?.tenant_id || null;
     if (!tenantId) return Response.json({ error: 'No perteneces a ninguna organización.' }, { status: 400 });
@@ -59,7 +59,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No puedes aplicarte esta acción a ti mismo.' }, { status: 400 });
     }
 
-    const svc = base44.asServiceRole;
     const target = await svc.entities.User.get(userId).catch(() => null);
     if (!target) return Response.json({ error: 'Usuario no encontrado.' }, { status: 404 });
 
