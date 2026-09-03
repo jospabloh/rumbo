@@ -62,10 +62,15 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const tenantId = user.data?.tenant_id;
-    if (!tenantId) return Response.json({ error: 'Sin tenant asignado' }, { status: 400 });
-
     const svc = base44.asServiceRole;
+    // Relectura fresca del propio perfil — nunca `user.data` de auth.me(), que
+    // puede reconstruir `.data` contaminado por restos de campos en la raíz del
+    // documento (mismo bug encontrado y corregido en switchTenant/resolveTenant/
+    // joinTenant/manageMember, 2026-09-03).
+    const selfRows = await svc.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const tenantId = self?.data?.tenant_id;
+    if (!tenantId) return Response.json({ error: 'Sin tenant asignado' }, { status: 400 });
 
     const tenant = await svc.entities.TenantLicense.get(tenantId).catch(() => null);
     if (!tenant) return Response.json({ error: 'Tenant no encontrado' }, { status: 404 });
