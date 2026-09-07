@@ -4,6 +4,52 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.34.4] — 2026-09-07 — the `auth.me()`-contamination fix from 1.34.3 only covered 5 of the 14 functions reading `user.data`
+
+Routine audit pass. The 2026-09-03 finding — `auth.me()`'s convenience `.data`
+can reconstruct itself from stray root-level fields left over from
+pre-2026-08-31 writes, so it can report a `tenant_id`/`write_access`/
+`driver_profile_id` that never matches the actually-persisted `data.*` — was
+fixed in `switchTenant`, `resolveTenant`, `joinTenant`, `manageMember` and
+`deleteTenant`. Nine more backend functions read `user.data` the exact same
+way and were never touched:
+
+- **`guardedEntityWrite`** — the sanctioned write gate for all 17
+  module-scoped operational entities. A stale/contaminated `tenant_id` here
+  could scope a write to the wrong tenant record; a stale `write_access`
+  could let a billing-blocked or just-suspended tenant keep writing past the
+  point `resolveTenant`/`manageMember` meant to cut it off.
+- **`manageRole`** (added 2026-08-26, before the 09-03 fix existed — simply
+  missed) — derives the caller's own tenant scope for an admin-privilege
+  operation (changing another member's role) straight from `auth.me()`.
+- `calculateCostPerKm`, `createTestData`, `delegateOwnership`,
+  `exportTenantData`, `fleetUnitMetrics`, `generateAlerts`, `submitTicket` —
+  narrower blast radius (reports, exports, ticket filing), same pattern.
+
+All nine now re-read the caller's own `User` document via service role before
+deriving `tenant_id` (and, in `guardedEntityWrite`, `write_access` and
+`driver_profile_id`), exactly like the five functions the 09-03 fix already
+covers. `role` stays read from `user.role` everywhere — that field is a
+genuine top-level platform field, not part of the `.data` reconstruction that
+can go stale.
+
+Drive-by: removed the dead `DebugProbe` entity (temporary diagnostic scaffold
+from the 09-03 investigation, already unreferenced by any code); fixed
+`TenantEditor.jsx`'s "Email del owner" field, which was still rendered as an
+editable input wired to a direct `TenantLicense.update()`/`.create()` call
+even though `owner_email` became `rls.write:false` on 2026-08-24 (module 14)
+— the write was silently dropped either way, so editing it there did
+nothing; it's now a read-only display pointing at "Delegar propiedad" in the
+Danger Zone, the only path that actually works. Also fixed four pre-existing
+`deno check` findings (implicit-`any` params in `generateAlerts`, an
+unnecessary generic constraint in `fleetUnitMetrics`, and two untyped
+`error.message` catches) surfaced while these files were already open —
+none of the four affect runtime behavior; this repo's CI doesn't run `deno
+check`, so they'd never surfaced before.
+
+No RLS or schema change — `validate:rls` unaffected (27 entities, one fewer
+than before this pass from the `DebugProbe` removal).
+
 ## [1.34.3] — 2026-09-01 — el cambio de rol tumbaba el cambio de organización (en 6 funciones, no en 1)
 
 Un agente externo encontró la causa real del selector de organización y la dejó

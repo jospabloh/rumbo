@@ -23,8 +23,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  * función es el único camino para cambiarlo.
  *
  * Seguridad:
- *   - Rol y tenant del caller se derivan de su propia sesión (`caller.role`,
- *     `caller.data.tenant_id`), nunca del cuerpo de la petición.
+ *   - Rol y tenant del caller se derivan de su propia sesión: `caller.role`
+ *     (campo de plataforma, confiable en `auth.me()`) y una relectura fresca
+ *     por service role del propio perfil para `tenant_id` — nunca
+ *     `caller.data` de `auth.me()`, que puede reconstruirse contaminado por
+ *     restos de campos en la raíz del documento (2026-09-03). Nada de esto
+ *     sale del cuerpo de la petición.
  *   - El objetivo debe pertenecer al MISMO tenant que el caller (mismo chequeo
  *     que `manageMember`).
  *   - No se puede aplicar a uno mismo (mismo guard que `manageMember` ya usa
@@ -57,7 +61,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Solo un administrador puede cambiar roles.' }, { status: 403 });
     }
 
-    const tenantId = caller.data?.tenant_id || null;
+    const svc = base44.asServiceRole;
+    // Relectura fresca del propio perfil — nunca `caller.data` de auth.me(), que
+    // puede reconstruir `.data` contaminado por restos de campos en la raíz del
+    // documento (mismo bug encontrado y corregido en switchTenant/resolveTenant/
+    // joinTenant/manageMember, 2026-09-03 — manageRole se había quedado fuera de
+    // esa pasada aunque comparte exactamente el mismo patrón).
+    const callerSelfRows = await svc.entities.User.filter({ id: caller.id });
+    const callerSelf = Array.isArray(callerSelfRows) ? callerSelfRows[0] : callerSelfRows;
+    const tenantId = callerSelf?.data?.tenant_id || null;
     if (!tenantId) return Response.json({ error: 'No perteneces a ninguna organización.' }, { status: 400 });
 
     const body = await req.json().catch(() => ({}));
@@ -79,7 +91,6 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    const svc = base44.asServiceRole;
     const target = await svc.entities.User.get(userId).catch(() => null);
     if (!target) return Response.json({ error: 'Usuario no encontrado.' }, { status: 404 });
 

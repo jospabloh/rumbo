@@ -28,7 +28,13 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const tenantId = user.data?.tenant_id;
+    const svc = base44.asServiceRole;
+    // Relectura fresca del propio perfil — nunca `user.data` de auth.me(),
+    // que puede reconstruirse contaminado por restos de campos en la raíz
+    // del documento (mismo bug de switchTenant/resolveTenant, 2026-09-03).
+    const selfRows = await svc.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const tenantId = self?.data?.tenant_id;
     if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
@@ -46,8 +52,6 @@ Deno.serve(async (req) => {
     const aiBrief = (body.ai_brief && typeof body.ai_brief === 'object' && !Array.isArray(body.ai_brief))
       ? body.ai_brief
       : null;
-
-    const svc = base44.asServiceRole;
 
     // Nombre de la organización (denormalizado para el panel del owner de la app).
     let tenantName = '';

@@ -209,17 +209,29 @@ Deno.serve(async (req) => {
     const mod = ENTITY_MODULE[entity];
     if (!mod) return bad(400, 'UNKNOWN_ENTITY', `${entity} is not guarded by this function`);
 
-    // Authority derived entirely from the caller's own profile -- role and
-    // tenant come from resolveTenant's own writes to user.data, never from
-    // the request body.
+    const svc = base44.asServiceRole;
+
+    // Authority derived entirely from the caller's own profile -- role from
+    // `user.role` (a genuine top-level platform field, reliable in
+    // auth.me()) and everything else from a FRESH service-role reread of the
+    // caller's own User document, never from `user.data`/auth.me()'s
+    // convenience `.data`, which can reconstruct itself contaminated by
+    // stray root-level fields left over from pre-2026-08-31 writes (see
+    // switchTenant's 2026-09-03 CORRECCIÓN comment -- this is the same write
+    // gate for all 17 module-scoped entities, so trusting auth.me()'s `.data`
+    // here would let a stale/contaminated tenant_id, write_access or
+    // driver_profile_id silently authorize (or wrongly deny) a write instead
+    // of the record actually persisted).
     const role = String(user.role || '');
-    const tenantId = user.data?.tenant_id;
+    const selfRows = await svc.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const selfData = self?.data || {};
+    const tenantId = selfData?.tenant_id;
     if (!tenantId) return bad(400, 'NO_TENANT', 'No tenant assigned');
-    if (user.data?.write_access !== 'enabled') {
+    if (selfData?.write_access !== 'enabled') {
       return bad(403, 'WRITE_BLOCKED', 'Tenant write access is blocked (billing)');
     }
 
-    const svc = base44.asServiceRole;
     const action = ACTION_BY_OP[operation];
     const selfScope = DRIVER_SELF_SCOPE[entity];
     const isDriverSelfPath = role === 'driver' && !!selfScope && selfScopeAppliesToOp(selfScope, operation);
@@ -252,7 +264,7 @@ Deno.serve(async (req) => {
       }
 
       if (isDriverSelfPath) {
-        const driverProfileId = user.data?.driver_profile_id;
+        const driverProfileId = selfData?.driver_profile_id;
         const expected = selfScope.compareTo === 'user_id' ? user.id : driverProfileId;
         if (!expected || data[selfScope.field] !== expected) {
           return bad(403, 'NOT_YOUR_RECORD', `${entity}.${selfScope.field} must be your own`);
@@ -274,7 +286,7 @@ Deno.serve(async (req) => {
     }
 
     if (isDriverSelfPath) {
-      const driverProfileId = user.data?.driver_profile_id;
+      const driverProfileId = selfData?.driver_profile_id;
       const expected = selfScope.compareTo === 'user_id' ? user.id : driverProfileId;
       if (!expected || existing[selfScope.field] !== expected) {
         return bad(403, 'NOT_YOUR_RECORD', `${entity}.${selfScope.field} must be your own`);

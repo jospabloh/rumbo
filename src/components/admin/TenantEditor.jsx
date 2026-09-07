@@ -7,11 +7,15 @@ import PalettePresets from '@/components/admin/PalettePresets';
 
 export default function TenantEditor({ license, onSaved }) {
   const [editing, setEditing] = useState(false);
+  // owner_email NO va en este form: es rls.write:false desde el módulo 14
+  // (2026-08-24) — el único camino para cambiarlo es delegateOwnership (Zona
+  // de Peligro → "Delegar propiedad"). Mandarlo aquí solo lo dejaría caer en
+  // silencio (create) o dejarlo sin tocar (update) mientras la interfaz
+  // sugería que el cambio se había guardado.
   const [form, setForm] = useState({
     tenant_name: license?.tenant_name || '',
     slogan: license?.slogan || '',
     logo_url: license?.logo_url || '',
-    owner_email: license?.owner_email || '',
     notes: license?.notes || '',
     color_primary: license?.color_primary || '',
     color_secondary: license?.color_secondary || '',
@@ -132,7 +136,10 @@ Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas te
         </div>
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Email del owner</label>
-          <Input value={form.owner_email} onChange={e => setForm(f => ({ ...f, owner_email: e.target.value }))} className="bg-secondary border-border text-sm h-8" />
+          <p className="text-sm text-foreground h-8 flex items-center">
+            {license?.owner_email || <span className="text-muted-foreground italic">Sin asignar</span>}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Se cambia desde &quot;Delegar propiedad&quot; en la Zona de Peligro.</p>
         </div>
         <div className="sm:col-span-2">
           <label className="text-xs text-muted-foreground mb-1 block">Logo</label>

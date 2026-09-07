@@ -2,7 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 /**
  * createTestData — datos de demo para el tenant del app owner que la invoca
- * (nunca "adivina" un tenant ajeno: usa solo `user.data.tenant_id` ya resuelto).
+ * (nunca "adivina" un tenant ajeno: usa solo el `tenant_id` ya resuelto de una
+ * relectura fresca del propio perfil, nunca `user.data` de auth.me() —
+ * 2026-09-03).
  *
  * Incluye 5 semanas de RentCharge con pagos repartidos en varios días por
  * semana (no un solo pago) para que la matriz día×unidad de /reports muestre
@@ -41,7 +43,12 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole;
-    const tenantId = user.data?.tenant_id;
+    // Relectura fresca del propio perfil — nunca `user.data` de auth.me(),
+    // que puede reconstruirse contaminado por restos de campos en la raíz
+    // del documento (mismo bug de switchTenant/resolveTenant, 2026-09-03).
+    const selfRows = await svc.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const tenantId = self?.data?.tenant_id;
     if (!tenantId) {
       return Response.json({ error: 'No se encontró un tenant. Primero completa el onboarding.' }, { status: 400 });
     }
@@ -200,7 +207,8 @@ Deno.serve(async (req) => {
       tenant_id: tenantId,
     });
   } catch (error) {
+    // drive-by: preexisting (error as Error) cast, same pattern as other functions in this repo (module 18/deleteTenant).
     console.error('Error:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });

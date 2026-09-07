@@ -1,11 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
-function daysUntil(dateStr) {
+function daysUntil(dateStr: unknown): number | null {
   if (!dateStr) return null;
-  return Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
+  return Math.ceil((new Date(dateStr as string).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-function severity(days) {
+function severity(days: number): 'critical' | 'warning' | 'info' {
   if (days <= 3) return 'critical';
   if (days <= 15) return 'warning';
   return 'info';
@@ -19,7 +19,12 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (!['admin', 'owner'].includes(user.role)) return Response.json({ error: 'Forbidden: Admin or Owner access required' }, { status: 403 });
 
-    const tenantId = user.data?.tenant_id;
+    // Relectura fresca del propio perfil — nunca `user.data` de auth.me(),
+    // que puede reconstruirse contaminado por restos de campos en la raíz
+    // del documento (mismo bug de switchTenant/resolveTenant, 2026-09-03).
+    const selfRows = await base44.asServiceRole.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const tenantId = self?.data?.tenant_id;
     if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
 
     const [drivers, vehicles, driverDocs, vehicleDocs, maintenance, parts, existingAlerts] = await Promise.all([
@@ -143,6 +148,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ created: toCreate.length, message: `${toCreate.length} alerta${toCreate.length === 1 ? '' : 's'} generada${toCreate.length === 1 ? '' : 's'}` });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // drive-by: preexisting (error as Error) cast, same pattern as other functions in this repo (module 18/deleteTenant).
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });

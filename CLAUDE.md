@@ -1266,3 +1266,106 @@ producción (pendiente de `npm run deploy` — solo funciones, sin cambio de
 esquema, `deploy:entities` no hace falta esta vez) ni un intento real de switch
 contra el código corregido. Es la pieza que falta antes de dar esto por
 resuelto.
+
+## Auditoría incremental (2026-09-07) — el fix del 09-03 cubrió 5 de 14 lectores de `user.data`
+
+Pasada de auditoría rutinaria (no repite RLS/módulos ya cerrados desde cero;
+busca lo nuevo o regresado). Inventario: rama `claude/relaxed-galileo-ln6fwl`
+al día con `main` y con su propio remoto, sin ramas de auditoría duplicadas ni
+sueltas; el HEAD de `main` ya incluía todo el trabajo hasta el 2026-09-03
+(`auth.me()` no confiable) vía los reverse-sync commits de
+`base44-builder[bot]`.
+
+**Hallazgo — el fix del 2026-09-03 dejó 9 funciones más con el mismo patrón.**
+Ese fix corrigió `switchTenant`, `resolveTenant`, `joinTenant`, `manageMember`
+y `deleteTenant`: las cinco leían `user.data` de `auth.me()` para decidir un
+WRITE, y `auth.me()` puede reconstruir `.data` contaminado por restos de
+campos en la raíz del documento (residuo de los updates planos de antes del
+2026-08-31, nunca limpiado). Un grep sobre las 21 funciones (`user\.data` fuera
+de comentarios) encontró **nueve más** con exactamente el mismo patrón,
+nunca tocadas por esa pasada:
+
+- **`guardedEntityWrite`** — el candado de escritura para las 17 entidades
+  module-scoped (módulo 3). Lee `user.data.tenant_id`, `write_access` y
+  `driver_profile_id` directo de `auth.me()`. Si estos están contaminados: un
+  `tenant_id` viejo podría escribir contra el tenant equivocado, y un
+  `write_access` viejo podría dejar escribir a un tenant recién bloqueado por
+  facturación o a un usuario recién suspendido/removido por `manageMember` —
+  exactamente la garantía que `manageMember` cree estar dando.
+- **`manageRole`** (módulo 2, 2026-08-26 — anterior al fix del 09-03, así que
+  simplemente no se incluyó) — deriva el `tenant_id` del propio admin que
+  cambia el rol de otro miembro desde `caller.data`, sin releer.
+- `calculateCostPerKm`, `createTestData`, `delegateOwnership`,
+  `exportTenantData`, `fleetUnitMetrics`, `generateAlerts`, `submitTicket` —
+  mismo patrón, radio de daño menor (reportes, exportación, tickets).
+
+**Fix:** las nueve ahora hacen la misma relectura fresca por service role
+(`svc.entities.User.filter({id: user.id})`) antes de derivar `tenant_id` (y en
+`guardedEntityWrite`, también `write_access`/`driver_profile_id`) — mismo
+patrón exacto que las cinco funciones del 09-03. `role` se sigue leyendo de
+`user.role` en todas partes: es un campo genuino de plataforma, no parte del
+`.data` que puede contaminarse.
+
+**De paso:**
+- Se borró `base44/entities/DebugProbe.jsonc` — el propio CLAUDE.md ya decía
+  que no tenía tráfico ni RLS abierta y se podía borrar cuando alguien pasara
+  por ahí. `validate:rls` vuelve a 27 entidades.
+- `src/components/admin/TenantEditor.jsx` tenía un `<Input>` editable para
+  "Email del owner" que mandaba `owner_email` en un
+  `TenantLicense.update()`/`.create()` directo — pero ese campo es
+  `rls.write:false` desde el módulo 14 (2026-08-24). El write se descartaba en
+  silencio (en `update`) o dejaba el `owner_email` sin fijar del todo (en el
+  fallback de `create` "sin licencia todavía", que no tiene default de
+  esquema para ese campo) mientras la interfaz sugería que el cambio se había
+  guardado. Ahora es un texto de solo lectura que apunta a "Delegar
+  propiedad" en la Zona de Peligro — el único camino que de verdad funciona
+  desde `delegateOwnership` (módulo 14, 2026-08-24).
+- Cuatro hallazgos de `deno check` preexistentes en archivos que ya estaban
+  abiertos por el fix de arriba (`error.message` sin cast en
+  `calculateCostPerKm`/`createTestData`/`generateAlerts`, parámetros
+  implícitamente `any` en `generateAlerts`, una restricción genérica
+  innecesaria en `fleetUnitMetrics.argBest`) — corregidos de paso, mismo
+  criterio que el módulo 18 ya estableció para este tipo de hallazgo. Ninguno
+  cambia comportamiento en runtime.
+- XSS almacenado en `NoteComposer.jsx` (esquemas `javascript:`/`data:` en un
+  enlace de nota) — releído y confirmado ya arreglado por un commit anterior
+  (`c55e548`, 2026-09-01): valida el esquema al agregar el enlace, y el único
+  render de esos adjuntos (`UnitDayCellDetail.jsx`, `<a href>`) ya lleva
+  `rel="noopener noreferrer"`. No requirió ningún cambio nuevo en esta pasada.
+- Revisadas las 27 entidades por rama de rol sin `$and` a `tenant_id` (el
+  patrón de `Parish`/cateqhub que motiva el módulo 14) en `create`/`update`/
+  `delete`/`read` — sin hallazgos nuevos; las únicas ramas de rol sin
+  `tenant_id` son `TenantLicense.create`/`User.create` (no hay tenant que
+  scopear todavía en esas operaciones) y `AppSession` (no tiene campo
+  `tenant_id`, confirmado por su propio comentario).
+- Confirmados sin cambios: los 10 candados de licencia + `owner_email` en
+  `TenantLicense.jsonc`; cero llamadas directas `base44.entities.*` en `src/`
+  a las 17 entidades module-scoped (todo pasa por `guardedWrite.js`); las tres
+  funciones de plataforma (`githubRepos`, `supabaseData`, `licensesAdmin`)
+  siguen fallando CERRADO sin `APP_OWNER_EMAIL`; `reapStaleSessions` sigue
+  fallando CERRADO sin `CRON_SECRET`; `ACCEPT_LEGACY_MASTER = false` en las
+  tres copias de `_acaciaSign.ts` (`acaciaControl`, `submitTicket`,
+  `deleteTenant`, byte a byte idénticas entre sí).
+
+Bump a v1.34.4 — sí hay un cambio de comportamiento observable
+(`TenantEditor.jsx`), aunque menor.
+
+**Verificado:** `npm run lint` (21 endpoints, techo 40), `npm run build`, `npm
+run typecheck`, `npm run validate:rls` (27 entidades OK), `npm run test --
+--run` (480/480) — todos limpios, antes y después del cambio. `deno check
+--node-modules-dir=none` corrió contra las nueve funciones tocadas (binario de
+GitHub releases, método ya documentado en este archivo) — las nueve compilan
+limpio.
+
+**No verificado:** el deploy en vivo (pendiente de merge + `npm run deploy` —
+módulo 11; esta vez sin cambio de esquema salvo el borrado de `DebugProbe`,
+que si no se sincroniza solo, se puede borrar a mano desde el panel), y
+ninguna sesión de navegador real (ni con el selector de organización, ni con
+el editor de tenant, ni con ningún flujo de escritura de los nueve archivos
+tocados) — no alcanzable desde este entorno de trabajo. El riesgo de las
+nueve relecturas está acotado por ser el mismo patrón ya verificado en
+producción para las cinco funciones del 09-03 (mecánicamente idéntico:
+sustituir `user.data` por una relectura fresca por service role, sin tocar
+ninguna otra lógica de autorización); el de `TenantEditor.jsx`, por ser una
+reducción de superficie (un campo que ya no escribía nada pasa a no
+pretender que escribe).

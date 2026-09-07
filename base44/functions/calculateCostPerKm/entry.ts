@@ -20,7 +20,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Owner, Admin or Dispatcher access required' }, { status: 403 });
     }
 
-    const tenantId = user.data?.tenant_id;
+    // Relectura fresca del propio perfil — nunca `user.data` de auth.me(),
+    // que puede reconstruirse contaminado por restos de campos en la raíz
+    // del documento (mismo bug de switchTenant/resolveTenant, 2026-09-03).
+    const selfRows = await base44.asServiceRole.entities.User.filter({ id: user.id });
+    const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
+    const tenantId = self?.data?.tenant_id;
     if (!tenantId) return Response.json({ error: 'No tenant asociado' }, { status: 403 });
 
     // Ventana configurable del tenant (Configuración del negocio); default si no la personalizó.
@@ -84,6 +89,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ results, window_days: windowDays });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // drive-by: preexisting (error as Error) cast, same pattern as other functions in this repo (module 18/deleteTenant).
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });
