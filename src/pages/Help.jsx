@@ -21,6 +21,14 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-09-07',
+    title: 'Correcciones internas y un campo que no hacía nada',
+    items: [
+      'Corregido: en Administración → editar organización, el campo "Email del owner" se podía editar pero el cambio nunca se guardaba (ese campo solo se puede cambiar desde "Delegar propiedad" en la Zona de Peligro, desde hace unas semanas). Ahora se muestra de solo lectura para no sugerir un cambio que no ocurre.',
+      'Endurecidas varias funciones internas para que siempre lean tu perfil actualizado en vez de una copia que a veces podía quedarse desactualizada — sin cambios visibles para el uso normal de la app.',
+    ],
+  },
+  {
     date: '2026-09-01',
     title: 'Cambiar de organización ya funciona',
     items: [
