@@ -1369,3 +1369,54 @@ sustituir `user.data` por una relectura fresca por service role, sin tocar
 ninguna otra lógica de autorización); el de `TenantEditor.jsx`, por ser una
 reducción de superficie (un campo que ya no escribía nada pasa a no
 pretender que escribe).
+
+## Retirado: el selector de organización (antes módulo 18) — 2026-09-10
+
+**Un usuario pertenece a una sola organización.** El selector que permitía a un
+mismo email moverse entre varios `TenantLicense` se quitó entero: nunca llegó a
+funcionar en producción, y la historia de arriba —tres secciones fechadas, tres
+causas raíz distintas, dos de ellas mías y equivocadas— es la razón por la que
+la decisión fue retirarlo en vez de seguir arreglándolo.
+
+Lo que se fue:
+
+- `base44/functions/switchTenant/` — la función entera. Era el único camino
+  sancionado para mover `data.tenant_id` después del primer enganche; sin ella
+  ese binding es definitivo mientras exista.
+- `src/components/TenantPicker.jsx` y `src/components/TenantSwitcher.jsx` — la
+  pantalla de elección y el control del sidebar.
+- `src/pages/JoinOrganization.jsx` y su ruta `/join-organization` — sólo existía
+  para llegar a "unirme a otra organización" desde dentro de la app.
+- `candidates` / `needs_tenant_choice` en `resolveTenant` y en
+  `TenantContext.jsx`. `resolveTenant` vuelve a tomar el **primer** tenant que
+  empareja (creador → `owner_email` → `members[]`) sobre la lista ya ordenada
+  por `-created_date`, así que sigue siendo determinista.
+
+**Y una puerta que hubo que volver a poner, porque sin el selector su ausencia
+sí hace daño:** `joinTenant` responde otra vez `409` si el caller ya tiene
+`data.tenant_id` de otra organización. Con selector, redimir un código movía el
+tenant activo y podías volver; sin selector, unirte a una segunda organización
+dejaría la primera **inalcanzable para siempre**. Unirse a la misma a la que ya
+perteneces sigue siendo idempotente. Darse de baja es cosa del administrador de
+la organización (`manageMember`).
+
+**Lo que NO se tocó, a propósito:** los arreglos que salieron de perseguir este
+bug se quedan, porque ninguno era del selector — la relectura fresca del perfil
+por `asServiceRole` en vez de `user.data` de `auth.me()` (2026-09-03 y la
+extensión del 09-07 a nueve funciones más), el `role` en su propia llamada
+separada del patch de `data` (2026-09-01), y el anidado bajo `data:{...}`
+(2026-08-31). Los tres eran bugs reales de escritura de perfil que afectaban a
+`resolveTenant`, `joinTenant`, `manageMember`, `deleteTenant` y
+`guardedEntityWrite` — funciones que siguen vivas y corriendo en cada carga de
+página.
+
+**Verificado:** `npm run lint` (20 endpoints, techo 40), `npm run build`,
+`npm run typecheck`, `npm run test -- --run` (480/480) y `deno check
+--node-modules-dir=none` sobre `resolveTenant` y `joinTenant` — todos limpios.
+**No verificado:** el deploy (módulo 11: mergear no deploya; hacen falta
+`npm run deploy` y `npm run deploy:site`) ni una sesión de navegador. Ojo con
+un caso concreto que este repo ya documentó: `h.josepablo@gmail.com` empareja
+con **dos** `TenantLicense` ("Car-Go Rent" y "Owner"). Ya tiene `tenant_id`
+persistido, así que la rama 1 lo conserva y no cambia nada para esa cuenta —
+pero si alguien le limpia el binding, `resolveTenant` lo dejará en el más
+reciente de los dos y no habrá forma de moverlo desde la app.

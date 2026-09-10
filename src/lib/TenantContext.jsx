@@ -26,14 +26,6 @@ export function TenantProvider({ children }) {
   const [isAppOwner, setIsAppOwner] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Módulo 18 (jospabloh/acacia-app-standard → STANDARD.md): un mismo email puede
-  // ser creador, owner_email o miembro de más de un TenantLicense a la vez.
-  // `candidates` lleva TODOS los tenants a los que este email pertenece (aunque ya
-  // haya uno activo, para poder ofrecer un selector persistente); `needsTenantChoice`
-  // marca el caso ambiguo de primer login: nada persistido y más de un candidato.
-  const [candidates, setCandidates] = useState([]);
-  const [needsTenantChoice, setNeedsTenantChoice] = useState(false);
-  const [switching, setSwitching] = useState(false);
 
   const loadTenant = async ({ showLoading = false } = {}) => {
     if (showLoading) setLoading(true);
@@ -49,8 +41,6 @@ export function TenantProvider({ children }) {
         const body = await invokeFunction('resolveTenant', {});
         resolvedId = body?.tenant_id || null;
         setIsAppOwner(!!body?.is_app_owner);
-        setCandidates(Array.isArray(body?.candidates) ? body.candidates : []);
-        setNeedsTenantChoice(!!body?.needs_tenant_choice);
       } catch (e) {
         console.error('resolveTenant falló, usando descubrimiento cliente:', e);
       }
@@ -104,23 +94,6 @@ export function TenantProvider({ children }) {
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onFocus); };
   }, []);
 
-  // Cambia de tenant activo (Módulo 18). `switchTenant` valida server-side que el id
-  // pedido en verdad pertenece al caller — este wrapper solo lo invoca y, si acepta,
-  // recarga la página entera en vez de intentar resetear cada hook/lista/caché
-  // tenant-scoped en el lugar: es el único reset que no puede dejar nada del tenant
-  // anterior vivo en un closure (Módulo 14 §6 del estándar).
-  const switchTenant = async (targetTenantId) => {
-    if (!targetTenantId || targetTenantId === tenantId) return;
-    setSwitching(true);
-    try {
-      await invokeFunction('switchTenant', { tenant_id: targetTenantId });
-      window.location.reload();
-    } catch (e) {
-      setSwitching(false);
-      throw e;
-    }
-  };
-
   const licenseInfo = getLicenseInfo(tenant);
   const readOnly = isReadOnly(licenseInfo);
   // Escritura bloqueada (readonly o disabled). El backend lo aplica de forma dura vía RLS;
@@ -132,7 +105,6 @@ export function TenantProvider({ children }) {
       tenant, tenantId, isAppOwner, userRole, loading,
       reload: () => loadTenant({ showLoading: true }),
       setTenant, licenseInfo, readOnly, writeBlocked,
-      candidates, needsTenantChoice, switchTenant, switching,
     }}>
       {children}
     </TenantContext.Provider>

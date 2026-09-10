@@ -15,8 +15,6 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import Onboarding from './pages/Onboarding';
-import JoinOrganization from './pages/JoinOrganization';
-import TenantPicker from './components/TenantPicker';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Drivers from './pages/Drivers';
@@ -54,21 +52,13 @@ import { PageLoader, Spinner } from '@/components/ui/spinner';
 // Add page imports here
 
 const TenantGate = ({ children }) => {
-  const { tenantId, isAppOwner, loading, reload, needsTenantChoice } = useTenant();
+  const { tenantId, isAppOwner, loading, reload } = useTenant();
   const { isLoadingAuth } = useAuth();
   const { data: user, isLoading: userLoading, isFetched: userFetched } = useMe();
 
   // Esperar a tener tenant resuelto Y el perfil del usuario antes de decidir, para no
   // mostrar la app vacía un instante ni parpadear el onboarding.
   if (loading || isLoadingAuth || (userLoading && !userFetched)) return null;
-
-  // Ambiguo (Módulo 18): el email pertenece a más de una organización y todavía no
-  // hay ninguna elegida. Se revisa ANTES que needsOnboarding — sin esto, un usuario
-  // multi-tenant en su primer login vería el onboarding de "crear organización" en
-  // vez del selector, porque tenantId también es null en este caso.
-  if (user && !tenantId && !isAppOwner && needsTenantChoice) {
-    return <TenantPicker user={user} />;
-  }
 
   // Cualquier usuario autenticado que aún no pertenece a un tenant pasa primero por el
   // onboarding: ahí elige crear su organización (prueba de 30 días) o unirse a una
@@ -127,9 +117,6 @@ const AppShell = () => {
 
       {/* Protected routes — unauthenticated users redirect to /login */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-        {/* Fuera de TenantGate a propósito (Módulo 18): un usuario que ya tiene
-            tenant activo también debe poder llegar aquí para unirse a otro. */}
-        <Route path="/join-organization" element={<JoinOrganization />} />
         <Route element={
           <TenantGate>
             <Layout />
