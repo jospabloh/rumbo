@@ -176,18 +176,27 @@ Deno.serve(async (req) => {
       is_app_owner: isAppOwner,
       needs_onboarding: false,
       write_access: writeAccess,
-      tenant: {
-        id: tenant.id,
-        tenant_name: tenant.tenant_name,
-        slogan: tenant.slogan,
-        logo_url: tenant.logo_url,
-        color_primary: tenant.color_primary,
-        color_secondary: tenant.color_secondary,
-        color_accent: tenant.color_accent,
-        color_background: tenant.color_background,
-        plan: tenant.plan,
-        status: tenant.status,
-      },
+      // El registro COMPLETO, no un subconjunto de campos elegidos a mano.
+      // CORRECCIÓN 2026-09-10: el cliente (TenantContext.jsx) usaba este
+      // objeto solo para nada y volvía a buscar el tenant por su cuenta en
+      // `base44.entities.TenantLicense.list()` — una llamada gateada por RLS
+      // (`id === {{user.data.tenant_id}}`) que depende de que la plataforma ya
+      // haya refrescado su propia vista de `user.data.tenant_id` para ESTE
+      // usuario. Un usuario recién unido por código (`joinTenant`) quedó
+      // exactamente en esa ventana: el documento en la base de datos ya tenía
+      // el `tenant_id` correcto (confirmado leyéndolo directo), pero la
+      // llamada RLS del cliente, inmediatamente después, no devolvía ese
+      // tenant en la lista — así que `TenantContext` no encontraba nada,
+      // `tenantId` se quedaba en null y la app lo regresaba al menú de
+      // onboarding a pesar de que la unión ya había funcionado. Mismo
+      // principio que el módulo 22 del estándar (nunca decidir con una lectura
+      // cuya frescura depende de la sesión/JWT del llamador) aplicado un nivel
+      // arriba: esta función ya resuelve el tenant correcto vía
+      // `asServiceRole`, así que el cliente debe usar ESTE objeto directamente
+      // en vez de volver a descubrirlo por su cuenta. No es una fuga de datos:
+      // la RLS de lectura de `TenantLicense` ya concede el registro entero a
+      // cualquier rol en cuanto esa misma comparación empareja.
+      tenant,
     });
   } catch (error) {
     return Response.json({ error: (error as Error).message }, { status: 500 });
