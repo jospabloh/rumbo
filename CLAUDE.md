@@ -1296,7 +1296,7 @@ por `TenantLicense.list()` no incluía a Car-Go Rent aunque el campo ya
 estuviera bien escrito, `TenantContext` no encontraba nada, `tenantId` se
 quedaba en `null`, y `TenantGate` interpretaba eso como "todavía no tienes
 organización" — de vuelta al onboarding, en bucle, sin ningún error visible
-en ningú n lado.
+en ningún lado.
 
 **Por qué crear una organización nueva nunca lo había mostrado:** la misma
 RLS tiene una PRIMERA rama, `data.owner_email === {{user.email}}` — y el
