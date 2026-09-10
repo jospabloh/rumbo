@@ -1666,7 +1666,7 @@ comparó contra el comentario de `plans.js` que decía qué se esperaba.
   justo el agujero que esta guarda tapa.
 - Esquema empujado a producción vía el MCP de Base44 y **releído con una llamada
   independiente** (no el eco de la escritura): los dos `default` ya no están, y
-  las 24 propiedades, el `required`, el `rls` de entidad y los diez candados
+  las 23 propiedades, el `required`, el `rls` de entidad y los once candados
   `write:false` del módulo 1 siguen intactos. Antes de empujar se comparó el
   archivo del repo contra el esquema desplegado campo por campo, para no arrastrar
   deriva ajena en el push — no había ninguna (a diferencia de `Driver.jsonc`).
@@ -1759,3 +1759,15 @@ deploy de las funciones (`npm run deploy`, módulo 11) para que los tres arreglo
 de `extractLogoColors`/`aiIntakeTurn` corran de verdad: hasta entonces el backend
 sigue sirviendo las versiones sin validar. El fix del cupo **no** depende de ese
 deploy.
+
+### Nota de mecánica: `update_entity_schema` reescribe el `.jsonc` del repo
+
+Empujar el esquema por el MCP no sólo toca el backend: **también escribe la
+definición en `base44/entities/<Nombre>.jsonc` y el reverse-sync lo manda a
+`main`** — reformateado a la forma canónica de la plataforma (claves en orden
+alfabético, unicode escapado, JSON de dos espacios). O sea que un PR que edite un
+`.jsonc` a mano Y empuje el esquema **se va a encontrar en conflicto con su propia
+base** unos minutos después. Pasó en esta pasada. La resolución correcta es
+quedarse con la de `main` (ya trae el cambio, y es la forma que la plataforma va
+a reimponer de todos modos) y comprobar que es **equivalente**, no parecida:
+23 propiedades, los once `rls.write:false`, `required` y las cuatro ops de `rls`.
