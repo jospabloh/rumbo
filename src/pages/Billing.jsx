@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users, Crown, Shield, Navigation, Wrench, Car, User } from 'lucide-react';
 import { useMe, useRawList } from '@/hooks/useEntities';
+import { useTenant } from '@/lib/TenantContext';
 import { parseLocalDate } from '@/lib/license';
 
 const ROLE_CONFIG = {
@@ -38,17 +39,16 @@ const PLAN_FEATURES = {
 
 export default function Billing() {
   const { data: user, isLoading: meLoading } = useMe();
+  const { tenant: license, loading: tenantLoading } = useTenant();
   const allowed = isAdminOrOwner(user?.role);
-  const licenseQ = useRawList('TenantLicense', { sort: '-created_date', limit: 1, enabled: allowed });
   const vehiclesQ = useRawList('Vehicle', { enabled: allowed });
   const driversQ = useRawList('Driver', { enabled: allowed });
   const membersQ = useRawList('User', { enabled: allowed });
 
-  const license = licenseQ.data?.[0] || null;
   const vehicles = vehiclesQ.data ?? [];
   const drivers = driversQ.data ?? [];
   const members = membersQ.data ?? [];
-  const loading = meLoading || (allowed && (licenseQ.isLoading || vehiclesQ.isLoading || driversQ.isLoading || membersQ.isLoading));
+  const loading = meLoading || tenantLoading || (allowed && (vehiclesQ.isLoading || driversQ.isLoading || membersQ.isLoading));
   const accessDenied = !meLoading && !allowed;
 
   if (loading) {
