@@ -49,10 +49,6 @@ const PLAN_FEATURES = {
 
 export default function Billing() {
   const { data: user, isLoading: meLoading } = useMe();
-  const allowed = isAdminOrOwner(user?.role);
-  const vehiclesQ = useRawList('Vehicle', { enabled: allowed });
-  const driversQ = useRawList('Driver', { enabled: allowed });
-
   // La licencia sale del contexto de tenant, que la resuelve `resolveTenant` por rol de
   // servicio. Antes esta página hacía su propio `TenantLicense.list({sort:'-created_date',
   // limit:1})[0]` desde el cliente: dos problemas a la vez. (1) Depende de que la RLS ya
@@ -62,6 +58,9 @@ export default function Billing() {
   // licencias (hay uno) podía ver aquí la facturación del otro tenant. Hoy acertaba por
   // casualidad de fechas.
   const { tenant: license, loading: tenantLoading } = useTenant();
+  const allowed = isAdminOrOwner(user?.role);
+  const vehiclesQ = useRawList('Vehicle', { enabled: allowed });
+  const driversQ = useRawList('Driver', { enabled: allowed });
 
   const vehicles = vehiclesQ.data ?? [];
   const drivers = driversQ.data ?? [];
@@ -70,7 +69,7 @@ export default function Billing() {
   // alguien. Antes se listaba la entidad `User`, que es otra cosa (cuentas de plataforma,
   // acotadas por su propia RLS) y devolvía 0 mientras el registro tenía tres personas.
   const members = Array.isArray(license?.members) ? license.members : [];
-  const loading = meLoading || (allowed && (tenantLoading || vehiclesQ.isLoading || driversQ.isLoading));
+  const loading = meLoading || tenantLoading || (allowed && (vehiclesQ.isLoading || driversQ.isLoading));
   const accessDenied = !meLoading && !allowed;
 
   if (loading) {
