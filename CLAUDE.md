@@ -1265,6 +1265,86 @@ ni de esquema.
 **No verificado:** el deploy en vivo (pendiente de `npm run deploy:site` —
 módulo 11) ni que Christian repita la invitación una vez desplegado.
 
+## Unirse por código devolvía al menú de onboarding aunque la unión ya había funcionado — la misma trampa del módulo 22, un nivel arriba (2026-09-10)
+
+Reportado en vivo por jose.herrera@acaciaco.com.mx: unirse a Car-Go Rent con
+el código `RUMBO-A3ZUPR` mostraba "¡Te uniste! Preparando tu acceso…" y
+luego regresaba a la pantalla de elegir organización — como si nunca hubiera
+pasado nada.
+
+**Confirmado leyendo la base de datos directo, antes de tocar nada:** la
+unión sí había funcionado. El `User` de jose.herrera tenía `data.tenant_id`
+apuntando correctamente a Car-Go Rent, `role: "driver"`, y el
+`TenantLicense` de Car-Go Rent ya lo llevaba en `members[]`. El guardado
+estaba perfecto — el bug vivía en el cliente, no en `joinTenant`.
+
+**La causa es el módulo 22 del estándar, aplicado un nivel más arriba de
+donde ya lo habíamos cazado.** `resolveTenant` (vía `asServiceRole`, inmune
+a cualquier vista contaminada) siempre resolvía el `tenant_id` correcto —
+pero solo devolvía el id, no el registro. `TenantContext.jsx`'s
+`loadTenant()` tomaba ese id y volvía a buscar el `TenantLicense` completo
+llamando **desde el cliente** a `base44.entities.TenantLicense.list()` — una
+llamada que sí pasa por las reglas de seguridad de la entidad:
+`{"read": {"$or": [{"data.owner_email": "{{user.email}}"}, {"id":
+"{{user.data.tenant_id}}"}]}}`. Para alguien que se acaba de unir por
+código (no es `owner_email` de nada), la única rama que aplica es
+`id === {{user.data.tenant_id}}` — y esa comparación depende de que la
+plataforma ya haya refrescado SU PROPIA vista de `user.data.tenant_id` para
+ese usuario, justo el mismo tipo de lectura que el módulo 22 ya probó que
+puede quedarse atrás del documento real. El resultado: la lista devuelta
+por `TenantLicense.list()` no incluía a Car-Go Rent aunque el campo ya
+estuviera bien escrito, `TenantContext` no encontraba nada, `tenantId` se
+quedaba en `null`, y `TenantGate` interpretaba eso como "todavía no tienes
+organización" — de vuelta al onboarding, en bucle, sin ningún error visible
+en ningú n lado.
+
+**Por qué crear una organización nueva nunca lo había mostrado:** la misma
+RLS tiene una PRIMERA rama, `data.owner_email === {{user.email}}` — y el
+correo del llamador es una identidad estable que no depende de ninguna
+escritura reciente. Quien CREA su tenant siempre entra por esa rama, inmune
+al problema; quien se UNE por código solo puede entrar por la segunda, la
+que sí depende del campo recién escrito. El mismo bug llevaba ahí desde que
+existe `joinTenant`, invisible porque nadie se había unido por código desde
+que el resto de la investigación de esta sesión empezó a poner atención aquí.
+
+**El arreglo no repara la segunda lectura — la elimina, igual que con
+`switchTenant` en su momento.** `resolveTenant/entry.ts` ahora devuelve el
+registro **completo** del tenant (`tenant`, no un subconjunto de campos ni
+solo el id) — ya lo había resuelto por su cuenta vía `asServiceRole`, así que
+no hay ninguna razón para que el cliente lo vuelva a buscar por una vía que
+puede fallar. `TenantContext.jsx` ahora usa ese objeto directo; **solo**
+llama a `TenantLicense.list()` como respaldo si `resolveTenant` falló por
+completo (error de red, no un "no te encontré"). No es una fuga de datos:
+la RLS de lectura de `TenantLicense` ya concede el registro entero a
+cualquier rol en cuanto esa misma comparación empareja — esto solo deja de
+depender de ella para descubrir el tenant la primera vez.
+
+**De paso, un hallazgo de datos, no de código:** revisando el mismo tenant,
+`max_vehicles` y `max_drivers` de Car-Go Rent volvían a tener un tope manual
+(5 y 5) por debajo del que le corresponde a su plan `starter` (15 y 20) —
+mismo tipo de override suelto que ya se había corregido el 2026-08-26 en
+este mismo tenant (`max_vehicles` únicamente, esa vez). Con 10 unidades y
+varios conductores activos, un tope de 5 en cualquiera de los dos ya estaba
+por debajo de lo real. Quitado otra vez vía `$unset` por el MCP de Base44 —
+no hay código que lo esté re-escribiendo (`licensesAdmin`'s `patch` es el
+único escritor y no toca estos campos en ningún otro flujo), así que fue
+otra edición manual, no un bug que vaya a repetirse solo.
+
+**Verificado:** `npm run lint` (22 endpoints), `npm run build`, `npm run
+typecheck`, `npm run test -- --run` (241/241 en los archivos que corrieron;
+las mismas dos suites preexistentes y no relacionadas con este cambio
+siguen fallando por el problema de red del propio entorno de verificación
+ya documentado arriba). `deno check --node-modules-dir=none` sobre
+`resolveTenant/entry.ts` compila limpio. El dato de Car-Go Rent se
+confirmó leído de vuelta (ambos campos ausentes del registro). Sin cambio
+de esquema.
+
+**No verificado:** el deploy en vivo (pendiente de `npm run deploy:site` —
+módulo 11) ni que jose.herrera vea reflejado el cambio después de
+desplegado — su cuenta ya quedó correctamente unida en la base de datos
+desde antes de este fix; el fix es lo que hace falta para que la PRÓXIMA
+persona que se una por código no se quede atorada de la misma forma.
+
 ## La causa real, por fin: `auth.me()` no es confiable para decidir si hay que escribir (2026-09-03)
 
 El fix del `role` de arriba (2026-09-01) era necesario pero no era el bug que
