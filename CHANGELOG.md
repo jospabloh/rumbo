@@ -4,6 +4,32 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.34.7] — 2026-09-10 — un conductor recién unido no podía ver su propio expediente
+
+Mismo caso real del arreglo anterior: con la unión por código ya funcionando,
+la cuenta seguía viendo "Tu expediente no está configurado aún. Contacta al
+administrador." en su perfil de conductor, aunque el registro ya estaba bien
+vinculado.
+
+Causa: las reglas de lectura/edición de `Driver` ataban la excepción "es tu
+propio registro" a la misma comparación de organización que acababa de
+escribirse — y esa comparación puede tardar un instante en reflejarse tras
+unirte. La excepción ahora es independiente: un conductor siempre puede ver y
+editar su propio registro, sin depender de esa ventana.
+
+De paso, al revisar el cambio contra lo que de verdad corre en producción (no
+contra el archivo del repo), se encontró que un despliegue de esquema anterior
+había revertido sin darse cuenta una corrección ya aplicada — se volvió a
+aplicar y se confirmó con una lectura independiente.
+
+**Verificado:** `npm run validate:rls` (28 entidades OK). Esquema desplegado
+releído directamente y confirmado con la corrección aplicada.
+
+**No verificado:** una sesión de navegador real confirmando que el expediente
+ya carga para esa cuenta — no alcanzable desde este entorno.
+
+---
+
 ## [1.34.6] — 2026-09-10 — unirse por código regresaba al menú de onboarding aunque la unión había funcionado
 
 Reportado en vivo: unirse a Car-Go Rent con un código válido mostraba
