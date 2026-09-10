@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       let emailed = false;
       if (ticket.requester_email) {
         try {
-          await base44.integrations.Core.SendEmail({
+          await svc.integrations.Core.SendEmail({
             to: ticket.requester_email,
             subject: `[Rumbo] Respuesta a tu ticket: ${ticket.subject}`,
             body: `${text}\n\n— Equipo de soporte de Rumbo`,

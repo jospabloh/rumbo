@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { Edit2, Save, Palette, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,26 +34,7 @@ export default function TenantEditor({ license, onSaved }) {
     setExtracting(true);
     setLogoError('');
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analiza este logo y extrae una paleta de 4 colores en hex que representen la marca:
-1. primary: el color más dominante/destacado del logo
-2. secondary: color de apoyo o secundario
-3. accent: color de acento o contraste
-4. background: color de fondo apropiado (oscuro si el logo es claro, viceversa)
-
-Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas texto adicional.`,
-        file_urls: [fileUrl],
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            primary: { type: 'string' },
-            secondary: { type: 'string' },
-            accent: { type: 'string' },
-            background: { type: 'string' },
-          }
-        }
-      });
-      const c = /** @type {{ primary?: string; secondary?: string; accent?: string; background?: string }} */ (result);
+      const c = await invokeFunction('extractLogoColors', { file_url: fileUrl });
       setForm(f => ({
         ...f,
         color_primary: c.primary || f.color_primary,

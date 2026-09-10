@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     ).trim();
     if (!pushed && to) {
       try {
-        await base44.integrations.Core.SendEmail({
+        await svc.integrations.Core.SendEmail({
           to,
           subject: `[Rumbo] Nuevo ticket (${priority}): ${stripHtml(subject)}`,
           body: [
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     let notified = false;
     if (user.email) {
       try {
-        await base44.integrations.Core.SendEmail({
+        await svc.integrations.Core.SendEmail({
           to: user.email,
           subject: `Recibimos tu solicitud: ${stripHtml(subject)}`,
           body: [

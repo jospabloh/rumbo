@@ -49,26 +49,7 @@ export default function TenantOnboarding({ onComplete, onBack }) {
     setError('');
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file: logoFile });
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analiza este logo y extrae una paleta de 4 colores en hex que representen la marca:
-1. primary: el color más dominante/destacado del logo
-2. secondary: color de apoyo o secundario
-3. accent: color de acento o contraste
-4. background: color de fondo apropiado (oscuro si el logo es claro, viceversa)
-
-Responde SOLO el JSON con los 4 colores en formato hex (#RRGGBB). No incluyas texto adicional.`,
-        file_urls: [file_url],
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            primary: { type: 'string' },
-            secondary: { type: 'string' },
-            accent: { type: 'string' },
-            background: { type: 'string' },
-          }
-        }
-      });
-      const colorResult = /** @type {{ primary?: string; secondary?: string; accent?: string; background?: string }} */ (result);
+      const colorResult = await invokeFunction('extractLogoColors', { file_url });
       setColors({
         primary: colorResult.primary || '#3b82f6',
         secondary: colorResult.secondary || '#64748b',

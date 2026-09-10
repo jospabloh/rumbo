@@ -4,9 +4,9 @@
  * diseñar e implementar (no un "no funciona" sin contexto).
  *
  * Portable entre apps del portafolio ACACIA: lo único específico de la app es
- * `APP_CONTEXT` (nombre + módulos). El motor es el LLM de Base44
- * (`base44.integrations.Core.InvokeLLM`), que ya se usa client-side en la app,
- * así que no requiere backend nuevo.
+ * el contexto (nombre + módulos, definido en el backend `aiIntakeTurn`). El
+ * motor es el LLM de Base44, invocado desde el backend para proteger los
+ * créditos de integración.
  *
  * Flujo (entrevista conversacional, una pregunta a la vez):
  *   startIntake() → primera pregunta
@@ -18,25 +18,11 @@
  * al correo sin depender de un deploy de esquema), y además se manda como campo
  * estructurado `ai_brief` para render enriquecido en Mission Control.
  */
-import { base44 } from '@/api/base44Client';
-
-// —— Contexto específico de la app (lo único que cambia al portar) ———————————————
-export const APP_CONTEXT = {
-  name: 'Rumbo',
-  // Descripción corta del dominio para orientar las preguntas del BA/PO.
-  domain:
-    'SaaS multi-tenant para administrar flotillas de transporte: vehículos, ' +
-    'conductores, rentas/cobros, gastos, mantenimiento de taller, alertas de ' +
-    'vencimientos, ubicación de conductores y mensajería.',
-  // Módulos/pantallas conocidas — ayudan a la IA a ubicar el área afectada.
-  modules: [
-    'Vehículos', 'Conductores', 'Rentas', 'Gastos', 'Taller (mantenimiento/inventario)',
-    'Alertas', 'Ubicación', 'Mensajes', 'Importar', 'Admin y permisos', 'Mi licencia',
-  ],
-};
+import { invokeFunction } from '@/lib/invokeFunction';
 
 // Cuántas preguntas como máximo antes de forzar el brief (evita entrevistas
 // eternas y acota el costo de LLM). El modelo puede cerrar antes.
+// El backend (aiIntakeTurn) tiene su propia copia de este límite.
 export const MAX_QUESTIONS = 6;
 
 // Neutraliza intentos de inyección de prompt en el texto libre del usuario antes
@@ -47,96 +33,6 @@ function sanitize(text = '') {
     .replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{S}\n]/gu, '')
     .trim()
     .slice(0, 4000);
-}
-
-const KIND_LABEL = { feature: 'nueva funcionalidad / mejora', bug: 'reporte de incidencia' };
-
-// Esquema de la respuesta del modelo en cada turno: o una pregunta, o el brief.
-const TURN_SCHEMA = {
-  type: 'object',
-  properties: {
-    done: { type: 'boolean' },
-    // Presente cuando done=false.
-    question: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        hint: { type: 'string' },
-        // Respuestas rápidas sugeridas (chips) — opcional.
-        suggestions: { type: 'array', items: { type: 'string' } },
-      },
-    },
-    // Presente cuando done=true.
-    brief: {
-      type: 'object',
-      properties: {
-        kind: { type: 'string', enum: ['feature', 'bug'] },
-        title: { type: 'string' },
-        summary: { type: 'string' },
-        affected_area: { type: 'string' },
-        // Feature / mejora
-        user_story: { type: 'string' },
-        acceptance_criteria: { type: 'array', items: { type: 'string' } },
-        scope_in: { type: 'array', items: { type: 'string' } },
-        scope_out: { type: 'array', items: { type: 'string' } },
-        // Incidencia
-        repro_steps: { type: 'array', items: { type: 'string' } },
-        expected_behavior: { type: 'string' },
-        actual_behavior: { type: 'string' },
-        severity: { type: 'string', enum: ['low', 'normal', 'high', 'critical'] },
-        // Comunes
-        impact: { type: 'string' },
-        priority_suggestion: { type: 'string', enum: ['low', 'normal', 'high'] },
-        open_questions: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['kind', 'title', 'summary'],
-    },
-  },
-  required: ['done'],
-};
-
-function systemPreamble(kind) {
-  return `Eres un Analista de Negocio (BA) y Product Owner (PO) experto que atiende la mesa de soporte de "${APP_CONTEXT.name}".
-Dominio de la app: ${APP_CONTEXT.domain}
-Módulos/pantallas: ${APP_CONTEXT.modules.join(', ')}.
-
-Estás atendiendo un caso de tipo: ${KIND_LABEL[kind] || kind}.
-
-Tu objetivo: entrevistar al solicitante (que NO es técnico) con preguntas claras y
-breves, UNA A LA VEZ, para reunir todo lo necesario y que un desarrollador pueda
-pasar directo a DISEÑAR e IMPLEMENTAR sin volver a preguntar.
-
-Reglas de la entrevista:
-- Habla en español mexicano, cálido y concreto. Nada de tecnicismos.
-- Una sola pregunta por turno. Que sea la de mayor valor según lo que ya sabes.
-- No repitas lo que el usuario ya respondió. No hagas preguntas obvias ni de relleno.
-- Ofrece 2-4 "suggestions" como respuestas rápidas cuando aplique (ej. pantallas, opciones).
-- Para NUEVA FUNCIONALIDAD, cubre: quién lo necesita (rol), qué quiere lograr y para qué
-  (beneficio/negocio), en qué pantalla/módulo, con qué datos/reglas, casos límite, y cómo
-  sabrá que quedó bien (criterios de aceptación). Define alcance (incluye / NO incluye).
-- Para INCIDENCIA, cubre: pasos exactos para reproducir, qué esperaba vs qué pasó, en qué
-  pantalla/módulo, desde cuándo, a cuántos afecta, si hay mensaje de error o folio, y
-  severidad/impacto en la operación.
-- Cierra la entrevista (done=true) en cuanto tengas lo suficiente para un brief accionable,
-  sin exceder ${MAX_QUESTIONS} preguntas. Antes de eso, done=false con la siguiente pregunta.
-- Al cerrar, entrega el brief completo y bien redactado (title, summary, criterios, etc.).
-  Redacta user_story como "Como <rol>, quiero <capacidad>, para <beneficio>".
-  Deja en open_questions lo que quede pendiente de validar con el negocio.`;
-}
-
-function conversationBlock(subject, description, history) {
-  const lines = [
-    `Asunto: ${sanitize(subject)}`,
-    `Descripción inicial del solicitante: ${sanitize(description)}`,
-    '',
-    'Entrevista hasta ahora:',
-  ];
-  if (!history.length) lines.push('(aún no has hecho preguntas)');
-  for (const turn of history) {
-    lines.push(`P (tú): ${sanitize(turn.question)}`);
-    lines.push(`R (solicitante): ${sanitize(turn.answer)}`);
-  }
-  return lines.join('\n');
 }
 
 /**
@@ -179,41 +75,14 @@ function conversationBlock(subject, description, history) {
  * @returns {Promise<IntakeTurnResult>}
  */
 export async function intakeTurn(kind, { subject = '', description = '', history = [] } = {}) {
-  const forceClose = history.length >= MAX_QUESTIONS;
-  const prompt = `${systemPreamble(kind)}
-
-${conversationBlock(subject, description, history)}
-
-${forceClose
-    ? 'Ya alcanzaste el máximo de preguntas: cierra ahora (done=true) y entrega el brief con lo que tengas.'
-    : 'Decide: ¿te falta información clave? Si sí, done=false y formula la SIGUIENTE pregunta. Si ya es suficiente, done=true y entrega el brief.'}
-
-Responde SOLO el JSON del esquema.`;
-
-  const out = /** @type {IntakeTurnResult} */ (await base44.integrations.Core.InvokeLLM({
-    prompt,
-    add_context_from_internet: false,
-    response_json_schema: TURN_SCHEMA,
-  })) || /** @type {IntakeTurnResult} */ ({ done: false });
-  // Salvaguarda: si el modelo se pasa del límite sin cerrar, forzamos cierre en
-  // el siguiente turno vía forceClose; aquí normalizamos la forma.
-  if (out.done && out.brief) {
-    out.brief.kind = out.brief.kind || kind;
-    return out;
-  }
-  if (out.question && out.question.text) {
-    return { done: false, question: out.question };
-  }
-  // Respuesta degenerada → cerramos con un brief mínimo desde lo capturado.
-  return {
-    done: true,
-    brief: {
-      kind,
-      title: sanitize(subject) || 'Solicitud de soporte',
-      summary: sanitize(description),
-      open_questions: ['La IA no pudo estructurar el caso; revisar con el solicitante.'],
-    },
-  };
+  // La llamada a InvokeLLM vive ahora en el backend (aiIntakeTurn) para proteger
+  // los créditos de integración. El cliente solo envía los inputs de la entrevista.
+  return /** @type {IntakeTurnResult} */ (await invokeFunction('aiIntakeTurn', {
+    kind,
+    subject,
+    description,
+    history,
+  }));
 }
 
 const bullets = (arr) => (Array.isArray(arr) && arr.length ? arr.map((x) => `- ${x}`).join('\n') : null);

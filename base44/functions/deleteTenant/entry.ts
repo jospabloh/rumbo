@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
           DEFAULT_SUPPORT_EMAIL
         ).trim();
         if (to) {
-          await base44.integrations.Core.SendEmail({
+          await svc.integrations.Core.SendEmail({
             to,
             subject: `[Rumbo] Tenant eliminado: ${stripHtml(tenantName || tenantId)}`,
             body: ticketBody,
