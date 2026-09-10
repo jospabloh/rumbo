@@ -21,6 +21,14 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-09-10',
+    title: 'Invitar usuarios por correo, arreglado',
+    items: [
+      'Corregido: en Administración, invitar a alguien por correo fallaba con un error genérico ("Could not validate credentials") sin importar el correo o el rol elegido.',
+      'Ahora, al invitar, la app ya no manda una invitación automática: agrega a la persona a tu organización y te dice el link de inicio de sesión para compartirle — ella entra por su cuenta (con Google o creando una contraseña, usando ese mismo correo) y la app la reconoce sola.',
+    ],
+  },
+  {
     date: '2026-09-07',
     title: 'Correcciones internas y un campo que no hacía nada',
     items: [
