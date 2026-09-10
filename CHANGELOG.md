@@ -4,6 +4,39 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.34.5] — 2026-09-10 — invitar a un usuario por correo no funcionaba para el owner de un tenant
+
+Reportado en vivo por Christian Cabral (owner de Car-Go Rent): "Invitar"
+respondía `Could not validate credentials` para cualquier correo, con
+cualquier rol. Reproducido contra el endpoint real de Base44
+(`POST /apps/{id}/users/invite-user`): un token de sesión normal de un
+tenant owner recibe exactamente el mismo 401 que un Bearer inválido a
+propósito — ese endpoint de la PLATAFORMA de Base44 nunca acepta la sesión
+de un usuario final de la app, sin importar su rol dentro del tenant, y el
+SDK no expone un equivalente `asServiceRole.auth` para llamarlo con
+credenciales elevadas desde una función de servidor. `InviteForm.jsx` ya no
+llama a `base44.auth.inviteUser` en absoluto: agrega el correo a
+`members[]` (lo mismo que ya persiste, y lo único que de verdad ata a la
+persona al tenant) y le dice al admin que comparta el link de login — la
+persona entra por su cuenta (Google o registro con correo/contraseña, mismo
+correo) y `resolveTenant` la reconoce sola por `members[]`, igual que ya
+hace con un código de unión.
+
+**Verificado:** `npm run lint` (20 endpoints), `npm run build`, `npm run
+typecheck`, `npm run test -- --run` (241/241 en los archivos que corrieron;
+dos suites de test preexistentes — `permissionsSync.test.js` y
+`modulePerms.test.js`, ninguna relacionada con este archivo — fallan en este
+sandbox con `[Base44 SDK Error] undefined: Network Error` al importar
+`TenantContext.jsx`, un problema de red del entorno de verificación al
+montar el cliente de Base44 durante la colección de tests, no de este
+cambio). Sin cambio de RLS ni de esquema.
+
+**No verificado:** el deploy en vivo (pendiente de `npm run deploy:site` —
+módulo 11: mergear no deploya el frontend) ni una repetición real de
+Christian invitando por correo una vez desplegado.
+
+---
+
 ## [1.34.4] — 2026-09-07 — the `auth.me()`-contamination fix from 1.34.3 only covered 5 of the 14 functions reading `user.data`
 
 Routine audit pass. The 2026-09-03 finding — `auth.me()`'s convenience `.data`
