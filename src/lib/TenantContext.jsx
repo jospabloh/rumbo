@@ -36,27 +36,35 @@ export function TenantProvider({ children }) {
 
       // Fuente de verdad: la función de servidor resuelve y persiste el tenant_id
       // (y el rol del invitado en su primer login) con service role. Robusto y escalable.
-      let resolvedId = null;
+      let resolvedTenant = null;
       try {
         const body = await invokeFunction('resolveTenant', {});
-        resolvedId = body?.tenant_id || null;
+        resolvedTenant = body?.tenant || null;
         setIsAppOwner(!!body?.is_app_owner);
       } catch (e) {
         console.error('resolveTenant falló, usando descubrimiento cliente:', e);
       }
 
-      // La licencia completa (branding, plan, etc.) se lee del cliente; la RLS ya lo
-      // permite porque el usuario pertenece al tenant.
-      // Límite alineado con resolveTenant (1000): con 50 un owner cuyo tenant no estaba
-      // entre los 50 más recientes quedaba sin resolver y caía al onboarding en bucle.
-      const all = await base44.entities.TenantLicense.list('-created_date', 1000).catch(() => []);
-      const email = (user.email || '').toLowerCase();
+      // CORRECCIÓN 2026-09-10: antes esta función solo se quedaba con el
+      // `tenant_id` que devolvía resolveTenant y volvía a buscar el registro
+      // completo por su cuenta en `TenantLicense.list()` — una llamada gateada
+      // por RLS (`id === {{user.data.tenant_id}}`) cuya frescura depende de que
+      // la plataforma ya haya refrescado su propia vista de `user.data` para
+      // este usuario. Un usuario recién unido por código (`joinTenant`) quedó
+      // exactamente en esa ventana: el documento ya tenía el tenant_id correcto
+      // (confirmado leyéndolo directo en la base de datos), pero esta misma
+      // llamada, hecha segundos después, no devolvía ese tenant en la lista —
+      // así que `found` se quedaba en null y la app regresaba al menú de
+      // onboarding a pesar de que la unión ya había funcionado. resolveTenant
+      // ya resuelve el tenant correcto vía `asServiceRole`, así que ahora se usa
+      // ese objeto directamente; `TenantLicense.list()` solo se llama como
+      // respaldo si la función de servidor falló por completo (network/error),
+      // nunca para redescubrir un tenant que el servidor ya identificó.
+      let found = resolvedTenant;
 
-      let found = resolvedId ? all.find(t => t.id === resolvedId) || null : null;
-
-      // Respaldo: si la función no resolvió, descubrir en cliente (sin caer a all[0],
-      // que en multi-tenant asignaría al tenant equivocado).
       if (!found) {
+        const all = await base44.entities.TenantLicense.list('-created_date', 1000).catch(() => []);
+        const email = (user.email || '').toLowerCase();
         if (user.role === 'owner' || user.role === 'admin') {
           found = (user.data?.tenant_id && all.find(t => t.id === user.data.tenant_id))
             || all.find(t => t.created_by_id === user.id)
