@@ -20,35 +20,42 @@ export default function InviteForm({ tenant, onInvited }) {
     setError('');
     const cleanEmail = email.trim().toLowerCase();
     try {
-      // base44.auth.inviteUser — NOT base44.users.inviteUser. That other one is
-      // Base44's own platform/builder invite: its role is restricted to
-      // literally 'user' | 'admin' (throws otherwise), and 'admin' there grants
-      // BASE44 STUDIO co-admin over this app's schema/functions/deploy — nothing
-      // to do with this app's own tenant role model. Every option in the Select
-      // below except "Admin" and "Usuario" (4 of 6, including this form's own
-      // default, "Conductor") would have thrown reaching for it, and picking
-      // "Admin" would have silently handed the invitee real build access over
-      // the whole app instead of just an admin role on this tenant.
-      // `auth.inviteUser` just creates the account; the actual app role comes
-      // from `members[]` below, exactly like the join-code path
-      // (joinTenant/resolveTenant) — so it always gets the neutral platform
-      // role every self-registered user starts with.
-      await base44.auth.inviteUser(cleanEmail, 'user');
-      // Registrar al invitado en members[] del tenant: es lo que ata al usuario a este
-      // tenant (RLS de TenantLicense por members.email) y permite el descubrimiento en
-      // el primer login del invitado.
+      // NUNCA llamar a base44.auth.inviteUser ni base44.users.inviteUser desde
+      // aquí (2026-09-10, hallazgo real: Christian Cabral, owner de Car-Go
+      // Rent, invitando desde su propia sesión — la app responde
+      // "Could not validate credentials"). Reproducido contra el endpoint real
+      // de Base44 (`POST /apps/{id}/users/invite-user`): un token de sesión
+      // normal de un tenant owner produce el mismo 401 que un Bearer inválido a
+      // propósito — este endpoint de la PLATAFORMA de Base44 no acepta el token
+      // de sesión de un usuario final de la app, sin importar su rol dentro del
+      // tenant; el SDK tampoco expone un equivalente en `asServiceRole` (no hay
+      // `asServiceRole.auth`) para llamarlo con credenciales elevadas desde una
+      // función de servidor. Es, en la práctica, una vía que solo funciona (si
+      // acaso) para quien administra la app en el estudio de Base44 — nunca
+      // para el owner de un tenant.
+      //
+      // La app ya no necesita esa llamada para que la invitación funcione: el
+      // mismo mecanismo que ya usa el código de unión (joinTenant/resolveTenant)
+      // sirve aquí. Agregar el correo a members[] es lo único que realmente ata
+      // a la persona a este tenant; en cuanto esa persona inicie sesión por su
+      // cuenta (Google o registro con correo/contraseña, usando ESTE MISMO
+      // correo), `resolveTenant` la reconoce por `members[]` y la engancha sola
+      // — no hace falta que la cuenta exista de antemano.
       if (tenant?.id) {
         const existing = Array.isArray(tenant.members) ? tenant.members : [];
-        if (!existing.some(m => m.email?.toLowerCase() === cleanEmail)) {
-          await base44.entities.TenantLicense.update(tenant.id, {
-            members: [...existing, { email: cleanEmail, role }],
-          });
+        if (existing.some(m => m.email?.toLowerCase() === cleanEmail)) {
+          setError('Ese correo ya está en tu organización.');
+          setLoading(false);
+          return;
         }
+        await base44.entities.TenantLicense.update(tenant.id, {
+          members: [...existing, { email: cleanEmail, role }],
+        });
       }
       setDone(true);
-      setTimeout(() => { setDone(false); setEmail(''); onInvited(); }, 2000);
+      setTimeout(() => { setDone(false); setEmail(''); onInvited(); }, 3500);
     } catch (err) {
-      setError(err?.message || 'No se pudo enviar la invitación. Inténtalo de nuevo.');
+      setError(err?.message || 'No se pudo registrar la invitación. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
