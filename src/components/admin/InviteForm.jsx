@@ -89,9 +89,20 @@ export default function InviteForm({ tenant, onInvited }) {
         </div>
         <Button size="sm" onClick={send} disabled={loading || done || !email.trim()} className="h-9 gap-2">
           {done ? <CheckCircle2 className="w-4 h-4 text-success" /> : <UserPlus className="w-4 h-4" />}
-          {done ? 'Enviado' : 'Invitar'}
+          {done ? 'Agregado' : 'Invitar'}
         </Button>
       </div>
+      {done ? (
+        <p className="text-xs text-success">
+          Listo. Dile a esa persona que entre a{' '}
+          <span className="font-medium">{typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login'}</span>{' '}
+          con Google o registrando una contraseña, usando este mismo correo — la app la reconoce sola en cuanto inicie sesión.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          No se envía ningún correo de invitación: agrega a la persona a esta organización, y ella entra por su cuenta con este email.
+        </p>
+      )}
       <FormError>{error}</FormError>
     </div>
   );
