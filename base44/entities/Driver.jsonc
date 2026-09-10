@@ -1,109 +1,18 @@
 {
+  "type": "object",
   "name": "Driver",
   "properties": {
-    "address_proof_file_url": {
+    "tenant_id": {
+      "type": "string",
+      "title": "Tenant",
       "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
+        "write": false
       },
-      "title": "Comprobante de domicilio",
-      "type": "string"
-    },
-    "aval_name": {
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      },
-      "title": "Nombre del aval",
-      "type": "string"
-    },
-    "background_check_date": {
-      "format": "date",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      },
-      "title": "Fecha de antecedentes",
-      "type": "string"
+      "description": "Tenant al que pertenece este registro. Server-authoritative en la pr\u00e1ctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, as\u00ed que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garant\u00eda incluso si alguien llama a la entidad directo por SDK, salt\u00e1ndose guardedEntityWrite."
     },
     "full_name": {
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      },
+      "type": "string",
       "title": "Nombre completo",
-      "type": "string"
-    },
-    "hire_date": {
-      "format": "date",
       "rls": {
         "write": {
           "$or": [
@@ -124,116 +33,11 @@
             }
           ]
         }
-      },
-      "title": "Fecha de contrataci\u00f3n",
-      "type": "string"
-    },
-    "ine_file_url": {
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      },
-      "title": "Archivo de INE",
-      "type": "string"
-    },
-    "license_expiry": {
-      "format": "date",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      },
-      "title": "Vencimiento de licencia",
-      "type": "string"
-    },
-    "license_file_url": {
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      },
-      "title": "Archivo de licencia",
-      "type": "string"
+      }
     },
     "license_no": {
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      },
+      "type": "string",
       "title": "No. de licencia",
-      "type": "string"
-    },
-    "phone": {
-      "title": "Tel\u00e9fono",
-      "type": "string"
-    },
-    "photo_url": {
       "rls": {
         "write": {
           "$or": [
@@ -254,11 +58,12 @@
             }
           ]
         }
-      },
-      "title": "Foto",
-      "type": "string"
+      }
     },
-    "profile_id": {
+    "license_expiry": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimiento de licencia",
       "rls": {
         "write": {
           "$or": [
@@ -279,13 +84,39 @@
             }
           ]
         }
-      },
-      "title": "ID de perfil vinculado",
-      "type": "string"
+      }
+    },
+    "background_check_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de antecedentes",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "rating": {
-      "maximum": 5,
+      "type": "number",
       "minimum": 0,
+      "maximum": 5,
+      "title": "Calificaci\u00f3n",
       "rls": {
         "write": {
           "$or": [
@@ -306,11 +137,197 @@
             }
           ]
         }
-      },
-      "title": "Calificaci\u00f3n",
-      "type": "number"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "inactive"
+      ],
+      "title": "Estado",
+      "default": "active",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha de contrataci\u00f3n",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "phone": {
+      "type": "string",
+      "title": "Tel\u00e9fono"
+    },
+    "photo_url": {
+      "type": "string",
+      "title": "Foto",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "license_file_url": {
+      "type": "string",
+      "title": "Archivo de licencia",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ine_file_url": {
+      "type": "string",
+      "title": "Archivo de INE",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "address_proof_file_url": {
+      "type": "string",
+      "title": "Comprobante de domicilio",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "referred_by_driver_id": {
+      "type": "string",
+      "title": "Referido por (conductor)",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      }
     },
     "referral_bonus_paid": {
+      "type": "boolean",
+      "title": "Bono de referido aplicado",
       "default": false,
       "rls": {
         "write": {
@@ -332,11 +349,11 @@
             }
           ]
         }
-      },
-      "title": "Bono de referido aplicado",
-      "type": "boolean"
+      }
     },
     "referral_credit": {
+      "type": "number",
+      "title": "Cr\u00e9dito de bono por aplicar",
       "default": 0,
       "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta autom\u00e1ticamente de los pr\u00f3ximos cobros generados para este conductor.",
       "rls": {
@@ -359,11 +376,11 @@
             }
           ]
         }
-      },
-      "title": "Cr\u00e9dito de bono por aplicar",
-      "type": "number"
+      }
     },
-    "referred_by_driver_id": {
+    "profile_id": {
+      "type": "string",
+      "title": "ID de perfil vinculado",
       "rls": {
         "write": {
           "$or": [
@@ -384,17 +401,11 @@
             }
           ]
         }
-      },
-      "title": "Referido por (conductor)",
-      "type": "string"
+      }
     },
-    "status": {
-      "default": "active",
-      "enum": [
-        "active",
-        "suspended",
-        "inactive"
-      ],
+    "aval_name": {
+      "type": "string",
+      "title": "Nombre del aval",
       "rls": {
         "write": {
           "$or": [
@@ -415,17 +426,7 @@
             }
           ]
         }
-      },
-      "title": "Estado",
-      "type": "string"
-    },
-    "tenant_id": {
-      "description": "Tenant al que pertenece este registro. Server-authoritative en la pr\u00e1ctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, as\u00ed que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garant\u00eda incluso si alguien llama a la entidad directo por SDK, salt\u00e1ndose guardedEntityWrite.",
-      "rls": {
-        "write": false
-      },
-      "title": "Tenant",
-      "type": "string"
+      }
     }
   },
   "required": [
@@ -452,32 +453,6 @@
             {
               "user_condition": {
                 "role": "dispatcher"
-              }
-            }
-          ]
-        },
-        {
-          "user_condition": {
-            "data.write_access": "enabled"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$and": [
-        {
-          "data.tenant_id": "{{user.data.tenant_id}}"
-        },
-        {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
               }
             }
           ]
@@ -568,7 +543,32 @@
           ]
         }
       ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
+        }
+      ]
     }
-  },
-  "type": "object"
+  }
 }
