@@ -22,6 +22,13 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 const CHANGES = [
   {
     date: '2026-09-10',
+    title: 'Un conductor recién unido ya ve su expediente',
+    items: [
+      'Corregido: un conductor que acababa de unirse a una organización podía ver "Tu expediente no está configurado aún" en su perfil, aunque ya estuviera correctamente vinculado. Si te pasó esto, vuelve a abrir la app: ya deberías ver tu expediente.',
+    ],
+  },
+  {
+    date: '2026-09-10',
     title: 'Unirte con un código ya no te regresa al inicio',
     items: [
       'Corregido: unirte a una organización con un código válido a veces mostraba "¡Te uniste!" y luego regresaba a la pantalla de elegir organización, como si no hubiera funcionado — aunque la unión sí había quedado guardada. Si te pasó esto, vuelve a abrir la app: ya deberías ver tu organización sin tener que repetir el código.',

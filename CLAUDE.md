@@ -1563,3 +1563,60 @@ con **dos** `TenantLicense` ("Car-Go Rent" y "Owner"). Ya tiene `tenant_id`
 persistido, así que la rama 1 lo conserva y no cambia nada para esa cuenta —
 pero si alguien le limpia el binding, `resolveTenant` lo dejará en el más
 reciente de los dos y no habrá forma de moverlo desde la app.
+
+## `Driver.jsonc`: la misma trampa de `resolveTenant` un nivel más abajo, y se revirtió sola una vez (2026-09-10)
+
+Disparado por el mismo caso real de arriba (unirse por código): con el bug del
+selector de organización arreglado, jose.herrera@acaciaco.com.mx quedaba
+correctamente unido a Car-Go Rent (confirmado leyendo el registro), pero
+`DriverProfile.jsx` seguía mostrando "Tu expediente no está configurado aún.
+Contacta al administrador." aunque su `Driver.profile_id` ya apuntaba a él.
+
+**Causa raíz — el mismo patrón que `resolveTenant`, un nivel más abajo.**
+`Driver.read`/`Driver.update` ataban la excepción de auto-lectura del
+conductor (`data.profile_id == {{user.id}}`) **dentro** del mismo `$and` que
+exige `data.tenant_id == {{user.data.tenant_id}}`. Justo después de que
+`resolveTenant` escribe el `tenant_id` nuevo en el perfil, la plataforma tarda
+una ventana corta en reflejar ese valor en las evaluaciones de RLS del cliente
+— la misma inconsistencia ya documentada arriba para `TenantLicense.list()`.
+Mientras esa ventana no cierra, ni siquiera la rama de auto-lectura evalúa,
+porque comparte el `$and` con la comparación de tenant que todavía falla.
+
+**Arreglo:** en `read` y `update`, la rama `data.profile_id ==
+{{user.id}}` sale del `$and` a un `$or` de nivel superior — igual que ya se
+hizo para `owner_email` en `TenantLicense` (módulo 14, 2026-08-24): un
+conductor siempre puede leer/editar (con `write_access` habilitado, en
+`update`) su propio registro, sin importar si `tenant_id` ya se resolvió en
+esta sesión.
+
+**Aplicado dos veces, porque la primera se revirtió sola.** El primer parche
+se aplicó en vivo vía el MCP de Base44 y quedó capturado en el repo por el
+reverse-sync automático de `base44-builder[bot]` (commit `e481964`, el mismo
+día). Al releer el esquema **desplegado** para escribir esta sección —la
+misma disciplina del módulo 14, contra lo que corre, no contra el archivo—
+`read`/`update` habían vuelto a la forma vieja (el `$and` sin partir), aunque
+el archivo del repo ya tenía la forma corregida. La explicación que cuadra con
+el resto de este archivo: alguien corrió `npm run deploy:entities` desde una
+copia local más vieja que el commit del fix, y `deploy:entities` no necesita
+un commit para empujar — sólo el archivo en disco de quien lo corre. Vuelto a
+aplicar y confirmado con una lectura fresca e independiente inmediatamente
+después (no reutilizando el eco de la propia llamada de escritura).
+
+**Lo que esto enseña, y es la misma lección de "un secreto que nadie ha
+releído no está configurado" (módulo 15) aplicada a un esquema:** un fix de
+RLS capturado en el repo por el bot no es un fix verificado en producción —
+sólo prueba que en algún momento coincidieron. Cualquier `deploy:entities`
+posterior desde un checkout desactualizado puede revertirlo sin dejar rastro
+en git. La comprobación que hay que repetir no es "¿está en el archivo?" sino
+"¿qué devuelve `list_entity_schemas` ahora mismo?".
+
+**Verificado:** `npm run validate:rls` (28 entidades OK) contra el archivo del
+repo, que ya coincidía con la forma correcta. Releído el esquema **desplegado**
+vía el MCP de Base44 inmediatamente después de la segunda escritura,
+independiente del cuerpo que la propia llamada de escritura devolvió: confirma
+`read` y `update` con la rama de auto-lectura fuera del `$and`.
+
+**No verificado:** una sesión de navegador real como jose.herrera confirmando
+que `DriverProfile.jsx` ya carga — no alcanzable desde este entorno. El riesgo
+está acotado porque el cambio reutiliza exactamente la forma ya probada en
+`TenantLicense.owner_email` y no toca ninguna otra rama de rol.
