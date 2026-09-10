@@ -4,6 +4,54 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.34.6] — 2026-09-10 — unirse por código regresaba al menú de onboarding aunque la unión había funcionado
+
+Reportado en vivo: unirse a Car-Go Rent con un código válido mostraba
+"¡Te uniste! Preparando tu acceso…" y luego regresaba a la pantalla de
+elegir organización, en bucle. Confirmado leyendo la base de datos
+directamente: la unión SÍ había funcionado — `tenant_id` y el rol quedaron
+bien escritos en el perfil, y el correo quedó agregado a los miembros del
+tenant. El bug estaba en el cliente, no en el guardado.
+
+`resolveTenant` (vía `asServiceRole`) siempre resolvía el tenant correcto,
+pero solo devolvía su `tenant_id`; `TenantContext.jsx` volvía a buscar el
+registro completo llamando a `TenantLicense.list()` desde el cliente — una
+llamada sujeta a las reglas de seguridad, que solo dejan ver ese tenant una
+vez que la propia plataforma reconoce el nuevo `tenant_id` en la sesión. Justo
+después de unirse por código, esa ventana aún no había cerrado: la lista
+regresaba vacía de ese tenant aunque el dato ya estuviera bien guardado, y la
+app interpretaba "no encontré tu organización" como "todavía no tienes una".
+
+`resolveTenant` ahora devuelve el registro completo del tenant (ya lo había
+resuelto por su cuenta, sin depender de esas reglas) y el cliente lo usa
+directo, sin volver a buscarlo por su cuenta — esa segunda búsqueda solo se
+intenta si `resolveTenant` falla por completo (caída de red). Arregla el
+mismo problema para crear una organización nueva, aunque ahí no se había
+reportado (la creadora siempre calificaba por otro criterio que no dependía
+de este mismo campo).
+
+De paso, revisando el mismo tenant: `max_vehicles` y `max_drivers` de Car-Go
+Rent volvían a tener un tope manual (5 y 5) por debajo del que le
+corresponde a su plan (`starter`: 15 y 20) — mismo tipo de dato suelto que ya
+se había corregido el 2026-08-26 en este mismo tenant. Quitado otra vez vía
+el MCP de Base44 (`$unset`); no es código, es un dato.
+
+**Verificado:** `npm run lint` (22 endpoints), `npm run build`, `npm run
+typecheck`, `npm run test -- --run` (241/241 en los archivos que corrieron;
+mismas dos suites preexistentes y no relacionadas fallan por un problema de
+red del entorno de verificación, documentado en la entrada anterior).
+`deno check` sobre `resolveTenant/entry.ts` compila limpio. El dato de
+Car-Go Rent se confirmó leído de vuelta (los dos campos ausentes del
+registro). Sin cambio de esquema.
+
+**No verificado:** el deploy en vivo (pendiente de `npm run deploy:site`) ni
+una repetición real de la unión por código una vez desplegado — la cuenta que
+encontró el bug (jose.herrera@acaciaco.com.mx) ya quedó correctamente unida
+en la base de datos; solo falta que, tras el deploy, recargue la app para
+verlo reflejado.
+
+---
+
 ## [1.34.5] — 2026-09-10 — invitar a un usuario por correo no funcionaba para el owner de un tenant
 
 Reportado en vivo por Christian Cabral (owner de Car-Go Rent): "Invitar"
