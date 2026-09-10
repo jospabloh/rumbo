@@ -1,18 +1,32 @@
 {
   "name": "Driver",
-  "type": "object",
   "properties": {
-    "tenant_id": {
-      "type": "string",
-      "title": "Tenant",
+    "address_proof_file_url": {
       "rls": {
-        "write": false
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
       },
-      "description": "Tenant al que pertenece este registro. Server-authoritative en la práctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, así que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garantía incluso si alguien llama a la entidad directo por SDK, saltándose guardedEntityWrite."
+      "title": "Comprobante de domicilio",
+      "type": "string"
     },
-    "full_name": {
-      "type": "string",
-      "title": "Nombre completo",
+    "aval_name": {
       "rls": {
         "write": {
           "$or": [
@@ -33,90 +47,37 @@
             }
           ]
         }
-      }
-    },
-    "license_no": {
-      "type": "string",
-      "title": "No. de licencia",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      }
-    },
-    "license_expiry": {
-      "type": "string",
-      "format": "date",
-      "title": "Vencimiento de licencia",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      }
+      },
+      "title": "Nombre del aval",
+      "type": "string"
     },
     "background_check_date": {
-      "type": "string",
       "format": "date",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      },
       "title": "Fecha de antecedentes",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      }
+      "type": "string"
     },
-    "rating": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 5,
-      "title": "Calificación",
+    "full_name": {
       "rls": {
         "write": {
           "$or": [
@@ -137,43 +98,12 @@
             }
           ]
         }
-      }
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "active",
-        "suspended",
-        "inactive"
-      ],
-      "title": "Estado",
-      "default": "active",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      }
+      },
+      "title": "Nombre completo",
+      "type": "string"
     },
     "hire_date": {
-      "type": "string",
       "format": "date",
-      "title": "Fecha de contratación",
       "rls": {
         "write": {
           "$or": [
@@ -194,90 +124,37 @@
             }
           ]
         }
-      }
-    },
-    "phone": {
-      "type": "string",
-      "title": "Teléfono"
-    },
-    "photo_url": {
-      "type": "string",
-      "title": "Foto",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      }
-    },
-    "license_file_url": {
-      "type": "string",
-      "title": "Archivo de licencia",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      }
+      },
+      "title": "Fecha de contrataci\u00f3n",
+      "type": "string"
     },
     "ine_file_url": {
-      "type": "string",
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      },
       "title": "Archivo de INE",
-      "rls": {
-        "write": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            }
-          ]
-        }
-      }
+      "type": "string"
     },
-    "address_proof_file_url": {
-      "type": "string",
-      "title": "Comprobante de domicilio",
+    "license_expiry": {
+      "format": "date",
       "rls": {
         "write": {
           "$or": [
@@ -298,11 +175,11 @@
             }
           ]
         }
-      }
+      },
+      "title": "Vencimiento de licencia",
+      "type": "string"
     },
-    "referred_by_driver_id": {
-      "type": "string",
-      "title": "Referido por (conductor)",
+    "license_file_url": {
       "rls": {
         "write": {
           "$or": [
@@ -323,11 +200,117 @@
             }
           ]
         }
-      }
+      },
+      "title": "Archivo de licencia",
+      "type": "string"
+    },
+    "license_no": {
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      },
+      "title": "No. de licencia",
+      "type": "string"
+    },
+    "phone": {
+      "title": "Tel\u00e9fono",
+      "type": "string"
+    },
+    "photo_url": {
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      },
+      "title": "Foto",
+      "type": "string"
+    },
+    "profile_id": {
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      },
+      "title": "ID de perfil vinculado",
+      "type": "string"
+    },
+    "rating": {
+      "maximum": 5,
+      "minimum": 0,
+      "rls": {
+        "write": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "dispatcher"
+              }
+            }
+          ]
+        }
+      },
+      "title": "Calificaci\u00f3n",
+      "type": "number"
     },
     "referral_bonus_paid": {
-      "type": "boolean",
-      "title": "Bono de referido aplicado",
       "default": false,
       "rls": {
         "write": {
@@ -349,13 +332,13 @@
             }
           ]
         }
-      }
+      },
+      "title": "Bono de referido aplicado",
+      "type": "boolean"
     },
     "referral_credit": {
-      "type": "number",
-      "title": "Crédito de bono por aplicar",
       "default": 0,
-      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta automáticamente de los próximos cobros generados para este conductor.",
+      "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta autom\u00e1ticamente de los pr\u00f3ximos cobros generados para este conductor.",
       "rls": {
         "write": {
           "$or": [
@@ -376,11 +359,11 @@
             }
           ]
         }
-      }
+      },
+      "title": "Cr\u00e9dito de bono por aplicar",
+      "type": "number"
     },
-    "profile_id": {
-      "type": "string",
-      "title": "ID de perfil vinculado",
+    "referred_by_driver_id": {
       "rls": {
         "write": {
           "$or": [
@@ -401,11 +384,17 @@
             }
           ]
         }
-      }
+      },
+      "title": "Referido por (conductor)",
+      "type": "string"
     },
-    "aval_name": {
-      "type": "string",
-      "title": "Nombre del aval",
+    "status": {
+      "default": "active",
+      "enum": [
+        "active",
+        "suspended",
+        "inactive"
+      ],
       "rls": {
         "write": {
           "$or": [
@@ -426,7 +415,17 @@
             }
           ]
         }
-      }
+      },
+      "title": "Estado",
+      "type": "string"
+    },
+    "tenant_id": {
+      "description": "Tenant al que pertenece este registro. Server-authoritative en la pr\u00e1ctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, as\u00ed que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garant\u00eda incluso si alguien llama a la entidad directo por SDK, salt\u00e1ndose guardedEntityWrite.",
+      "rls": {
+        "write": false
+      },
+      "title": "Tenant",
+      "type": "string"
     }
   },
   "required": [
@@ -464,69 +463,6 @@
         }
       ]
     },
-    "read": {
-      "$and": [
-        {
-          "data.tenant_id": "{{user.data.tenant_id}}"
-        },
-        {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            },
-            {
-              "data.profile_id": "{{user.id}}"
-            }
-          ]
-        }
-      ]
-    },
-    "update": {
-      "$and": [
-        {
-          "data.tenant_id": "{{user.data.tenant_id}}"
-        },
-        {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
-            },
-            {
-              "data.profile_id": "{{user.id}}"
-            }
-          ]
-        },
-        {
-          "user_condition": {
-            "data.write_access": "enabled"
-          }
-        }
-      ]
-    },
     "delete": {
       "$and": [
         {
@@ -552,6 +488,87 @@
           }
         }
       ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.profile_id": "{{user.id}}"
+        },
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "$and": [
+            {
+              "data.profile_id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "data.write_access": "enabled"
+              }
+            }
+          ]
+        },
+        {
+          "$and": [
+            {
+              "data.tenant_id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
+            },
+            {
+              "user_condition": {
+                "data.write_access": "enabled"
+              }
+            }
+          ]
+        }
+      ]
     }
-  }
+  },
+  "type": "object"
 }
