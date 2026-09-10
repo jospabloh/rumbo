@@ -59,3 +59,19 @@ export function driverLimit(license) {
 
 export const atVehicleLimit = (license, count) => count >= vehicleLimit(license);
 export const atDriverLimit = (license, count) => count >= driverLimit(license);
+
+/**
+ * Cuántos registros consumen cupo: **sólo los que están en operación**.
+ *
+ * Una baja no ocupa lugar. Antes se contaban todas las filas y el efecto era el
+ * contrario del que se vende: Car-Go Rent (plan Starter, 20 conductores) tenía 10
+ * conductores activos y 16 dados de baja, así que la app le decía "26 de 20" y le
+ * bloqueaba dar de alta al siguiente —dentro de su plan— con el mensaje "Mejora tu plan
+ * para agregar más". Con rotación de personal, cualquier cliente acaba ahí: forzado a
+ * subir de plan, o a borrar su propio historial para hacer sitio.
+ *
+ * `status` es `active | suspended | inactive` con default `active`, y un registro sin
+ * `status` cuenta como activo — es lo que la entidad ya asume al crearlo.
+ */
+export const countsTowardQuota = (row) => (row?.status ?? 'active') === 'active';
+export const quotaCount = (rows) => (rows || []).filter(countsTowardQuota).length;

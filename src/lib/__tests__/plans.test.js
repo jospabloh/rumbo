@@ -8,6 +8,7 @@ import {
   driverLimit,
   atVehicleLimit,
   atDriverLimit,
+  quotaCount,
 } from '../plans.js';
 
 describe('PLAN_LIMITS / PLAN_LABELS', () => {
@@ -64,6 +65,27 @@ describe('TenantLicense.jsonc — los cupos NO pueden tener default de esquema',
       expect(schema.properties[field]).not.toHaveProperty('default');
     });
   }
+});
+
+describe('quotaCount() — una baja no ocupa cupo', () => {
+  it('cuenta sólo los activos, y trata un registro sin status como activo', () => {
+    expect(quotaCount([{ status: 'active' }, { status: 'inactive' }, { status: 'suspended' }, {}])).toBe(2);
+    expect(quotaCount([])).toBe(0);
+    expect(quotaCount(undefined)).toBe(0);
+  });
+
+  it('el caso real que lo destapó: Car-Go Rent cabía en Starter y la app lo bloqueaba', () => {
+    // 10 conductores en operación y 16 dados de baja, plan Starter (20 conductores).
+    const drivers = [
+      ...Array(10).fill({ status: 'active' }),
+      ...Array(16).fill({ status: 'inactive' }),
+    ];
+    const starter = { plan: 'starter' };
+    expect(drivers.length).toBe(26); // lo que la app contaba antes
+    expect(atDriverLimit(starter, drivers.length)).toBe(true); // → "26 de 20", bloqueado
+    expect(quotaCount(drivers)).toBe(10);
+    expect(atDriverLimit(starter, quotaCount(drivers))).toBe(false); // dentro de su plan
+  });
 });
 
 describe('atVehicleLimit() / atDriverLimit()', () => {

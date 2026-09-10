@@ -1,5 +1,5 @@
 import { isAdminOrOwner } from '@/lib/permissions';
-import { vehicleLimit, driverLimit, PLAN_LIMITS } from '@/lib/plans';
+import { vehicleLimit, driverLimit, PLAN_LIMITS, quotaCount } from '@/lib/plans';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users, Crown, Shield, Navigation, Wrench, Car, User } from 'lucide-react';
@@ -145,12 +145,12 @@ export default function Billing() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
           <div className="bg-secondary rounded-lg p-4">
             <Truck className="w-4 h-4 text-muted-foreground mb-1" />
-            <p className="text-2xl font-bold text-foreground font-mono tracking-tight">{vehicles.length}</p>
+            <p className="text-2xl font-bold text-foreground font-mono tracking-tight">{quotaCount(vehicles)}</p>
             <p className="text-xs text-muted-foreground">de {Number.isFinite(vehicleLimit(license)) ? vehicleLimit(license) : '∞'} vehículos</p>
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <Users className="w-4 h-4 text-muted-foreground mb-1" />
-            <p className="text-2xl font-bold text-foreground font-mono tracking-tight">{drivers.length}</p>
+            <p className="text-2xl font-bold text-foreground font-mono tracking-tight">{quotaCount(drivers)}</p>
             <p className="text-xs text-muted-foreground">de {Number.isFinite(driverLimit(license)) ? driverLimit(license) : '∞'} conductores</p>
           </div>
           {daysUntilTrial !== null && (

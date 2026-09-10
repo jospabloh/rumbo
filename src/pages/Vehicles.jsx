@@ -10,7 +10,7 @@ import VehicleForm from '@/components/vehicles/VehicleForm';
 import VehicleDetail from '@/components/vehicles/VehicleDetail';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
-import { vehicleLimit, PLAN_LABELS } from '@/lib/plans';
+import { vehicleLimit, PLAN_LABELS, quotaCount } from '@/lib/plans';
 import { useVehicles, useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
 import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 
@@ -59,7 +59,7 @@ export default function Vehicles() {
     } else {
       if (!can('vehicles', 'create')) throw new Error('No tienes permiso para crear vehículos.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
-      if (vehicles.length >= limit) throw new Error(`Alcanzaste el límite de ${limit} vehículos de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
+      if (quotaCount(vehicles) >= limit) throw new Error(`Alcanzaste el límite de ${limit} vehículos de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
       await guardedCreate('Vehicle', data);
     }
     setShowForm(false);
@@ -92,7 +92,7 @@ export default function Vehicles() {
     <div className="p-4 lg:p-6">
       <PageHeader
         title="Vehículos"
-        subtitle={`${vehicles.length}${Number.isFinite(limit) ? ` / ${limit}` : ''} en total`}
+        subtitle={`${quotaCount(vehicles)}${Number.isFinite(limit) ? ` / ${limit}` : ''} en operación · ${vehicles.length} en total`}
         action={!readOnly && can('vehicles', 'create') && (
           <Button size="sm" onClick={() => { setEditVehicle(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Agregar
