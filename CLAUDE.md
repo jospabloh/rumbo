@@ -1202,6 +1202,69 @@ escribió; y el registro con tres copias del `tenant_id` invitaba a teorizar
 sobre cuál era la buena en vez de preguntar por qué ninguna se movía. Cuando un
 write "no toma", mira el log de la escritura antes que la forma del documento.
 
+## `base44.auth.inviteUser` nunca acepta la sesión de un usuario final — el invite ya no lo llama (2026-09-10)
+
+Reportado en vivo por Christian Cabral (owner de Car-Go Rent, por WhatsApp,
+con captura de pantalla): "Invitar" en Administración respondía
+`Could not validate credentials` para cualquier correo, con cualquier rol,
+siempre.
+
+**Reproducido contra el endpoint real, no asumido.** `POST
+https://base44.app/api/apps/{id}/users/invite-user` con un Bearer
+deliberadamente inválido devuelve exactamente el mismo mensaje
+(`Could not validate credentials`, 401) que Christian veía con su propia
+sesión real, mientras que sin cabecera de autorización el mismo endpoint
+responde un mensaje **distinto** (`No authentication header...`). Eso aisla
+la causa: el endpoint recibe el Bearer de Christian, syntax válida, pero lo
+rechaza igual que rechazaría basura — no es un token ausente ni corrupto en
+tránsito, es que ese endpoint de la **plataforma** de Base44 no reconoce como
+válida la sesión normal de un usuario final de la app, sin importar su rol
+dentro del tenant (el propio Christian es `owner` de Car-Go Rent). Revisado
+también el SDK instalado (`node_modules/@base44/sdk/dist/client.js`):
+`serviceRoleModules` (lo que expone `base44.asServiceRole.*` dentro de una
+función Deno) **no incluye un módulo `auth`** — no existe
+`asServiceRole.auth.inviteUser`, así que tampoco hay forma de llamar a este
+endpoint con credenciales elevadas desde una función de servidor. En la
+práctica, este endpoint del SDK no tiene ningún camino que funcione desde
+esta app para un owner de tenant.
+
+**Esto revierte parte de lo documentado en el hallazgo del 2026-08-26** (más
+arriba, "Invitar por correo llamaba al invite de la PLATAFORMA..."): ese fix
+migró correctamente `base44.users.inviteUser` (el invite de colaborador del
+estudio, con roles restringidos a `user`/`admin`) a `base44.auth.inviteUser`
+(supuestamente "pensado para dar de alta a un usuario final de la app"), pero
+nunca se verificó en vivo — quedó anotado explícitamente como "no
+verificado". Christian fue quien de verdad lo probó primero, y ninguno de los
+dos métodos del SDK funciona para un tenant owner.
+
+**El arreglo no repara la llamada — la elimina.** `InviteForm.jsx` ya no
+llama a ningún método de invite de Base44. El propio código ya escribía
+`members[]` del `TenantLicense` al invitar (para que `resolveTenant` la
+reconozca en su primer login, igual que el código de unión) — esa escritura
+es la única pieza que de verdad ata a alguien al tenant. Ahora es la única
+que ocurre: el formulario agrega el correo a `members[]` y le dice al admin
+que comparta el link de login (`{origen}/login`) con la persona invitada;
+en cuanto esa persona entra por su cuenta — Google o registro con
+correo/contraseña, usando ese mismo correo — `resolveTenant` la reconoce sola.
+Se pierde el correo automático de invitación que Base44 mandaría (si es que
+lo manda; tampoco se pudo verificar, porque el endpoint nunca respondió
+éxito), pero se gana que la función **funcione**, para cualquier tenant
+owner, sin depender de un endpoint de plataforma cuyo modelo de permisos no
+es el de esta app.
+
+**Verificado:** `npm run lint` (20 endpoints), `npm run build`, `npm run
+typecheck`, `npm run test -- --run` (241/241 en los archivos que corrieron).
+Dos suites preexistentes (`permissionsSync.test.js`, `modulePerms.test.js`,
+ninguna relacionada con `InviteForm.jsx`) fallan en este sandbox de
+verificación con `[Base44 SDK Error] undefined: Network Error` al importar
+`TenantContext.jsx` durante la colección de tests — confirmado que es un
+problema de red del propio sandbox (no de este cambio) reproduciendo el
+fallo aislado con `npx vitest run` sobre ese archivo solo. Sin cambio de RLS
+ni de esquema.
+
+**No verificado:** el deploy en vivo (pendiente de `npm run deploy:site` —
+módulo 11) ni que Christian repita la invitación una vez desplegado.
+
 ## La causa real, por fin: `auth.me()` no es confiable para decidir si hay que escribir (2026-09-03)
 
 El fix del `role` de arriba (2026-09-01) era necesario pero no era el bug que
