@@ -26,17 +26,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *     defensa (JoinAttempt, ledger persistente — ver ese archivo) por si el
  *     espacio de códigos cambia o un atacante controla muchas cuentas.
  *
- * Módulo 18 (jospabloh/acacia-app-standard → STANDARD.md, revisado 2026-08-26):
- * unirse por código ya NO se rechaza porque el caller pertenezca a otro tenant —
- * el único rechazo legítimo es ya-ser-miembro-de-ESTE-tenant, y eso es idempotente
- * (no un error). Antes esta función devolvía 409 "ya perteneces a otra
- * organización" — el mismo antipatrón que CtrlHQ's `complete-onboarding` nunca
- * tuvo. Unirse mueve el `tenant_id` activo al tenant recién unido de inmediato
- * (como hace CtrlHQ), re-derivando el rol igual que `switchTenant`. Rumbo no
- * tiene una entidad `Membership` separada — la pertenencia sigue viviendo en
- * `TenantLicense.members[]` — así que `resolveTenant`/`switchTenant` siguen
- * siendo quienes descubren y permiten volver a un tenant anterior; esta función
- * solo deja de bloquear la entrada al nuevo.
+ * UN USUARIO, UN TENANT: unirse por código se rechaza con 409 si el caller ya
+ * pertenece a otra organización. Durante un tiempo esa puerta estuvo abierta,
+ * apoyada en un selector de organización que permitía volver a la anterior; ese
+ * selector se retiró (nunca funcionó en producción), así que sin la puerta unirse
+ * a una segunda organización dejaría la primera inalcanzable. La pertenencia vive
+ * en `TenantLicense.members[]` y el binding activo en `data.tenant_id`; darse de
+ * baja de una organización es cosa de su administrador (`manageMember`).
  */
 
 const DEFAULT_JOIN_ROLE = 'driver';
@@ -123,9 +119,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Esta organización no está disponible para unirse en este momento.' }, { status: 403 });
     }
 
+    // UN USUARIO, UN TENANT: quien ya pertenece a una organización no puede unirse a
+    // otra. Sin esta puerta, redimir un código movería el `tenant_id` activo y la
+    // organización anterior quedaría inalcanzable — no hay selector que permita
+    // volver a ella. Unirse a la MISMA a la que ya perteneces sigue siendo
+    // idempotente (cae por debajo y no duplica la fila en members[]).
+    if (selfData?.tenant_id && selfData.tenant_id !== tenant.id) {
+      return Response.json({
+        error: 'Ya perteneces a otra organización. Pide a un administrador que te dé de baja antes de unirte a esta.',
+      }, { status: 409 });
+    }
+
     // Alta idempotente en members[] (no duplica si ya estaba, p. ej. lo invitaron por correo).
-    // Ya no importa a qué otro tenant pertenezca el caller — unirse a ESTE tenant siempre
-    // procede; lo único idempotente es no duplicar la fila si ya era miembro de este mismo.
     const members = Array.isArray(tenant.members) ? tenant.members : [];
     const already = members.find((m) => (m.email || '').toLowerCase() === email);
     if (!already) {

@@ -8,26 +8,21 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  * licencia el usuario ya necesitaría su tenant_id).
  *
  * Resolución:
- *   1. Si ya hay tenant_id guardado en el perfil y sigue existiendo, se conserva —
- *      sin cambios respecto a antes.
- *   2. Si no, se calcula el conjunto COMPLETO de tenants candidatos (creador,
- *      owner_email o miembro en members[] — un mismo email puede aparecer en más de
- *      un TenantLicense a la vez). Con exactamente un candidato se autoasigna, igual
- *      que siempre. Con más de uno NO se adivina cuál: se devuelve
- *      `needs_tenant_choice` con la lista completa para que el cliente muestre un
- *      selector (ver "Módulo 18" en jospabloh/acacia-app-standard → STANDARD.md).
- *      Antes de este módulo se tomaba el primer match por orden de creación y se
- *      persistía para siempre — el segundo tenant no estaba mal resuelto, era
- *      invisible.
+ *   1. Si ya hay tenant_id guardado en el perfil y sigue existiendo, se conserva.
+ *   2. Si no, se toma el PRIMER tenant que empareja (creador, owner_email o miembro
+ *      en members[]) por orden de creación descendente, y se persiste.
+ *
+ * UN USUARIO, UN TENANT. Un email pertenece a una sola organización a la vez: el
+ * binding que esta función persiste es definitivo mientras exista, y no hay forma
+ * de cambiarlo desde la app. Si alguien necesita moverse de organización, un
+ * operador de plataforma lo reasigna. El selector de organización (el antiguo
+ * módulo 18: `candidates`, `needs_tenant_choice` y la función `switchTenant`) se
+ * retiró — nunca llegó a funcionar en producción y su ausencia es ahora el
+ * contrato, no una carencia.
  *
  * En el primer enganche a un tenant persiste tenant_id (y el rol del invitado, si
  * aplica) en el perfil. En logins posteriores NO toca el rol (lo administra el admin
- * del tenant). Cambiar de un tenant candidato a otro después del primer enganche es
- * responsabilidad de `switchTenant`, no de esta función.
- *
- * La respuesta siempre incluye `candidates` (id, nombre, logo de cada tenant al que
- * el email pertenece) aunque ya haya uno asignado, para que el cliente pueda ofrecer
- * un selector persistente sin tener que volver a calcular la pertenencia por su cuenta.
+ * del tenant).
  *
  * Además calcula write_access (enabled/blocked) desde el estado de la licencia y lo
  * persiste en el perfil. Es la fuente de verdad del bloqueo de escritura por falta de
@@ -49,10 +44,6 @@ function matchesTenant(t: any, userId: string, email: string): boolean {
     (t.owner_email || '').toLowerCase() === email ||
     (Array.isArray(t.members) && t.members.some((m: any) => (m.email || '').toLowerCase() === email))
   );
-}
-
-function summarize(t: any) {
-  return { id: t.id, tenant_name: t.tenant_name, logo_url: t.logo_url };
 }
 
 /**
@@ -101,36 +92,14 @@ Deno.serve(async (req) => {
 
     const tenants = await svc.entities.TenantLicense.list('-created_date', 1000);
 
-    // Conjunto completo de tenants a los que este email pertenece — no solo el
-    // primero. Se calcula siempre, incluso con tenant_id ya asignado, para que la
-    // respuesta de éxito también lleve `candidates` (switcher persistente).
-    const candidates = tenants.filter((t) => matchesTenant(t, user.id, email));
-    const candidateSummaries = candidates.map(summarize);
-
     // 1) tenant ya asignado y todavía válido
     let tenant = currentTenantId ? tenants.find((t) => t.id === currentTenantId) : null;
     const alreadyAssigned = !!tenant;
 
+    // 2) primer tenant que empareja. `tenants` viene ordenado por -created_date, así
+    // que el criterio es determinista aunque el email empareje con más de uno.
     if (!tenant) {
-      if (candidates.length > 1) {
-        // Ambiguo: más de un tenant candidato y nada persistido todavía. No se
-        // adivina — se devuelve la lista completa para que el cliente muestre un
-        // selector en vez de onboarding o una asignación silenciosa (Módulo 18).
-        if (selfData?.write_access === 'blocked') {
-          await svc.entities.User.update(user.id, { data: { ...selfData, write_access: 'enabled' } });
-        }
-        return Response.json({
-          tenant_id: null,
-          role: selfRole,
-          is_app_owner: isAppOwner,
-          needs_onboarding: false,
-          needs_tenant_choice: true,
-          candidates: candidateSummaries,
-          write_access: 'enabled',
-        });
-      }
-      // 0 o 1 candidato: comportamiento de siempre (autoasignar el único, o nada).
-      tenant = candidates[0] || null;
+      tenant = tenants.find((t) => matchesTenant(t, user.id, email)) || null;
     }
 
     if (!tenant) {
@@ -144,8 +113,6 @@ Deno.serve(async (req) => {
         role: selfRole,
         is_app_owner: isAppOwner,
         needs_onboarding: ['owner', 'admin'].includes(selfRole),
-        needs_tenant_choice: false,
-        candidates: candidateSummaries,
         write_access: 'enabled',
       });
     }
@@ -208,8 +175,6 @@ Deno.serve(async (req) => {
       role: roleApplied,
       is_app_owner: isAppOwner,
       needs_onboarding: false,
-      needs_tenant_choice: false,
-      candidates: candidateSummaries,
       write_access: writeAccess,
       tenant: {
         id: tenant.id,
