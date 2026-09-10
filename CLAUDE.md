@@ -1771,3 +1771,56 @@ base** unos minutos después. Pasó en esta pasada. La resolución correcta es
 quedarse con la de `main` (ya trae el cambio, y es la forma que la plataforma va
 a reimponer de todos modos) y comprobar que es **equivalente**, no parecida:
 23 propiedades, los once `rls.write:false`, `required` y las cuatro ops de `rls`.
+
+## La misma pantalla mentía de cinco formas distintas (2026-09-10, misma sesión)
+
+Salió de una captura de `\/billing` de Car-Go Rent, no de leer código. Las cinco son
+la misma clase de defecto: **una copia a mano de algo que ya tenía fuente de verdad**.
+
+1. **`PLAN_FEATURES` (`Billing.jsx`) había derivado de `PLAN_LIMITS`.** Anunciaba
+   "Conductores (15)" en Starter y "Conductores (50)" en Pro cuando la app permite
+   20 y 75. La página pública de `acaciaco.com.mx` ya anunciaba los correctos
+   (5/5, 15/20, 50/75), así que de los tres sitios **el único que mentía era la
+   app, al cliente que ya está pagando**. Ahora los cupos salen de `PLAN_LIMITS`.
+2. **"-34 días de prueba", en rojo,** en un tenant `starter` al corriente: la
+   tarjeta se pintaba con que existiera `trial_ends_at`, sin mirar el plan ni el
+   signo. Un `trial_ends_at` no se limpia al pasar a plan pagado.
+3. **"Miembros del tenant (0)"** con tres personas en el registro: listaba la
+   entidad `User` (cuentas de plataforma, con su propia RLS) en vez de
+   `license.members[]`, que es lo que escriben `joinTenant`/`resolveTenant`/
+   `InviteForm` y lo que `resolveTenant` lee para reconocer a alguien.
+4. **La licencia se leía con un `TenantLicense.list({sort:'-created_date',
+   limit:1})[0]` propio de la página.** Dos problemas: depende de que la RLS ya vea
+   `{{user.data.tenant_id}}` —la misma lectura que el fix de más arriba quitó de
+   `TenantContext.jsx`— y `limit:1` sobre `-created_date` enseña **la más reciente,
+   no la tuya**, así que `h.josepablo@gmail.com`, que empareja con dos licencias,
+   podía ver aquí la facturación del otro tenant. Acertaba por casualidad de fechas.
+   Ahora usa `useTenant()`.
+5. **El cupo contaba las bajas.** `Drivers.jsx`/`Vehicles.jsx`/`Billing.jsx` medían
+   `rows.length` contra el límite. Car-Go Rent tiene **10 conductores en operación y
+   16 `inactive`**, así que la app decía "26 de 20" y **bloqueaba a un cliente que
+   está dentro de su plan**, con el mensaje "Mejora tu plan para agregar más".
+   Es el más caro de los cinco: por poco se vende un upgrade que no hacía falta.
+   `quotaCount()` (`src/lib/plans.js`) es ahora la regla única — `status === 'active'`,
+   y sin `status` cuenta como activo, que es el default de la entidad. Los subtítulos
+   dicen "N / límite en operación · M en total" para que el cupo y el largo de la
+   lista no se contradigan a la vista.
+
+**Car-Go Rent está en el plan correcto** (Starter: 10 de 15 vehículos, 10 de 20
+conductores). No hacía falta moverlo; hacía falta que la app contara bien.
+
+### Y un valor que volvió, que NO se volvió a borrar
+
+A las 21:54, veinte minutos después del `$unset` de la sección anterior,
+`max_vehicles: 15` / `max_drivers: 20` reaparecieron en Car-Go Rent — no el default
+del esquema (ese era 5 y ya no existe), sino los valores exactos de
+`PLAN_LIMITS.starter`, escritos explícitamente. El tenant "Owner" no se tocó, así
+que fue algo dirigido a ese registro: `SuperAdminPanel.jsx:81` los escribe al
+cambiar de plan, y `licensesAdmin`'s `patch` también.
+
+**Se dejaron puestos a propósito.** Hoy coinciden con el plan, así que no cambian
+nada; y borrar un valor sin saber quién lo escribió es exactamente el error que
+este archivo documenta dos veces más arriba. **La trampa a recordar: son un override
+explícito, así que el día que Car-Go Rent suba a Pro seguirá topado en 15/20
+hasta que alguien los borre o los actualice.** Si vuelven a aparecer sin que nadie
+haya tocado el panel, ahí sí hay un escritor que encontrar.
