@@ -64,20 +64,18 @@
     "max_vehicles": {
       "type": "number",
       "title": "Vehículos máximos",
-      "default": 5,
       "rls": {
         "write": false
       },
-      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
+      "description": "SIN `default` A PROPÓSITO — no se lo vuelvas a poner. Ausente significa «usa el cupo del plan» (src/lib/plans.js → PLAN_LIMITS); presente es un override explícito de Mission Control. Un `default: 5` en el esquema hace que la plataforma lo re-materialice en CADA escritura del registro, así que el campo nunca puede estar ausente, el fallback por plan de plans.js queda muerto y TODO tenant queda clavado en 5 sin importar su plan (encontrado 2026-09-10, tras dos intentos fallidos de quitarlo con $unset). Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "max_drivers": {
       "type": "number",
       "title": "Conductores máximos",
-      "default": 5,
       "rls": {
         "write": false
       },
-      "description": "Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
+      "description": "SIN `default` A PROPÓSITO — no se lo vuelvas a poner. Ausente significa «usa el cupo del plan» (src/lib/plans.js → PLAN_LIMITS); presente es un override explícito de Mission Control. Un `default: 5` en el esquema hace que la plataforma lo re-materialice en CADA escritura del registro, así que el campo nunca puede estar ausente, el fallback por plan de plans.js queda muerto y TODO tenant queda clavado en 5 sin importar su plan (encontrado 2026-09-10, tras dos intentos fallidos de quitarlo con $unset). Campo de licencia/facturación. Server-authoritative: el único escritor es licensesAdmin (acciones renew/set_status/patch), gateado a APP_OWNER_EMAIL — es el dominio de Mission Control, no algo que el propio owner/admin del tenant deba poder tocar. write:false cierra el hallazgo del módulo 1 (2026-08-19): antes cualquier owner/admin del tenant podía escribir el registro entero directo por SDK, incluido revertir una licencia suspendida a activa o subirse el plan a mano."
     },
     "features": {
       "type": "array",

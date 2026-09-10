@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   PLAN_LIMITS,
   PLAN_LABELS,
@@ -40,6 +42,28 @@ describe('vehicleLimit() / driverLimit()', () => {
     expect(vehicleLimit(null)).toBe(5);
     expect(vehicleLimit({ plan: 'inexistente' })).toBe(5);
   });
+});
+
+// El fallback por plan que prueban los casos de arriba estuvo MUERTO en producción
+// hasta el 2026-09-10: `TenantLicense.jsonc` le daba `"default": 5` a los dos cupos,
+// la plataforma lo re-materializaba en cada escritura del registro, y por tanto el
+// campo nunca llegaba ausente a `vehicleLimit()`. Todo tenant quedaba clavado en 5
+// sin importar su plan, y un `$unset` sobre el registro se deshacía en la siguiente
+// escritura. Las pruebas de arriba pasaban igual porque le pasan a la función un
+// objeto a mano — verifican la función, no el sistema. Esta lee el esquema de disco.
+describe('TenantLicense.jsonc — los cupos NO pueden tener default de esquema', () => {
+  const schema = JSON.parse(
+    readFileSync(path.resolve(process.cwd(), 'base44/entities/TenantLicense.jsonc'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1'),
+  );
+
+  for (const field of ['max_vehicles', 'max_drivers']) {
+    it(`${field} no declara "default" (si no, el cupo del plan nunca aplica)`, () => {
+      expect(schema.properties?.[field]).toBeTruthy();
+      expect(schema.properties[field]).not.toHaveProperty('default');
+    });
+  }
 });
 
 describe('atVehicleLimit() / atDriverLimit()', () => {

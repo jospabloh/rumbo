@@ -1620,3 +1620,142 @@ independiente del cuerpo que la propia llamada de escritura devolvió: confirma
 que `DriverProfile.jsx` ya carga — no alcanzable desde este entorno. El riesgo
 está acotado porque el cambio reutiliza exactamente la forma ya probada en
 `TenantLicense.owner_email` y no toca ninguna otra rama de rol.
+
+## Auditoría incremental (2026-09-10) — el cupo de TODOS los planes valía 5, por un `default` de esquema
+
+Pasada de auditoría rutinaria sobre lo que entró desde la del 2026-09-07. Lo que
+había nuevo en `main`: dos funciones que ningún CLAUDE.md menciona
+(`aiIntakeTurn`, `extractLogoColors`, del commit «Migrar llamadas sensibles y de
+servicio al backend»), la retirada del selector de organización, y el fix de
+`Driver.jsonc`. El hallazgo grande no salió de leer código: salió de una captura
+de pantalla — la página de Vehículos de Car-Go Rent decía **`10 / 5 en total`**.
+
+### Hallazgo 1 — `max_vehicles`/`max_drivers` tenían `"default": 5` en el esquema
+
+`src/lib/plans.js` documenta el contrato: el cupo de la licencia manda, y
+`PLAN_LIMITS` es «el respaldo cuando la licencia no trae el campo». Pero
+`TenantLicense.jsonc` le daba `"default": 5` a los dos cupos, y **la plataforma
+re-materializa un default de esquema en CADA escritura del registro**. O sea que
+el campo nunca podía llegar ausente a `vehicleLimit()`: el fallback por plan era
+código muerto y **todo tenant quedaba clavado en 5/5 sin importar su plan**.
+
+Medido contra la base viva, no deducido: los **dos** tenants estaban en 5/5 —
+Car-Go Rent con plan `starter` (se le vende 15/20, `$599/mes`) y "Owner" con plan
+`enterprise` (debería ser ilimitado). Car-Go Rent ya tenía 10 unidades contra un
+tope de 5, así que su owner no podía dar de alta ninguna más.
+
+**Este archivo lo diagnosticó mal dos veces** — el 2026-08-26 y otra vez el
+2026-09-10 — como «un override manual suelto», y las dos veces lo «arregló» con
+un `$unset` que la siguiente escritura deshacía. La segunda vez llegó a afirmar
+por escrito que «no hay código que lo esté re-escribiendo». Lo había: el propio
+esquema. La pista estaba a la vista en el `.jsonc` desde siempre; nadie la
+comparó contra el comentario de `plans.js` que decía qué se esperaba.
+
+**Arreglo (aplicado y verificado contra producción):**
+- `base44/entities/TenantLicense.jsonc` — fuera los dos `"default": 5`. Ausente
+  ahora significa de verdad «usa el cupo del plan». La descripción de los dos
+  campos empieza con **SIN `default` A PROPÓSITO — no se lo vuelvas a poner** y
+  explica el mecanismo, porque el siguiente que edite el esquema no va a leer
+  este archivo.
+- `src/lib/__tests__/plans.test.js` — guarda nueva que lee el `.jsonc` **de
+  disco** y falla si cualquiera de los dos campos vuelve a declarar `default`.
+  Comprobada en las dos direcciones: se repuso el default a mano, el test falló,
+  se quitó, pasó. Los casos que ya existían («cae al default del plan cuando la
+  licencia no trae el cupo») pasaban felices todo este tiempo porque le pasan a
+  la función un objeto a mano — **verificaban la función, no el sistema**, que es
+  justo el agujero que esta guarda tapa.
+- Esquema empujado a producción vía el MCP de Base44 y **releído con una llamada
+  independiente** (no el eco de la escritura): los dos `default` ya no están, y
+  las 24 propiedades, el `required`, el `rls` de entidad y los diez candados
+  `write:false` del módulo 1 siguen intactos. Antes de empujar se comparó el
+  archivo del repo contra el esquema desplegado campo por campo, para no arrastrar
+  deriva ajena en el push — no había ninguna (a diferencia de `Driver.jsonc`).
+- Los dos registros vivos quedaron con los campos **ausentes** (`$unset`). Y esta
+  vez hay prueba de que aguanta, que es lo que faltaba en los dos intentos
+  anteriores: ese mismo update movió `updated_date` y **el default no volvió**.
+
+Cupos efectivos ahora: Car-Go Rent `starter` → 15/20; "Owner" `enterprise` →
+ilimitado. **Surte efecto sin `deploy:site`**: el fallback por plan ya vive en el
+bundle desplegado, sólo hacía falta que el campo pudiera estar ausente.
+
+**La lección, y es de método:** un `$unset` que no aguanta no es un dato terco,
+es un escritor que no has encontrado — y el escritor puede ser el esquema, no
+código. Dos pasadas anteriores prefirieron re-aplicar el `$unset` antes que
+preguntar por qué volvía. Es la misma forma que el módulo 15 («un secreto que
+nadie ha releído no está configurado») y que el `role` del 2026-09-01 («un
+`ok:true` prueba que la función terminó, no que escribió»).
+
+### Hallazgo 2 — `extractLogoColors` mandaba a la plataforma a buscar cualquier URL
+
+La función recibe `file_url` del cliente y se lo pasa tal cual a
+`asServiceRole.integrations.Core.InvokeLLM({ file_urls: [...] })`. Sin validar
+nada: `file://`, `http://localhost`, o el endpoint de metadatos de nube
+(`169.254.169.254`) entraban igual, y quien los va a buscar es el fetcher de la
+plataforma con rol de servicio.
+
+**Arreglo:** `isPublicHttpUrl()` — sólo `http(s)`, y fuera loopback, rangos
+privados, link-local y sufijos `.internal`/`.local`. **Residual dicho y no
+tapado:** no detiene un nombre público que resuelva a una IP privada (DNS
+rebinding); cerrarlo exige resolver antes o una allowlist de host, y la allowlist
+es justo lo que impide el campo «URL del logo» de `TenantEditor.jsx`, que deja
+pegar cualquier dirección a mano (hay un tenant con una de Unsplash).
+
+**Lo que NO se hizo, a propósito:** ponerle candado de rol. La función sólo
+comprueba `auth.me()`, así que cualquier usuario autenticado la alcanza aunque la
+UI viva en Administración — pero `TenantOnboarding.jsx` la llama **antes** de
+`createTenant`, cuando quien crea su organización todavía es rol `user` sin
+tenant. Gatearla a owner/admin rompería el alta de organizaciones. Mismo criterio
+que el módulo 3 aplicó a `LocationRequest`: no se estrena una restricción como
+efecto colateral de un arreglo ajeno.
+
+### Hallazgo 3 — `aiIntakeTurn` no acotaba `history`
+
+`forceClose` sólo decide qué se le PIDE al modelo; `conversationBlock`
+renderizaba igual **todos** los turnos del cuerpo, y el cuerpo lo controla quien
+llama. Una sola petición con 10 000 turnos de 4 000 caracteres se convierte en un
+prompt de decenas de millones de caracteres facturado a los créditos de
+integración — justo lo que la cabecera de la función dice que se migró al backend
+a proteger. Ahora `history` se recorta a `MAX_QUESTIONS` (una entrevista legítima
+nunca pasa de 6).
+
+**Residual:** ninguna de las dos funciones tiene límite de frecuencia, así que
+cualquier usuario autenticado todavía puede gastar créditos llamándolas en bucle.
+El repo ya tiene un patrón para esto (`joinTenant` + la entidad `JoinAttempt`),
+pero montarlo aquí es una entidad nueva por función y una decisión de diseño
+aparte — se nombra, no se improvisa.
+
+### De paso
+
+- **12 errores de `deno check` preexistentes** en las dos funciones nuevas, todos
+  de la misma causa: usan casts JSDoc `/** @type {...} */`, que TypeScript ignora
+  en archivos `.ts`, contra el `string | object` que declara `InvokeLLM`.
+  Corregidos a casts reales de TS. Las dos compilan limpio ahora. Es exactamente
+  lo que este archivo ya predijo del código que llega por el agente externo: su
+  primer type-check ocurre al desplegar, porque este repo no corre `deno check`
+  en CI.
+- **`base44/entities/DebugProbe.jsonc` regresó.** La pasada del 09-07 lo borró
+  del repo; el commit `415762d` («External agent changes») lo repuso, porque el
+  **esquema nunca se borró del backend** y el reverse-sync lo trae de vuelta.
+  Borrarlo otra vez sólo del repo es un no-op ya medido, así que se deja: la API
+  de la plataforma no expone borrado de esquemas (`list_api_catalog` → área
+  `entities` tiene los 7 verbos de registros, ninguno de esquema). **Hay que
+  borrarlo a mano desde el panel de Base44**; hasta entonces `validate:rls`
+  cuenta 28 entidades, no 27. Sin riesgo: sin tráfico y con RLS de sólo owner.
+- **Las dos suites que este archivo daba por rotas «por un problema de red del
+  sandbox» (`permissionsSync.test.js`, `modulePerms.test.js`) pasan.** No era la
+  red: era que faltaba `npm install` en el entorno de verificación. Con las
+  dependencias puestas corren las 22 suites.
+
+**Verificado:** `npm run lint` (22 endpoints, techo 40), `npm run build`, `npm run
+validate:rls` (28 entidades OK), `npm run test -- --run` (482/482, dos nuevas en
+`plans.test.js`) — todos limpios. `deno check --node-modules-dir=none` sobre
+`extractLogoColors/entry.ts` y `aiIntakeTurn/entry.ts` — las dos limpias. El
+esquema y los dos registros, releídos de producción con llamadas independientes.
+
+**No verificado:** una sesión de navegador real de Christian confirmando que
+Vehículos ya dice `10 / 15` — no alcanzable desde aquí; el cambio es de datos +
+esquema y no depende de `deploy:site`, así que debería bastar con recargar. Y el
+deploy de las funciones (`npm run deploy`, módulo 11) para que los tres arreglos
+de `extractLogoColors`/`aiIntakeTurn` corran de verdad: hasta entonces el backend
+sigue sirviendo las versiones sin validar. El fix del cupo **no** depende de ese
+deploy.
