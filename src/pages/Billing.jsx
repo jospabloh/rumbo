@@ -1,9 +1,10 @@
 import { isAdminOrOwner } from '@/lib/permissions';
-import { vehicleLimit, driverLimit } from '@/lib/plans';
+import { vehicleLimit, driverLimit, PLAN_LIMITS } from '@/lib/plans';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/spinner';
 import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Users, Crown, Shield, Navigation, Wrench, Car, User } from 'lucide-react';
 import { useMe, useRawList } from '@/hooks/useEntities';
+import { useTenant } from '@/lib/TenantContext';
 import { parseLocalDate } from '@/lib/license';
 
 const ROLE_CONFIG = {
@@ -29,26 +30,47 @@ const STATUS_LABELS = {
   cancelled: { label: 'Cancelada', icon: AlertTriangle, color: 'text-muted-foreground' },
 };
 
+// Los cupos que se ANUNCIAN aquí salen de PLAN_LIMITS, que es el mismo objeto con el
+// que `vehicleLimit()`/`driverLimit()` de verdad BLOQUEAN el alta. Antes eran cadenas a
+// mano y habían derivado: esta tarjeta ofrecía "Conductores (15)" en Starter y
+// "Conductores (50)" en Pro cuando la app permite 20 y 75, y la página pública de
+// acaciaco.com.mx ya anunciaba los correctos. O sea que el único de los tres que mentía
+// era la propia app, al cliente que ya está pagando. Si añades un plan, tócalo en
+// PLAN_LIMITS y aquí sólo su lista de funcionalidades.
+const cap = (plan, key) => (PLAN_LIMITS[plan]?.[key] ? PLAN_LIMITS[plan][key] : '∞');
+const quotas = (plan) => [`Conductores (${cap(plan, 'max_drivers')})`, `Vehículos (${cap(plan, 'max_vehicles')})`];
+
 const PLAN_FEATURES = {
-  trial:      ['Dashboard', 'Conductores (5)', 'Vehículos (5)', 'Mantenimiento'],
-  starter:    ['Dashboard', 'Conductores (15)', 'Vehículos (15)', 'Mantenimiento', 'Financiero', 'Mensajes'],
-  pro:        ['Todo Starter', 'Conductores (50)', 'Vehículos (50)', 'Ubicación en tiempo real', 'Alertas automáticas', 'Importación CSV'],
+  trial:      ['Dashboard', ...quotas('trial'), 'Mantenimiento'],
+  starter:    ['Dashboard', ...quotas('starter'), 'Mantenimiento', 'Financiero', 'Mensajes'],
+  pro:        ['Todo Starter', ...quotas('pro'), 'Ubicación en tiempo real', 'Alertas automáticas', 'Importación CSV'],
   enterprise: ['Sin límites', 'API access', 'Soporte prioritario', 'GitHub/Supabase integración'],
 };
 
 export default function Billing() {
   const { data: user, isLoading: meLoading } = useMe();
   const allowed = isAdminOrOwner(user?.role);
-  const licenseQ = useRawList('TenantLicense', { sort: '-created_date', limit: 1, enabled: allowed });
   const vehiclesQ = useRawList('Vehicle', { enabled: allowed });
   const driversQ = useRawList('Driver', { enabled: allowed });
-  const membersQ = useRawList('User', { enabled: allowed });
 
-  const license = licenseQ.data?.[0] || null;
+  // La licencia sale del contexto de tenant, que la resuelve `resolveTenant` por rol de
+  // servicio. Antes esta página hacía su propio `TenantLicense.list({sort:'-created_date',
+  // limit:1})[0]` desde el cliente: dos problemas a la vez. (1) Depende de que la RLS ya
+  // vea `{{user.data.tenant_id}}` — justo la lectura que el fix del 2026-09-10 quitó de
+  // TenantContext.jsx porque puede quedarse atrás de la escritura. (2) `limit:1` sobre
+  // `-created_date` enseña LA MÁS RECIENTE, no la tuya: un email que empareja con dos
+  // licencias (hay uno) podía ver aquí la facturación del otro tenant. Hoy acertaba por
+  // casualidad de fechas.
+  const { tenant: license, loading: tenantLoading } = useTenant();
+
   const vehicles = vehiclesQ.data ?? [];
   const drivers = driversQ.data ?? [];
-  const members = membersQ.data ?? [];
-  const loading = meLoading || (allowed && (licenseQ.isLoading || vehiclesQ.isLoading || driversQ.isLoading || membersQ.isLoading));
+  // Los miembros del tenant viven en `license.members[]` — es lo que escriben
+  // joinTenant/resolveTenant/InviteForm y lo que resolveTenant lee para reconocer a
+  // alguien. Antes se listaba la entidad `User`, que es otra cosa (cuentas de plataforma,
+  // acotadas por su propia RLS) y devolvía 0 mientras el registro tenía tres personas.
+  const members = Array.isArray(license?.members) ? license.members : [];
+  const loading = meLoading || (allowed && (tenantLoading || vehiclesQ.isLoading || driversQ.isLoading));
   const accessDenied = !meLoading && !allowed;
 
   if (loading) {
@@ -78,8 +100,16 @@ export default function Billing() {
     ? Math.ceil((parseLocalDate(license.renews_at).getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
-  const daysUntilTrial = license?.trial_ends_at
+  // Sólo cuenta si el tenant SIGUE en prueba. Un `trial_ends_at` no se limpia al pasar a
+  // un plan pagado, así que la tarjeta se pintaba igual y Car-Go Rent —`starter`, al
+  // corriente— mostraba "-34 días de prueba" en rojo: parecía una licencia rota y no lo
+  // era. Un número negativo tampoco se enseña nunca: la prueba ya terminó, no le quedan
+  // días de menos.
+  const rawTrialDays = license?.trial_ends_at
     ? Math.ceil((parseLocalDate(license.trial_ends_at).getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const daysUntilTrial = license?.plan === 'trial' && rawTrialDays !== null && rawTrialDays >= 0
+    ? rawTrialDays
     : null;
 
   return (
@@ -207,12 +237,12 @@ export default function Billing() {
                 const roleConf = ROLE_CONFIG[m.role] || ROLE_CONFIG['user'];
                 const RoleIcon = roleConf.icon;
                 return (
-                  <li key={m.id} className="flex items-center gap-4 px-5 py-3">
+                  <li key={m.email} className="flex items-center gap-4 px-5 py-3">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
-                      {m.full_name?.charAt(0) || '?'}
+                      {m.name?.charAt(0) || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{m.full_name || '—'}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{m.name || '—'}</p>
                       <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                     </div>
                     <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${roleConf.color}`}>
