@@ -10,7 +10,7 @@ import DriverForm from '@/components/drivers/DriverForm';
 import DriverDetail from '@/components/drivers/DriverDetail';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
-import { driverLimit, PLAN_LABELS } from '@/lib/plans';
+import { driverLimit, PLAN_LABELS, quotaCount } from '@/lib/plans';
 import { useDrivers, useInvalidateEntity } from '@/hooks/useEntities';
 import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
 
@@ -57,7 +57,7 @@ export default function Drivers() {
     } else {
       if (!can('drivers', 'create')) throw new Error('No tienes permiso para crear conductores.');
       if (!tenantId) throw new Error('Tu organización aún se está configurando. Espera unos segundos y vuelve a intentarlo.');
-      if (drivers.length >= limit) throw new Error(`Alcanzaste el límite de ${limit} conductores de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
+      if (quotaCount(drivers) >= limit) throw new Error(`Alcanzaste el límite de ${limit} conductores de tu plan ${PLAN_LABELS[tenant?.plan] || ''}. Mejora tu plan para agregar más.`);
       await guardedCreate('Driver', data);
     }
     setShowForm(false);
@@ -87,7 +87,7 @@ export default function Drivers() {
     <div className="p-4 lg:p-6">
       <PageHeader
         title="Conductores"
-        subtitle={`${drivers.length}${Number.isFinite(limit) ? ` / ${limit}` : ''} en total`}
+        subtitle={`${quotaCount(drivers)}${Number.isFinite(limit) ? ` / ${limit}` : ''} en operación · ${drivers.length} en total`}
         action={!readOnly && can('drivers', 'create') && (
           <Button size="sm" onClick={() => { setEditDriver(null); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Agregar

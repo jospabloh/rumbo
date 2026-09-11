@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   PLAN_LIMITS,
   PLAN_LABELS,
@@ -6,6 +8,7 @@ import {
   driverLimit,
   atVehicleLimit,
   atDriverLimit,
+  quotaCount,
 } from '../plans.js';
 
 describe('PLAN_LIMITS / PLAN_LABELS', () => {
@@ -39,6 +42,49 @@ describe('vehicleLimit() / driverLimit()', () => {
   it('sin licencia o plan desconocido usa el default de trial', () => {
     expect(vehicleLimit(null)).toBe(5);
     expect(vehicleLimit({ plan: 'inexistente' })).toBe(5);
+  });
+});
+
+// El fallback por plan que prueban los casos de arriba estuvo MUERTO en producción
+// hasta el 2026-09-10: `TenantLicense.jsonc` le daba `"default": 5` a los dos cupos,
+// la plataforma lo re-materializaba en cada escritura del registro, y por tanto el
+// campo nunca llegaba ausente a `vehicleLimit()`. Todo tenant quedaba clavado en 5
+// sin importar su plan, y un `$unset` sobre el registro se deshacía en la siguiente
+// escritura. Las pruebas de arriba pasaban igual porque le pasan a la función un
+// objeto a mano — verifican la función, no el sistema. Esta lee el esquema de disco.
+describe('TenantLicense.jsonc — los cupos NO pueden tener default de esquema', () => {
+  const schema = JSON.parse(
+    readFileSync(path.resolve(process.cwd(), 'base44/entities/TenantLicense.jsonc'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1'),
+  );
+
+  for (const field of ['max_vehicles', 'max_drivers']) {
+    it(`${field} no declara "default" (si no, el cupo del plan nunca aplica)`, () => {
+      expect(schema.properties?.[field]).toBeTruthy();
+      expect(schema.properties[field]).not.toHaveProperty('default');
+    });
+  }
+});
+
+describe('quotaCount() — una baja no ocupa cupo', () => {
+  it('cuenta sólo los activos, y trata un registro sin status como activo', () => {
+    expect(quotaCount([{ status: 'active' }, { status: 'inactive' }, { status: 'suspended' }, {}])).toBe(2);
+    expect(quotaCount([])).toBe(0);
+    expect(quotaCount(undefined)).toBe(0);
+  });
+
+  it('el caso real que lo destapó: Car-Go Rent cabía en Starter y la app lo bloqueaba', () => {
+    // 10 conductores en operación y 16 dados de baja, plan Starter (20 conductores).
+    const drivers = [
+      ...Array(10).fill({ status: 'active' }),
+      ...Array(16).fill({ status: 'inactive' }),
+    ];
+    const starter = { plan: 'starter' };
+    expect(drivers.length).toBe(26); // lo que la app contaba antes
+    expect(atDriverLimit(starter, drivers.length)).toBe(true); // → "26 de 20", bloqueado
+    expect(quotaCount(drivers)).toBe(10);
+    expect(atDriverLimit(starter, quotaCount(drivers))).toBe(false); // dentro de su plan
   });
 });
 

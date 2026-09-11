@@ -26,7 +26,7 @@ const APP_CONTEXT = {
 };
 
 const MAX_QUESTIONS = 6;
-const KIND_LABEL = { feature: 'nueva funcionalidad / mejora', bug: 'reporte de incidencia' };
+const KIND_LABEL: Record<string, string> = { feature: 'nueva funcionalidad / mejora', bug: 'reporte de incidencia' };
 
 const TURN_SCHEMA = {
   type: 'object',
@@ -127,9 +127,15 @@ Deno.serve(async (req) => {
     const kind = body.kind === 'feature' || body.kind === 'bug' ? body.kind : 'feature';
     const subject = typeof body.subject === 'string' ? body.subject : '';
     const description = typeof body.description === 'string' ? body.description : '';
-    const history = Array.isArray(body.history) ? body.history.filter(
+    // El recorte a MAX_QUESTIONS no es cosmético. `forceClose` sólo decide qué SE LE PIDE
+    // al modelo; `conversationBlock` renderizaba igual TODOS los turnos recibidos, y el
+    // cuerpo lo controla quien llama. Sin este tope, una sola petición con 10 000 turnos
+    // de 4 000 caracteres cada uno se convierte en un prompt de decenas de millones de
+    // caracteres facturado a los créditos de integración — justo lo que esta función se
+    // creó para proteger al migrarla del cliente. Una entrevista legítima nunca pasa de 6.
+    const history = (Array.isArray(body.history) ? body.history.filter(
       (t: any) => t && typeof t.question === 'string' && typeof t.answer === 'string'
-    ) : [];
+    ) : []).slice(0, MAX_QUESTIONS);
 
     const forceClose = history.length >= MAX_QUESTIONS;
     const prompt = `${systemPreamble(kind)}
@@ -148,7 +154,8 @@ Responde SOLO el JSON del esquema.`;
       response_json_schema: TURN_SCHEMA,
     });
 
-    const result = /** @type {any} */ (out) || { done: false };
+    // Cast real de TS, no JSDoc (ver la nota en extractLogoColors/entry.ts).
+    const result = ((out || { done: false }) as any);
 
     // Normalizar la forma, igual que en el cliente original.
     if (result.done && result.brief) {
