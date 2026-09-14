@@ -1824,3 +1824,76 @@ este archivo documenta dos veces más arriba. **La trampa a recordar: son un ove
 explícito, así que el día que Car-Go Rent suba a Pro seguirá topado en 15/20
 hasta que alguien los borre o los actualice.** Si vuelven a aparecer sin que nadie
 haya tocado el panel, ahí sí hay un escritor que encontrar.
+
+## Auditoría full-review (2026-09-14) — sin PR/branch/hallazgo previo abierto; 6 de 8 vulnerabilidades de dependencias cerradas
+
+Pasada de auditoría completa programada. Inventario primero: sin PRs abiertos/
+draft/stale en `jospabloh/rumbo`, sin ramas de auditoría sueltas, `main` al día
+(`ef49b1e`, v1.34.7) con la sesión partiendo del mismo commit. Lo cubierto por
+las pasadas anteriores (RLS, aislamiento multi-tenant, permisos granulares, el
+patrón `user.data` de `auth.me()`) se releyó contra el código actual en vez de
+repetirse desde cero — con fecha de cuatro días desde la última pasada, el
+objetivo era detectar regresión, no reabrir lo ya cerrado.
+
+**Regresión: ninguna.** Los 13 archivos de `base44/functions/` que tocan
+`user.data` lo hacen sólo en comentarios explicando el fix del 2026-09-03/09-07
+— cada uno relee su perfil vía `svc.entities.User.filter({id: user.id})` antes
+de derivar `tenant_id`/`write_access`/`driver_profile_id`, nunca de
+`auth.me()` directo. `role` se sigue leyendo de `user.role` en todas partes,
+como está documentado que debe ser. `npm run validate:rls` (28 entidades) y
+`npm run audit:tenant-scope` (guardia de fuga entre tenants) pasan limpios.
+`CHANGELOG.md`/`version.js`/`package.json` siguen en sync en 1.34.7. Sin
+secretos en el código fuente (grep dirigido sobre `src/`, `base44/`, `api/`
+equivalente, `scripts/` — sólo `dist/` generado, ignorado por git, tenía
+coincidencias falsas de una librería minificada).
+
+**Hallazgo — `npm audit` no corría nunca desde el A62 de 2026-08 y había vuelto
+a acumular 8 vulnerabilidades** (1 baja, 5 moderadas, 2 altas): `fflate`
+(transitiva de `jspdf`, dependencia real de producción — usada en la
+exportación a PDF), `postcss-selector-parser`/`browserslist`/
+`baseline-browser-mapping`/`js-yaml`/`@humanfs/node` (todas transitivas de
+herramientas de build/lint, sólo en dev). Ninguna estaba en el CI (`ci.yml`
+no corre `npm audit`), así que nadie se habría enterado sin correrlo a mano.
+
+**Arregladas 6 de 8** vía `overrides` en `package.json` (parches/minors dentro
+del mismo major, sin tocar ninguna dependencia de nivel superior):
+`fflate@^0.8.3`, `js-yaml@^4.3.2`, `browserslist@^4.28.9`,
+`postcss-selector-parser@^6.1.4`, `baseline-browser-mapping` (dependencia
+directa, `^2.8.32` → `^2.11.23`), `@humanfs/node@^0.16.8`. Verificado con
+`npm ls` que las cinco quedaron en la versión objetivo (no sólo "dentro del
+rango") y con `npm audit` que las seis salieron del reporte.
+
+**Residual, y por qué no se tocó:** `@vitest/mocker` (vía `vitest@4.1.10`,
+severidad moderada, sólo dev — un path traversal en el mock de redirects, que
+exige controlar los propios archivos de test para explotarse). No hay versión
+fija dentro de la línea 4.x — `4.1.11` existe pero forzarla vía `overrides`
+hace que el resolver de npm de este entorno (`10.9.7`) truene con
+`Cannot read properties of null (reading 'edgesOut')`, reproducido tres veces
+(instalación limpia y sobre lockfile existente, con y sin las otras cinco
+overrides puestas) — no es un conflicto real de versiones, es un bug conocido
+de arborist con el árbol de peers opcionales de `vitest` (`@vitest/browser-*`,
+`msw`). La única fila que sí lo resuelve es `vitest@5.0.0` (mayor), que se
+descartó a propósito: es el test runner de las 484 pruebas del repo y un
+mayor no se cambia como efecto colateral de un hallazgo de severidad moderada
+y sólo-dev. Queda nombrado, no adivinado.
+
+**Sin hallazgos nuevos de RLS, aislamiento de tenant, permisos granulares ni
+secretos.** No se abrió ninguna función ni entidad nueva desde el
+2026-09-10 que necesitara el mismo escrutinio que `aiIntakeTurn`/
+`extractLogoColors` recibieron esa fecha.
+
+**Verificado:** `npm run lint` (22 endpoints), `npm run typecheck`, `npm run
+validate:rls` (28 entidades OK), `npm run audit:tenant-scope`, `npm run build`,
+`npm run test -- --run` (484/484) — todos limpios, antes y después del cambio
+de dependencias. `npm audit`: 8 → 2 vulnerabilidades (ambas la misma cadena
+`vitest`/`@vitest/mocker`, dev-only). Sin cambio de RLS ni de esquema — no se
+tocó ningún `.jsonc`, así que no aplica `deploy:entities` ni hace falta
+`deploy`/`deploy:site` (el cambio no toca `base44/functions/` ni `src/`).
+
+**No verificado:** una sesión de navegador real — no alcanzable desde este
+entorno, y este cambio no tiene superficie de UI que probar. Sin bump de
+versión: es un cambio interno de dependencias de build/lint más una de
+producción usada sólo internamente por una librería ya en uso (`jspdf`), sin
+comportamiento nuevo de cara al usuario — misma categoría que los cuatro
+precedentes de este archivo sin bump (`494aa29`, `06084e9`/`d07247a`,
+`57d4dd2`, `f2aceaf`).
