@@ -1897,3 +1897,148 @@ producción usada sólo internamente por una librería ya en uso (`jspdf`), sin
 comportamiento nuevo de cara al usuario — misma categoría que los cuatro
 precedentes de este archivo sin bump (`494aa29`, `06084e9`/`d07247a`,
 `57d4dd2`, `f2aceaf`).
+
+## Auditoría full-review (2026-09-21) — casi nada nuevo que auditar; dos manuales mentían sobre invitaciones y sesiones
+
+Pasada de auditoría completa programada. Inventario primero: sin PRs abiertos/
+draft en `jospabloh/rumbo`. La rama `audit/rumbo-full-review` (sin fecha en el
+nombre) resultó ser una pieza fósil — su PR #90 está **cerrado**, no fusionado,
+y su punta (`v1.30.3`, 2026-08-11) es de más de un mes antes de esta pasada,
+sin historia común con `main` (`git merge-base` no encuentra ancestro común:
+son dos líneas que divergieron antes de que este repo tuviera el squash/rebase
+que las separó). No es "trabajo sin mergear de una pasada anterior de esta
+tarea" — es de una tarea distinta, ya cerrada. Se dejó intacta y se abrió esta
+pasada en `audit/rumbo-full-review-20260921` en su lugar, para no chocar con
+ella ni fingir continuidad que no existe. Las otras cinco ramas con "audit" en
+el nombre (`claude/apps-rls-security-audit-xhfvtr`,
+`claude/audit-email-reminders-csp5u4`, `claude/rumbo-audit-report-cs0u8j`,
+`claude/rumbo-security-audit-sef1x8`, `fix/audit-tenant-scope-self-scope`) son
+los mismos leftovers de rama fusionada que el audit v1.30.1 ya catalogó como
+"no action required" — confirmado otra vez: cero PRs abiertos las referencian.
+
+**Lo nuevo desde el 2026-09-14: un solo commit, `Update base44 packages`**
+(`@base44/vite-plugin` 1.0.36→1.0.37, patch, bot-autor). Ningún archivo de
+`base44/functions/`, `base44/entities/` ni `src/` cambió. O sea: no hubo
+función ni entidad nueva que auditar por primera vez esta vez — la pasada se
+volcó en releer contra la realidad actual, no en analizar diffs.
+
+**Re-verificado, sin hallazgos de regresión:**
+- `npm run validate:rls` → 28 entidades OK (27 + `DebugProbe`, que sigue sin
+  poderse borrar por API — ver 2026-09-10; su esquema desplegado se releyó de
+  nuevo vía el MCP de Base44 y sigue siendo RLS-solo-owner, sin tráfico).
+- `npm run audit:tenant-scope` → limpio.
+- `npm run lint` (incluye `validate:functions`) → 22 endpoints, techo 40.
+- `npm run typecheck`, `npm run build` → limpios.
+- `npm run test -- --run` → **484/484**, mismo número exacto que el
+  2026-09-14 — cero drift.
+- `npm audit` → **2 vulnerabilidades** (la misma cadena
+  `vitest@4.1.10`/`@vitest/mocker`, moderada, solo-dev), igual que la última
+  vez. `npm audit fix --dry-run` reproduce el mismo error de arborist
+  (`Cannot read properties of null (reading 'edgesOut')`) documentado el
+  2026-09-14 — confirma que sigue siendo el mismo bloqueo conocido, no uno
+  nuevo, y que forzar `vitest@5` sigue siendo la única salida (mayor,
+  descartado a propósito, mismo razonamiento).
+- Grep de `user\.data\b` sobre las 22 funciones de `base44/functions/` →
+  **22 coincidencias, las 22 en comentarios** que documentan el fix del
+  09-03/09-07 ("nunca `user.data` de auth.me()"). Ninguna lectura real
+  sobreviviente. `manageRole` (que el 09-07 dijo haber incluido) confirmado
+  con su propia relectura fresca (`caller.data` de una llamada a
+  `svc.entities.User.filter`, no de `auth.me()`). `aiIntakeTurn`/
+  `extractLogoColors` (las dos funciones del 09-10, las más nuevas del repo)
+  solo llaman `auth.me()` para autenticar, no leen `.data` para decidir un
+  write — no les aplica este patrón, confirmado.
+- Grep dirigido de secretos (`sk-`, `AKIA`, `BEGIN...PRIVATE KEY`, `xox[baprs]-`,
+  `ghp_`, `AIza`, `api_key: "..."`) sobre `src/`, `base44/`, `scripts/` (nunca
+  `dist/`) → cero coincidencias.
+- Esquema desplegado de `TenantLicense` releído vía el MCP de Base44
+  (`list_entity_schemas`, llamada independiente) y comparado campo por campo
+  contra el `.jsonc` del repo: los 11 candados `write:false` (los 10 de
+  licencia + `owner_email`) siguen ahí, **sin** `default` en `max_vehicles`/
+  `max_drivers` (el fix del 2026-09-10 aguanta), `update`/`delete` con la
+  misma forma. Sin drift.
+- Esquema desplegado de `Driver` releído igual: la rama de auto-lectura del
+  conductor (`data.profile_id == {{user.id}}`) sigue **fuera** del `$and` de
+  tenant en `read` y `update` — el fix del 2026-09-10 que "se revirtió sola
+  una vez" no se ha vuelto a revertir. Comparado también contra el `.jsonc`
+  del repo: idénticos, sin la deriva que esa misma sección ya documentó una
+  vez.
+- `scripts/base44-deploy.mjs` sigue rechazando un `--app-id` por argumento
+  (módulo 11) — releído, sin cambios.
+
+**UAT — tres escenarios trazados por código (sin sesión de navegador, igual
+que el resto de este archivo):**
+1. *Un usuario suspendido no puede escribir.* `manageMember`'s `suspend`
+   escribe `data:{suspended:true, write_access:'blocked'}` anidado
+   correctamente (patrón del 2026-08-31). `guardedEntityWrite` relee ese
+   perfil fresco y rechaza **cualquier** operación sobre las 17 entidades
+   module-scoped con 403 `WRITE_BLOCKED` antes de mirar rol o
+   `permissions_config` — y `User.write_access` es `rls.write:false`, así que
+   el propio usuario no puede desbloquearse por SDK directo. **PASS.**
+2. *Un dispatcher al que el admin le negó `Rentas:create` no puede crear un
+   `RentCharge`.* `moduleCan()` en `guardedEntityWrite` lee
+   `tenant.permissions_config.dispatcher.rentas.create`; un `false` explícito
+   devuelve `false` (no cae al default) → 403 `PERMISSION_DENIED`. Los tres
+   call sites reales de creación de `RentCharge` (`Rentas.jsx`,
+   `ManualChargeModal.jsx`, `QuickIncomeModal.jsx`) usan `guardedCreate`, no
+   SDK crudo — grep confirma cero llamadas directas `base44.entities.*` a
+   ninguna de las 17 entidades module-scoped en todo `src/`. **PASS** (la RLS
+   de entidad seguiría permitiendo la escritura a un dispatcher por un
+   `curl`/SDK directo fuera de la app — ese es el gap ya documentado y
+   aceptado del módulo 3, no algo nuevo).
+3. *Un admin (no el owner) no puede delegar la propiedad del tenant.*
+   `delegateOwnership` compara `user.email` (identidad estable de
+   `auth.me()`, no contaminable — a diferencia de `.data`) contra el
+   `owner_email` **almacenado** del `TenantLicense`, nunca contra
+   `user.role`. Un admin con `isAdminOrOwner()==true` pero que no es el
+   `owner_email` guardado recibe 403. **PASS.**
+
+**Hallazgo real, cerrado en esta pasada: dos manuales mentían sobre invitar
+usuarios y sobre quién puede revocar sesiones.** No era un hallazgo de
+seguridad — RLS/funciones ya hacen lo correcto — sino de contenido
+desactualizado con potencial de causar soporte real:
+
+- `USER_MANUAL.md` (fecha "Actualizado 2026-08-03", nunca tocado desde
+  entonces pese a tres cambios de comportamiento reales) y **el manual que de
+  verdad ve un tenant admin dentro de la app**, `src/lib/manual.js` (renderizado
+  por `Help.jsx` — más grave que el `.md`, porque a este sí lo lee gente real
+  como Christian) decían ambos "Usa Invitar para enviar una invitación por
+  correo" — falso desde el 2026-09-10 (`base44.auth.inviteUser nunca acepta la
+  sesión de un usuario final`): el flujo ya no manda ningún correo, solo
+  agrega al `members[]` y espera que el admin comparta el link de login a
+  mano. Un admin siguiendo el manual esperaría un correo que nunca llega.
+- Los dos también describían la Zona de Peligro como si delegar/eliminar
+  fueran acciones de "Owner, Admin" por igual — desde el módulo 14
+  (2026-08-24) son **solo del owner**; un admin ve un aviso en su lugar.
+  Ninguno mencionaba "Descargar mis datos" (módulo 7, 2026-08-18) ni
+  "Sesiones activas" (módulo 20, 2026-08-27) como secciones de la Zona de
+  Peligro — la segunda es la más seria de las dos omisiones:
+  `USER_MANUAL.md` afirmaba directamente **"Tenant admins do not have access
+  to the active-sessions view — this is a platform-level control only"**,
+  que es falso desde hace casi un mes: `DangerZone.jsx` monta
+  `ActiveSessions.jsx` para owner Y admin (fuera del `if (isOwner)`),
+  self-scoped por `created_by_id`, con botón "Revocar". Documentar mal quién
+  puede revocar una sesión es exactamente el tipo de cosa que un módulo 14
+  existe para atrapar cuando es código; esta vez era prosa.
+
+**Arreglo:** las tres secciones corregidas en los dos archivos —
+`USER_MANUAL.md` (sección Admin + sección Active Sessions, fecha actualizada)
+y `src/lib/manual.js` (tópicos "Usuarios e invitaciones" y "Zona de peligro")
+— ahora describen exactamente lo que `InviteForm.jsx`/`DangerZone.jsx`/
+`ActiveSessions.jsx` hacen hoy: sin correo automático, comparte el link;
+exportar y sesiones activas son de owner+admin; delegar y eliminar son solo
+del owner. Puramente de contenido — no se tocó ningún `.jsonc`, función ni
+componente de lógica, solo texto. `npm run lint`/`typecheck`/`build`/`npm run
+test -- --run` (484/484, incluye `manual.test.js`) corridos limpios después
+del cambio.
+
+**Sin bump de versión** — mismo criterio que los cinco precedentes de este
+archivo (`494aa29`, `06084e9`/`d07247a`, `57d4dd2`, `f2aceaf`, la pasada del
+2026-09-14): contenido de documentación, cero cambio de comportamiento en
+código, RLS o esquema.
+
+**No verificado:** una sesión de navegador real confirmando que el manual en
+`/help` ya muestra el texto corregido tras el próximo `deploy:site`, y una
+sesión real de admin/dispatcher/driver de un segundo inquilino para los tres
+escenarios UAT de arriba — ninguna alcanzable desde este entorno. El resto de
+esta pasada es relectura de código y del esquema desplegado, no ejecución en
+vivo.
