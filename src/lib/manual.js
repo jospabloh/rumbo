@@ -460,8 +460,9 @@ export const MANUAL_SECTIONS = [
         title: 'Usuarios e invitaciones',
         steps: [
           'En "Usuarios" ves a todos los miembros; toca el rol de un usuario para cambiarlo (no puedes cambiar el tuyo).',
-          'Usa "Invitar" para enviar una invitación por correo con un rol asignado.',
-          'Comparte el código de unión para que tu equipo se una.',
+          'Usa "Invitar" para agregar un correo con un rol asignado — no se envía ningún correo automático, así que comparte tú el link de inicio de sesión con esa persona.',
+          'En cuanto esa persona entre con ese mismo correo (Google o registro con contraseña), la app la reconoce y la une a tu organización sola.',
+          'También puedes compartir el código de unión de la organización para que tu equipo se una sin que tengas que invitar a cada quien por correo.',
         ],
       },
       {
@@ -486,8 +487,10 @@ export const MANUAL_SECTIONS = [
       {
         title: 'Zona de peligro',
         steps: [
-          'Delegar propiedad: transfiere el rol de owner a otro usuario por su correo.',
-          'Eliminar organización: borra todo de forma permanente; escribe ELIMINAR para confirmar.',
+          'Descargar mis datos: exporta vehículos, conductores, viajes y demás datos operativos en JSON. Disponible para owner y admin.',
+          'Sesiones activas: lista tus propios inicios de sesión (dispositivo, última actividad) con un botón "Revocar" en cada uno salvo el actual. Disponible para owner y admin — cada quien ve solo las suyas.',
+          'Delegar propiedad: transfiere el rol de owner a otro miembro ya existente por su correo. Solo el owner puede hacerlo.',
+          'Eliminar organización: borra todo de forma permanente (vehículos, conductores, viajes y demás registros operativos); las cuentas de usuario se desvinculan, no se borran. Escribe ELIMINAR para confirmar. Solo el owner puede hacerlo — un admin ve un aviso en su lugar.',
         ],
       },
     ],
