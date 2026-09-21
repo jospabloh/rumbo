@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Updated 2026-08-03**
+**Updated 2026-09-21**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -356,15 +356,17 @@ Platform administration panel.
 
 **Users:** View all users in your tenant. Change a user's role by clicking their role badge. You cannot change your own role.
 
-**Invite users:** Enter an email address and assign a role. The user receives an invitation email. Once they log in, their account is linked to your tenant.
+**Invite users:** Enter an email address and assign a role. **No invitation email is sent** — the app adds that address to your tenant's member list, and share the login link (shown after adding them) with the person yourself, by whatever channel you prefer (WhatsApp, etc.). As soon as they sign in with that same email — Google or email/password registration — the app recognizes them and links their account to your tenant automatically.
 
 **Permissions by role:** Configure what Dispatcher, Mechanic, and Driver roles can do across all modules. Changes are saved to your tenant and take effect immediately.
 
 **Danger Zone:**
-- **Delegate ownership:** Transfer the tenant owner role to another user by entering their email.
-- **Delete tenant:** Permanently remove the tenant and all associated data. Type `ELIMINAR` to confirm. This action cannot be undone.
+- **Download my data:** Export vehicles, drivers, trips, and other operational data as JSON. Available to Owner and Admin — do this before deleting.
+- **Active Sessions:** Lists your own login sessions (device, last activity) and lets you revoke any of them except the current one, forcing that device to sign out on its next heartbeat. Available to Owner and Admin (each sees only their own sessions — this is separate from the platform-level Mission Control revoke described below).
+- **Delegate ownership:** Transfer the tenant owner role to another existing member by entering their email. **Owner only.**
+- **Delete tenant:** Permanently remove the tenant and all associated data (vehicles, drivers, trips, and the rest of your operational records). User accounts are unlinked, not deleted, so people can join or create another organization afterward; support tickets are kept for audit history. Type `ELIMINAR` to confirm. This action cannot be undone. **Owner only** — an Admin sees an explanatory note instead of these two controls.
 
-**Accessible to:** Owner, Admin.
+**Accessible to:** Owner, Admin (with the Owner-only exceptions noted above).
 
 ---
 
@@ -391,11 +393,14 @@ Contact sales to upgrade your plan.
 
 ### Active Sessions (Sesiones activas)
 
-Rumbo logs one record per login/device. The **ACACIA Mission Control** dashboard (accessed by the platform owner, not tenant admins) can list active sessions and **revoke any session** to force an immediate logout of that user/device — useful when a device is lost or an account is compromised.
+Rumbo logs one record per login/device. There are two ways a session can be revoked:
 
-Session records are created automatically on each login and kept alive by a background heartbeat. When a session is revoked, the user is signed out the next time the heartbeat fires (within ~60 seconds).
+- **Self-service, in the app:** any Owner or Admin has an "Active Sessions" list in **Admin → Danger Zone** showing their own logins (device, last activity) with a "Revoke" button on each one except the session you're using right now.
+- **Platform-level:** the **ACACIA Mission Control** dashboard (accessed by the platform owner, not tenant admins) can list and revoke *any* tenant's sessions — useful when a device is lost or an account is compromised and the affected person can't reach the self-service control themselves.
 
-**Note:** Tenant admins do not have access to the active-sessions view — this is a platform-level control only.
+Session records are created automatically on each login and kept alive by a background heartbeat. When a session is revoked (either way), the user is signed out the next time the heartbeat fires (within ~60 seconds).
+
+Rumbo also signs you out automatically after 20 minutes of inactivity (with a warning first), and the server revokes any session that hasn't been active for 48 hours, regardless of who's watching.
 
 ---
 
