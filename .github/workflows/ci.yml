@@ -33,6 +33,9 @@ jobs:
       - name: Audit tenant scope (cross-tenant leak guard)
         run: npm run audit:tenant-scope
 
+      - name: Module 24 tenant roles
+        run: npm run validate:tenant-roles
+
       - name: Test
         run: npm run test
 
