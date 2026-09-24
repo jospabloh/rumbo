@@ -188,18 +188,9 @@
   ],
   "rls": {
     "create": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "owner"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
     },
     "delete": {
       "data.owner_email": "{{user.email}}"

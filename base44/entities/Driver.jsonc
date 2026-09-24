@@ -15,21 +15,28 @@
       "title": "Nombre completo",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -40,21 +47,28 @@
       "title": "No. de licencia",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -66,21 +80,28 @@
       "title": "Vencimiento de licencia",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -92,21 +113,28 @@
       "title": "Fecha de antecedentes",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -119,21 +147,28 @@
       "title": "Calificaci\u00f3n",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -150,21 +185,28 @@
       "default": "active",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -176,21 +218,28 @@
       "title": "Fecha de contrataci\u00f3n",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -205,21 +254,28 @@
       "title": "Foto",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -230,21 +286,28 @@
       "title": "Archivo de licencia",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -255,21 +318,28 @@
       "title": "Archivo de INE",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -280,21 +350,28 @@
       "title": "Comprobante de domicilio",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -305,21 +382,28 @@
       "title": "Referido por (conductor)",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -331,21 +415,28 @@
       "default": false,
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -358,21 +449,28 @@
       "description": "Sobrante del bono de referido que no cupo en los cobros abiertos; se descuenta autom\u00e1ticamente de los pr\u00f3ximos cobros generados para este conductor.",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -383,21 +481,28 @@
       "title": "ID de perfil vinculado",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -408,21 +513,28 @@
       "title": "Nombre del aval",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "dispatcher"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "dispatcher"
+                  }
+                }
+              ]
             }
           ]
         }

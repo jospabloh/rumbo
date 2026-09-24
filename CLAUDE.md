@@ -2042,3 +2042,46 @@ sesión real de admin/dispatcher/driver de un segundo inquilino para los tres
 escenarios UAT de arriba — ninguna alcanzable desde este entorno. El resto de
 esta pasada es relectura de código y del esquema desplegado, no ejecución en
 vivo.
+
+## Módulo 24 — ningún rol de tenant alcanza a todos los tenants (2026-09-24)
+
+Rumbo es el **diseño B** del módulo 24 (`jospabloh/acacia-app-standard`): sus
+admins de tenant guardan el `role: "admin"` de Base44 a propósito, y lo que lo
+hace seguro es que cada regla lo mete dentro de un `$and` con `tenant_id`. En
+este diseño `admin` es un rol **de tenant**, igual que `owner`: una rama suelta
+con cualquiera de los dos alcanza ese rol en **todas** las organizaciones.
+`manageRole` sí reparte `admin`; eso está bien mientras ninguna regla lo deje
+suelto. Hoy sólo las dos cuentas de plataforma lo tienen (leído del `User` vivo).
+
+**Lo que quedaba suelto, y se cerró:**
+
+- **`DebugProbe` — corrección de lo que este archivo repitió tres veces.** Se
+  describió como "RLS sólo owner, sin riesgo". `owner` no es el dueño de la
+  plataforma: es el rol que tiene el dueño de **cada** tenant, así que el owner
+  de cualquier cliente podía leer las 5 filas (volcados del perfil de
+  `h.josepablo@gmail.com` del 2026-09-03). Ahora `__service_role_only__` en las
+  cuatro operaciones, como `AcaciaReplayKey`. Nada la escribe ya.
+- **`TenantLicense.create` y `User.create`** — `owner`/`admin` sueltos. Ahora
+  `__service_role_only__`. El único camino real de alta es `createTenant`
+  (service role, se salta RLS). `User.create` no lo usa el registro de la
+  plataforma: con la regla vieja un usuario nuevo (rol `user`) tampoco la
+  habría cumplido. `TenantEditor.jsx` perdió su rama de `create` para cuando
+  no hay licencia: en Administración siempre hay tenant.
+- **Candados de campo de `Driver` (16) y `User.owner_group_id`** — ahora
+  `$and[tenant_id, $or[roles]]`. Si Base44 evalúa el candado de campo **junto
+  con** la regla de `update` (lo más probable), esto no cambia nada. Si lo
+  evaluara **en lugar de** ella, el candado suelto dejaba que el dispatcher de
+  otro tenant escribiera esos campos. No se pudo confirmar cuál de las dos es,
+  así que se arregló para las dos: acotar sólo puede restringir.
+
+**Guarda:** `npm run validate:tenant-roles` (en CI) corre el checker canónico
+del estándar con `--tenant-admin` (en diseño B `admin` es rol de tenant) y
+`--delegated owner_group_id` (el admin se lo asigna a un inversionista de su
+propio tenant desde `Admin.jsx`, así que su candado puede ser un rol, siempre
+que esté acotado). Con `main` anterior el checker daba 43 problemas; ahora 0.
+
+**Verificado:** `lint`, `typecheck`, `validate:rls` (28), `audit:tenant-scope`,
+`validate:tenant-roles`, `build`, `test` (484/484). **Pendiente:**
+`npm run deploy:entities` y `npm run deploy:site` después de mergear, y releer
+`DebugProbe`/`TenantLicense`/`User`/`Driver` del esquema desplegado. El MCP de
+Base44 no deja leer ni escribir esquemas de esta app desde esta sesión.

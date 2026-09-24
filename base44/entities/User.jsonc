@@ -36,16 +36,23 @@
       "description": "Etiqueta de sociedad/inversión asignada a un usuario 'investor'. Debe coincidir con el mismo campo en los `Vehicle` a los que debe tener acceso de solo lectura (estado, mantenimientos y rentas). Un tenant puede tener varios grupos (una sociedad por cada subconjunto de unidades). Solo lo asigna owner/admin, igual que `role`, para que un investor no pueda ampliar su propio alcance.",
       "rls": {
         "write": {
-          "$or": [
+          "$and": [
             {
-              "user_condition": {
-                "role": "owner"
-              }
+              "data.tenant_id": "{{user.data.tenant_id}}"
             },
             {
-              "user_condition": {
-                "role": "admin"
-              }
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -83,18 +90,9 @@
   ],
   "rls": {
     "create": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "owner"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
     },
     "read": {
       "$or": [

@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "validate:rls": "node scripts/validate-rls.mjs",
     "audit:tenant-scope": "node scripts/audit-tenant-scope.mjs",
+    "validate:tenant-roles": "node scripts/check-tenant-roles.mjs --tenant-admin --delegated owner_group_id",
     "deploy": "node scripts/base44-deploy.mjs",
     "deploy:site": "node scripts/base44-deploy.mjs --site",
     "deploy:entities": "node scripts/base44-deploy.mjs --entities",

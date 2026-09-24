@@ -69,13 +69,11 @@ export default function TenantEditor({ license, onSaved }) {
 
   const save = async () => {
     setSaving(true);
+    // Sin licencia no hay organización que editar: se crean sólo en el
+    // onboarding, vía createTenant (service role). TenantLicense.create es
+    // __service_role_only__ desde el módulo 24 (2026-09-24).
     if (license?.id) {
       await base44.entities.TenantLicense.update(license.id, form);
-    } else {
-      // plan/status ya no se envían explícitamente: son rls.write:false (auditoría
-      // 2026-08-19, módulo 1) — el esquema de la entidad ya declara sus defaults
-      // ("trial"/"active"), que Base44 aplica igual al omitirlos.
-      await base44.entities.TenantLicense.create({ ...form });
     }
     setSaving(false);
     setEditing(false);
