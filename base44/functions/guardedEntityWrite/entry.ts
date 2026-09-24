@@ -141,6 +141,12 @@ type SelfScope = {
   // create too (isDriverSelfPath would be true) even though RLS never
   // allowed that.
   ops?: Array<'create' | 'update'>;
+  // On update, the ONLY fields a driver may send. asServiceRole bypasses
+  // field-level RLS too, not just per-record RLS, so an entity whose .jsonc
+  // locks fields to owner/admin/dispatcher must list here what its driver
+  // branch can still write -- otherwise this path would hand a driver every
+  // locked field. Omitted = the entity has no field locks for driver.
+  writable?: string[];
 };
 const DRIVER_SELF_SCOPE: Record<string, SelfScope> = {
   // Trip.jsonc create/update: role in (owner,admin,dispatcher) OR data.driver_id == driver_profile_id.
@@ -156,7 +162,10 @@ const DRIVER_SELF_SCOPE: Record<string, SelfScope> = {
   // driver_profile_id -- Driver.profile_id points at the linked User, unlike
   // Trip/FuelLog's driver_id which points at the Driver record).
   // 'drivers' IS in DEFAULT_PERMISSIONS.driver, so moduleCan also applies.
-  Driver: { field: 'profile_id', compareTo: 'user_id', ops: ['update'] },
+  // Driver.jsonc locks every field except `phone` to owner/admin/dispatcher
+  // (status, rating, referral_credit, profile_id...), so `phone` is all a
+  // driver may write to their own record -- DriverProfile.jsx's only write.
+  Driver: { field: 'profile_id', compareTo: 'user_id', ops: ['update'], writable: ['phone'] },
   // LocationRequest.jsonc update: role in (owner,admin,dispatcher) OR
   // (data.driver_id == driver_profile_id AND data.status == 'pending').
   // LocationRequest is a ROLE_ONLY_ENTITY (see below), so moduleCan never
@@ -300,6 +309,21 @@ Deno.serve(async (req) => {
       const data: Record<string, unknown> = { ...(body.data || {}) };
       delete data.tenant_id; // never let a client move a record to another tenant
       if (entity === 'Message') delete data.sender_id; // never re-attribute an existing message
+      if (isDriverSelfPath) {
+        // The self-scope was checked against the STORED record above; the
+        // patch must not move it off the driver afterwards (create already
+        // enforces the same field -- this closes the update half).
+        if (selfScope.field in data && data[selfScope.field] !== existing[selfScope.field]) {
+          return bad(403, 'NOT_YOUR_RECORD', `${entity}.${selfScope.field} cannot be changed`);
+        }
+        delete data[selfScope.field];
+        if (selfScope.writable) {
+          const locked = Object.keys(data).filter((k) => !selfScope.writable!.includes(k));
+          if (locked.length) {
+            return bad(403, 'FIELD_LOCKED', `${entity}: drivers cannot write ${locked.join(', ')}`);
+          }
+        }
+      }
       const record = await svc.entities[entity].update(id, data);
       return Response.json({ ok: true, record });
     }

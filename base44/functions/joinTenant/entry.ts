@@ -65,6 +65,17 @@ async function pruneOldAttempts(svc: any, now: number): Promise<void> {
   } catch { /* best-effort cleanup */ }
 }
 
+// Roles que una entrada de `members[]` puede otorgar. `members[]` lo escribe
+// cualquier owner/admin del tenant por la RLS de TenantLicense (y el filtro
+// "sin owner" de InviteForm es solo de cliente), así que su `role` es un dato
+// controlado por el cliente. Misma regla que manageRole: `owner` nunca sale de
+// aquí — owner es solo el `owner_email` almacenado, y moverlo es trabajo de
+// delegateOwnership. Un valor desconocido también se descarta.
+const MEMBER_GRANTABLE_ROLES = new Set(['admin', 'dispatcher', 'mechanic', 'driver', 'investor', 'user']);
+function grantableMemberRole(role: unknown): string | null {
+  return typeof role === 'string' && MEMBER_GRANTABLE_ROLES.has(role) ? role : null;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -149,7 +160,7 @@ Deno.serve(async (req) => {
     // miembro ya existente → conserva el rol que le asignó el admin; nuevo → el de
     // menor privilegio.
     const tenantOwnerEmail = (tenant.owner_email || '').toLowerCase();
-    const role = tenantOwnerEmail === email ? 'owner' : (already?.role || DEFAULT_JOIN_ROLE);
+    const role = tenantOwnerEmail === email ? 'owner' : (grantableMemberRole(already?.role) || DEFAULT_JOIN_ROLE);
 
     let driverProfileId: string | null = null;
     try {

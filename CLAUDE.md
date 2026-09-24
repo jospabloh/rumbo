@@ -2085,3 +2085,38 @@ que esté acotado). Con `main` anterior el checker daba 43 problemas; ahora 0.
 `npm run deploy:entities` y `npm run deploy:site` después de mergear, y releer
 `DebugProbe`/`TenantLicense`/`User`/`Driver` del esquema desplegado. El MCP de
 Base44 no deja leer ni escribir esquemas de esta app desde esta sesión.
+
+## `members[].role` ya no otorga `owner`; el conductor ya no se salta los candados (2026-09-24)
+
+Dos hallazgos de análisis estático, cerrados juntos porque tienen la misma forma:
+una función con service role confiaba en un dato que el cliente controla.
+
+**1. Escalación a `owner` por `members[]` (medio).** `members[]` lo escribe
+cualquier owner/admin por la RLS de `TenantLicense`; el filtro "sin owner" de
+`InviteForm.jsx` es sólo de cliente. `resolveTenant` (primer enganche) y
+`joinTenant` aplicaban `members[].role` tal cual como rol de plataforma, así que
+un admin podía crear un segundo owner sin pasar por `delegateOwnership`.
+Ahora las dos pasan el valor por `grantableMemberRole()`: `owner` sólo sale del
+`owner_email` **almacenado** (`rls.write:false`), y `owner` o cualquier cadena
+desconocida en `members[]` se descarta (se registra en `resolveTenant`). `admin`
+se sigue aceptando a propósito: un admin ya puede nombrar admins con
+`manageRole`, así que quitarlo aquí no cierra nada y rompe la invitación de
+admins. De paso, el `owner_email` almacenado recibe `owner` en `resolveTenant`
+igual que ya lo hacía `joinTenant`.
+
+**2. Re-atribución por el conductor en `guardedEntityWrite` (bajo), y uno más
+grave al lado.** En `update`, el self-scope se comprobaba contra el registro
+guardado pero el patch podía cambiar `driver_id`/`profile_id` después. Ahora
+cambiarlo responde 403 `NOT_YOUR_RECORD`. Al revisarlo apareció lo peor:
+`asServiceRole` también se salta los **candados de campo**, y `Driver.jsonc`
+bloquea todo salvo `phone` a owner/admin/dispatcher — así que un conductor podía
+escribirse `status`, `rating` o `referral_credit` (dinero) en su propio
+expediente. `SelfScope.writable` lista lo que el conductor puede mandar
+(`Driver: ['phone']`); cualquier otro campo responde 403 `FIELD_LOCKED`.
+`vehicle_id` en `Trip` **no** se bloqueó: la RLS de `Trip` no lo bloquea para el
+conductor, y estrenar esa restricción aquí es una decisión de producto aparte.
+
+**Verificado:** `lint` (22 endpoints), `typecheck`, `validate:rls` (28),
+`audit:tenant-scope`, `build`, `test` (484/484), `deno check` sobre las tres
+funciones. **No verificado:** deploy (`npm run deploy` tras mergear — módulo 11)
+ni sesión real de admin/conductor. Sin cambio de esquema.
