@@ -2120,3 +2120,148 @@ conductor, y estrenar esa restricción aquí es una decisión de producto aparte
 `audit:tenant-scope`, `build`, `test` (484/484), `deno check` sobre las tres
 funciones. **No verificado:** deploy (`npm run deploy` tras mergear — módulo 11)
 ni sesión real de admin/conductor. Sin cambio de esquema.
+
+## Auditoría full-review (2026-09-28) — sin cambios en `main` desde la pasada anterior; todo re-verificado, cero regresiones
+
+Pasada de auditoría completa programada. Inventario primero: cero PRs abiertos
+en `jospabloh/rumbo`. `main` en `d985695` (Merge PR #130,
+"Stop members[].role from granting owner; lock driver self-path fields") — el
+mismo commit que la sección anterior de este archivo ya documenta con fecha
+2026-09-24. **Cero commits nuevos entre esa pasada y esta**
+(`git diff HEAD origin/main --stat` vacío), así que no había nada que este
+archivo no hubiera contabilizado ya. El objetivo de esta pasada fue entonces
+puramente re-verificación: confirmar que nada regresó, no reabrir lo ya
+cerrado.
+
+**Ramas fósiles, releídas contra lo ya catalogado.** 66 ramas en el remoto.
+`audit/rumbo-full-review` (PR #90, cerrado, sin ancestro común con `main`) y
+`audit/rumbo-full-review-20260921` siguen ahí, exactamente como la sección del
+2026-09-21 las describe — no se tocaron. El resto son el mismo patrón de
+ramas `claude/*` huérfanas de PRs ya fusionados o cerrados que las pasadas
+anteriores ya catalogaron como "sin acción requerida"; confirmado otra vez por
+cero PRs abiertos que las referencien. Ninguna se borró — este archivo ya
+advierte en otra parte del portafolio sobre limpieza destructiva hecha sin
+certeza, y verificar "sin acción requerida" no es lo mismo que tener certeza
+de que borrar no rompe nada.
+
+**Re-verificado, sin hallazgos de regresión (todo contra el código actual, no
+contra lo que este archivo afirma):**
+- `npm run lint` (`validate:functions` incluido) → 22 endpoints, techo 40,
+  margen 18.
+- `npm run typecheck`, `npm run build` → limpios.
+- `npm run validate:rls` → 28 entidades OK (27 + `DebugProbe`, que sigue sin
+  poderse borrar por API — confirmado de nuevo leyendo
+  `base44/entities/DebugProbe.jsonc`: las cuatro operaciones siguen en
+  `__service_role_only__`, igual que dejó el módulo 24).
+- `npm run audit:tenant-scope` → limpio.
+- `npm run validate:tenant-roles` (guardia del módulo 24, no pedida
+  explícitamente por esta tarea pero es parte del CI de este repo desde el
+  2026-09-24) → "no tenant role reaches every tenant; no code hands out
+  built-in admin" — cero regresión sobre el escaneo de roles.
+- `npm run test -- --run` → **484/484**, mismo número exacto que la pasada
+  anterior — cero drift. El `ECONNREFUSED 127.0.0.1:3000` que aparece en la
+  salida es el mismo ruido de red del sandbox ya documentado (sin backend
+  real configurado); no afecta el resultado.
+- Grep de `sk-`/`AKIA`/`BEGIN...PRIVATE KEY`/`xox[baprs]-`/`ghp_`/`AIza`/
+  `api_key: "..."` sobre `src/`, `base44/`, `scripts/` (nunca `dist/`) → cero
+  coincidencias.
+- Patrón `user.data` de `auth.me()`: releídas las 22 funciones de
+  `base44/functions/`. Las únicas coincidencias de `user\.data\b` son
+  comentarios que documentan el fix del 2026-09-03/09-07 (`switchTenant` en
+  esos comentarios es histórico — la función ya no existe, confirmado por
+  `ls base44/functions/`). Las dos funciones más nuevas del repo
+  (`aiIntakeTurn`, `extractLogoColors`) siguen sin leer `.data` de
+  `auth.me()` para decidir nada — sólo lo usan para autenticar. `manageRole`
+  confirmado con su propia relectura fresca (`svc.entities.User.filter`),
+  no `caller.data`.
+- Candados de campo del módulo 24: `Driver.jsonc` releído entero — las 16
+  propiedades que el módulo 24 dice haber acotado siguen con
+  `{$and: [tenant_id, $or[roles]]}`, y la excepción de auto-lectura del
+  conductor (`data.profile_id == {{user.id}}`) sigue **fuera** del `$and` de
+  tenant tanto en `read` como en `update` (el fix del 2026-09-10 que "se
+  revirtió sola una vez" sigue en pie en el archivo del repo — la
+  verificación contra el esquema **desplegado** sigue sin ser posible desde
+  este entorno, ver abajo). `TenantLicense.jsonc` releído: los 11 candados
+  `rls.write:false` (10 de licencia + `owner_email`) intactos.
+- `guardedEntityWrite/entry.ts` releído: `create` sigue forzando
+  `tenant_id: tenantId` después de esparcir `body.data`; `update`/`delete`
+  siguen comparando contra `existing.tenant_id` re-leído, no contra lo que
+  manda el cliente; `update` sigue borrando `tenant_id` (y `sender_id` en
+  `Message`) del patch; el guard `NOT_YOUR_RECORD` sobre
+  `selfScope.field`/`compareTo` y el `FIELD_LOCKED` sobre
+  `SelfScope.writable` (`Driver: ['phone']`) del hallazgo del 2026-09-24
+  siguen presentes sin cambios.
+- Las tres funciones `APP_OWNER_EMAIL`-gated (`githubRepos`, `supabaseData`,
+  `licensesAdmin`) y `reapStaleSessions` (`CRON_SECRET`) siguen respondiendo
+  403/503 — no 200 — cuando su variable no está puesta. Fallan CERRADO, sin
+  cambios.
+- `joinTenant` sigue rechazando con 409 unirse a un segundo tenant cuando el
+  caller ya tiene uno (la puerta que el retiro del selector de organización,
+  2026-09-10, tuvo que volver a poner); `grantableMemberRole()` (el fix de
+  `members[].role` del 2026-09-24) sigue presente en `resolveTenant` y
+  `joinTenant`.
+- Grep dirigido de referencias colgantes al selector de organización retirado
+  (`TenantPicker`, `TenantSwitcher`, `JoinOrganization`, `switchTenant(`,
+  `needsTenantChoice`, `needs_tenant_choice`, `candidates`) sobre `src/` y
+  `base44/` → las únicas coincidencias son comentarios históricos explicando
+  el bug ya cerrado (mismo patrón que el propio módulo 18 dejó a propósito);
+  cero import roto, cero llamada real a una función o componente que ya no
+  existe, cero ruta `/join-organization` registrada.
+- Manuales: `USER_MANUAL.md` y `src/lib/manual.js` releídos contra
+  `InviteForm.jsx`/`DangerZone.jsx`/`ActiveSessions.jsx` actuales — las tres
+  correcciones del 2026-09-21 (sin correo automático de invitación; exportar
+  datos y sesiones activas para owner+admin; delegar/eliminar sólo para
+  owner) siguen coincidiendo con el código, sin drift nuevo. Los cupos de
+  plan del manual (Trial 5/5, Starter 15/20, Pro 50/75, Enterprise
+  ilimitado) siguen coincidiendo con `PLAN_LIMITS` en `src/lib/plans.js`.
+- Versión: `package.json`, `package-lock.json` y `src/lib/version.js` en
+  `1.34.7`, coincidiendo entre sí; `CHANGELOG.md` tiene `[1.34.7]` como su
+  entrada más reciente. Sin bump esta pasada (ver abajo).
+
+**`npm audit` — mismo residual, re-confirmado que sigue sin poder arreglarse
+de forma segura, no sólo re-afirmado.** `npm install` limpio reproduce
+exactamente las 2 vulnerabilidades moderadas ya documentadas (`vitest`
+4.1.10 y `@vitest/mocker`, cadena `GHSA-82fw-gwwq-j7x9`, sólo dev). En vez de
+repetir la afirmación del 2026-09-14 sobre el bug de `arborist`, se
+reprodujo: se subió `devDependencies.vitest` a `^4.1.11` (el mínimo que
+arregla el aviso, dentro del mismo major) y `npm install --package-lock-only`
+falló con el mismo `Cannot read properties of null (reading 'edgesOut')` ya
+documentado — mismo bug conocido de `arborist` con el árbol de peers
+opcionales de `vitest`, no uno nuevo. Revertido de inmediato
+(`package.json`/`package-lock.json` de vuelta al estado del commit,
+confirmado con `git diff --stat` vacío antes de continuar). Sigue sin haber
+una fila en `overrides` que lo resuelva sin forzar `vitest@5` (mayor,
+descartado por la misma razón que el 2026-09-14: es el test runner de las
+484 pruebas del repo).
+
+**Sin hallazgos que arreglar.** A diferencia de la pasada del 2026-09-21 (que
+encontró y corrigió deriva real en los dos manuales), esta pasada no encontró
+ningún código roto, ninguna regresión de RLS/aislamiento/permisos, ningún
+secreto expuesto, ninguna prueba fallando, ninguna documentación desincronizada
+y ninguna vulnerabilidad nueva o arreglable que no lo estuviera ya. El único
+cambio de este commit es esta sección de CLAUDE.md.
+
+**Sin bump de versión** — mismo criterio que los precedentes ya establecidos
+en este archivo (`494aa29`, `06084e9`/`d07247a`, `57d4dd2`, `f2aceaf`, la
+pasada del 2026-09-14, la pasada del 2026-09-21): sin cambio de comportamiento,
+RLS, esquema ni función, esta pasada es puramente documentación.
+
+**No verificado, y por qué:** esta sesión no tuvo acceso al MCP de Base44 ni a
+una sesión de navegador — a diferencia de pasadas anteriores que sí pudieron
+releer el esquema **desplegado** (módulo 14/15/18/24), aquí sólo se pudo
+comparar el código del repo contra sí mismo y contra el resultado de los
+scripts de validación locales. Concretamente, no se pudo:
+- Releer `TenantLicense`/`Driver`/`User`/`DebugProbe` del esquema
+  **desplegado** vía el MCP de Base44 para confirmar que lo que corre en
+  producción coincide con el `.jsonc` del repo (la pasada del 2026-09-10 ya
+  documentó un caso real en que no coincidían — `Driver` se revirtió sola una
+  vez tras un `deploy:entities` desde un checkout desactualizado — así que
+  esta ausencia de verificación no es hipotética).
+- Confirmar el deploy en vivo de las funciones y el esquema (`npm run
+  deploy`/`deploy:entities`/`deploy:site` — módulo 11) — no aplica de todos
+  modos, porque esta pasada no cambió ningún `base44/functions/*.ts` ni
+  ningún `.jsonc`.
+- Cualquier sesión de navegador real (admin/dispatcher/mechanic/driver de un
+  segundo inquilino, el flujo de invitar, la Zona de Peligro, el manual en
+  `/help`) — ninguna alcanzable desde este entorno, igual que en todas las
+  pasadas anteriores de este archivo.
