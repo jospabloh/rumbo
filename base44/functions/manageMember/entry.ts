@@ -109,13 +109,39 @@ async function handleRequests(svc: any, caller: any, tenantId: string, body: any
     await svc.entities.JoinRequest.delete(request.id).catch(() => {});
     return Response.json({ error: 'Esa persona ya pertenece a otra organización.' }, { status: 409 });
   }
+  const targetEmail = (target.email || '').toLowerCase();
+  const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
+  // Base44 rejects role changes on the app owner even as service role, so the
+  // role write is skipped for that account (the check below also refuses it).
+  const isAppOwnerTarget = !!targetEmail && targetEmail === appOwnerEmail;
+
+  // Role write, in its OWN call (atomic update: mixed with `data` a rejection
+  // would lose the tenant). Returns the error message, or null when applied /
+  // nothing to do. A failure must NOT consume the request.
+  const applyRole = async (): Promise<string | null> => {
+    if (isAppOwnerTarget || target.role === role) return null;
+    try {
+      await svc.entities.User.update(target.id, { role });
+      return null;
+    } catch (e) {
+      const msg = (e as Error).message;
+      console.error(`[manageMember] role update rejected for ${target.id}: ${msg}`);
+      return msg;
+    }
+  };
+  const roleFailed = () => Response.json(
+    { error: 'No se pudo asignar el rol. La solicitud sigue pendiente; inténtalo de nuevo.' },
+    { status: 502 },
+  );
+
   if (targetData.tenant_id === tenantId) {
+    // Retry after a failed role write (or invited separately): reconcile the
+    // stored role with the approver's choice before consuming the request.
+    if (await applyRole()) return roleFailed();
     await svc.entities.JoinRequest.delete(request.id).catch(() => {});
     return Response.json({ ok: true, action, approved: true, already_member: true });
   }
 
-  const targetEmail = (target.email || '').toLowerCase();
-  const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
   if (targetEmail && targetEmail === appOwnerEmail) {
     return Response.json({ error: 'El owner de la plataforma no se une a organizaciones.' }, { status: 403 });
   }
@@ -127,7 +153,12 @@ async function handleRequests(svc: any, caller: any, tenantId: string, body: any
   // 1) members[] primero: si algo falla después, resolveTenant reconoce a la
   //    persona por aquí con este mismo rol (aprobación ya concedida), así que el
   //    estado no se queda a medias.
-  const members = Array.isArray(tenant.members) ? tenant.members : [];
+  //    Base44 has no atomic append: re-read the tenant right before the write
+  //    and merge into that fresh list, so a concurrent approve/invite/remove
+  //    between our first read and here is not overwritten (the window is
+  //    narrowed, not closed).
+  const freshTenant = await svc.entities.TenantLicense.get(tenantId).catch(() => null) || tenant;
+  const members = Array.isArray(freshTenant.members) ? freshTenant.members : [];
   const idx = members.findIndex((m: any) => (m.email || '').toLowerCase() === targetEmail);
   const entry = { name: target.full_name || request.name || '', email: targetEmail, role };
   const nextMembers = idx >= 0
@@ -153,15 +184,8 @@ async function handleRequests(svc: any, caller: any, tenantId: string, body: any
 
   // 3) Rol en su PROPIA llamada (la plataforma rechaza tocar el rol del owner de
   //    la app y el update es atómico: mezclado con `data` perdería el tenant).
-  let roleApplied = target.role;
-  if (target.role !== role) {
-    try {
-      await svc.entities.User.update(target.id, { role });
-      roleApplied = role;
-    } catch (e) {
-      console.error(`[manageMember] role update rejected for ${target.id}: ${(e as Error).message}`);
-    }
-  }
+  if (await applyRole()) return roleFailed();
+  const roleApplied = isAppOwnerTarget ? target.role : role;
 
   await svc.entities.JoinRequest.delete(request.id).catch(() => {});
   return Response.json({ ok: true, action, approved: true, role: roleApplied });

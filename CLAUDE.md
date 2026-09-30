@@ -2361,3 +2361,8 @@ como unión hecha (muestra "¡Te uniste!" y recarga): inocuo, pero conviene que 
 paso 3 vaya pegado. Después: `list_entity_schemas` de `JoinRequest` (4 operaciones
 `__service_role_only__`) y una prueba con dos cuentas reales.
 Solicitudes ya "unidas" antes de este cambio no se tocan: siguen en `members[]`.
+
+### Revisión de Codex sobre PR #132 (2026-09-30)
+
+`manageMember.approveRequest`: (a) si la escritura del rol (su propia llamada) falla, ya no se borra la solicitud ni se responde éxito: 502 y la solicitud sigue pendiente. El reintento cae en la rama "ya es miembro", que ahora reconcilia el rol guardado con el elegido antes de consumirla. Se omite la escritura de rol solo si el destino es el owner de la app (Base44 la rechaza; además esa cuenta ya recibe 403 más abajo). (b) `members[]` se vuelve a leer justo antes de escribir y se mezcla sobre esa lista fresca; Base44 no tiene append atómico, así que la ventana se reduce, no se cierra.
+Verificado: lint (22/40; deno lint 97 avisos preexistentes, iguales a antes), build, validate:rls (29), npm test (497), test:functions (10). No verificado: contra Base44 en vivo; no se desplegó.
