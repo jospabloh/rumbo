@@ -4,6 +4,26 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.35.0] — 2026-09-30 — unirse con código ahora es una solicitud; verificación de correo en el login
+
+**Unirse por código ya no da acceso.** Antes, quien tenía el código entraba al
+instante (como conductor). Ahora `joinTenant` solo crea una `JoinRequest`
+pendiente; la persona ve "Solicitud enviada, esperando aprobación" (sobrevive a
+recargas) y ningún dato de la organización. El owner/admin la ve en
+Administración > "Solicitudes de unión", elige el rol (admin, dispatcher,
+mecánico, conductor, socio, usuario; nunca owner) y aprueba, o rechaza. Solo la
+aprobación escribe `members[]` y el perfil. Invitar por correo (`members[]`) sigue
+contando como pre-aprobado. Quien tiene una solicitud pendiente no puede crear
+otra organización, y `createTenant` ahora responde 409 a quien ya pertenece a una.
+
+**Verificación de correo (código OTP).** El login mostraba "Correo o contraseña
+incorrectos" ante cualquier error, incluida una cuenta sin verificar. Ahora abre
+el paso de código (con reenvío), un fallo de red lo dice como tal, y Registro y
+Login comparten el mismo componente.
+
+Nueva entidad `JoinRequest` (service-role-only). Pruebas de comportamiento de
+las funciones en `base44/tests/` (`npm run test:functions`, requiere deno).
+
 ## [1.34.7] — 2026-09-10 — un conductor recién unido no podía ver su propio expediente
 
 Mismo caso real del arreglo anterior: con la unión por código ya funcionando,

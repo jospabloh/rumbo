@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 
 /**
  * JoinCodeCard — muestra el código de unión del tenant para compartirlo con el equipo.
- * Cualquiera con el código puede unirse como conductor (mínimo privilegio); por eso se
- * permite regenerarlo (invalida el anterior) si se filtró.
+ * El código NO da acceso por sí solo: quien lo usa deja una solicitud que un owner/admin
+ * aprueba (eligiendo el rol) desde "Solicitudes de unión". Aun así se permite regenerarlo
+ * (invalida el anterior) si se filtró, para no recibir solicitudes de desconocidos.
  */
 export default function JoinCodeCard({ tenant, onChanged }) {
   const [copied, setCopied] = useState(false);
@@ -41,8 +42,8 @@ export default function JoinCodeCard({ tenant, onChanged }) {
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Código de unión</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Comparte este código para que alguien se una a tu organización. Entrará como
-        <span className="text-foreground font-medium"> conductor</span> y luego puedes cambiar su rol arriba.
+        Comparte este código para que alguien pida unirse a tu organización. No entra solo:
+        te llegará una solicitud arriba, y al aprobarla eliges su rol.
       </p>
       {code ? (
         <div className="flex items-center gap-2 flex-wrap">

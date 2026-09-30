@@ -21,6 +21,14 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-09-30',
+    title: 'Unirse con código ahora requiere aprobación',
+    items: [
+      'Al usar el código de una organización, ahora envías una solicitud y esperas a que un administrador la apruebe y elija tu rol. Mientras tanto verás "Solicitud enviada". Si eres administrador, las solicitudes aparecen en Administración.',
+      'Si tu cuenta aún no estaba verificada, al iniciar sesión ahora te pedimos el código que te enviamos por correo (con opción de reenviarlo) en lugar de decir que tu contraseña es incorrecta.',
+    ],
+  },
+  {
     date: '2026-09-10',
     title: 'Un conductor recién unido ya ve su expediente',
     items: [

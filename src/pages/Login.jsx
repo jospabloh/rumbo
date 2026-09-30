@@ -11,6 +11,8 @@ import {
   PasswordField,
   SubmitButton,
 } from "@/components/auth/parts";
+import VerifyEmailStep from "@/components/auth/VerifyEmailStep";
+import { needsEmailVerification, loginErrorMessage } from "@/lib/authErrors";
 import { getRememberedIdentity, clearRememberedIdentity } from "@/lib/lastIdentity";
 
 export default function Login() {
@@ -23,6 +25,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [needsVerify, setNeedsVerify] = useState(false);
 
   const firstName = remembered?.name ? remembered.name.split(" ")[0] : null;
 
@@ -33,8 +36,15 @@ export default function Login() {
     try {
       await base44.auth.loginViaEmailPassword(email.trim(), password);
       window.location.href = "/";
-    } catch {
-      setError("Correo o contraseña incorrectos. Inténtalo de nuevo.");
+    } catch (err) {
+      // Solo credenciales malas dicen "incorrectos". Correo sin verificar abre el
+      // paso del código (y manda uno nuevo); un fallo de red lo dice como tal.
+      if (needsEmailVerification(err)) {
+        try { await base44.auth.resendOtp(email.trim()); } catch { /* el paso permite reenviar */ }
+        setNeedsVerify(true);
+      } else {
+        setError(loginErrorMessage(err));
+      }
       setLoading(false);
     }
   };
@@ -46,6 +56,10 @@ export default function Login() {
     setRecognized(false);
     setEmail("");
   };
+
+  if (needsVerify) {
+    return <VerifyEmailStep email={email.trim()} password={password} onCancel={() => { setNeedsVerify(false); setError(""); }} />;
+  }
 
   return (
     <AuthLayout

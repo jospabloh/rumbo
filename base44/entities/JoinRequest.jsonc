@@ -1,0 +1,83 @@
+{
+  // JoinRequest — solicitud pendiente de unirse a una organización con su código
+  // (2026-09-30). Antes joinTenant daba acceso al instante: cualquiera con el
+  // código (WhatsApp reenviado, captura de pantalla) entraba. Ahora redimir el
+  // código solo deja una fila aquí, y NO da acceso a nada: el owner/admin de la
+  // organización destino la ve en Administración, elige el rol y aprueba
+  // (manageMember: approveRequest) o rechaza (rejectRequest). Solo la aprobación
+  // escribe members[] y data.tenant_id/rol del usuario.
+  //
+  // Service-role only en las cuatro operaciones, a propósito: nadie lee ni
+  // escribe esto desde el navegador. Un `read` por usuario o por tenant abriría
+  // correos/nombres de solicitantes a quien no debe, y un `create` desde cliente
+  // permitiría fabricar solicitudes a nombre de otro. Todo pasa por joinTenant
+  // (crear/cancelar), resolveTenant (que el solicitante vea su estado) y
+  // manageMember (listar/aprobar/rechazar, con el tenant del admin releído en
+  // servidor). Se llama `target_tenant_id` y no `tenant_id` a propósito: esta
+  // entidad NO es un registro operativo del tenant, y un campo `tenant_id`
+  // la haría pasar por tal ante audit:tenant-scope.
+  "name": "JoinRequest",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "Usuario solicitante",
+      "description": "Id del User que pidió unirse. Lo pone joinTenant desde la sesión, nunca el cuerpo de la petición."
+    },
+    "email": {
+      "type": "string",
+      "title": "Correo del solicitante"
+    },
+    "name": {
+      "type": "string",
+      "title": "Nombre del solicitante"
+    },
+    "target_tenant_id": {
+      "type": "string",
+      "title": "Organización solicitada",
+      "description": "Id del TenantLicense cuyo código se redimió. manageMember compara ESTE valor almacenado contra el tenant del admin; nunca uno enviado por el cliente."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "rejected"],
+      "default": "pending",
+      "title": "Estado",
+      "description": "pending: espera decisión. rejected: el admin la rechazó; se conserva hasta que el solicitante la descarta para que sepa qué pasó. Una solicitud aprobada se borra: su efecto queda en members[]."
+    },
+    "requested_at": {
+      "type": "string",
+      "title": "Solicitada (ISO)"
+    },
+    "decided_by": {
+      "type": "string",
+      "title": "Correo de quien decidió"
+    },
+    "decided_at": {
+      "type": "string",
+      "title": "Decidida (ISO)"
+    }
+  },
+  "required": ["user_id", "target_tenant_id", "status"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    }
+  }
+}

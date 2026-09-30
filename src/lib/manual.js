@@ -37,8 +37,9 @@ export const MANUAL_SECTIONS = [
         title: 'Unirte a una organización existente',
         steps: [
           'En "¿Cómo quieres empezar?" elige "Unirme a una organización".',
-          'Escribe el código de la organización (formato RUMBO-XXXXXX) que te compartió tu administrador y pulsa "Unirme".',
-          'Entras con acceso de conductor; tu administrador puede ampliar tus permisos después.',
+          'Escribe el código de la organización (formato RUMBO-XXXXXX) que te compartió tu administrador y pulsa "Pedir unirme".',
+          'Verás "Solicitud enviada": el código no te da acceso por sí solo. Puedes cerrar la pantalla y volver; si cambias de opinión, usa "Cancelar solicitud".',
+          'Cuando el administrador te apruebe y elija tu rol, entras automáticamente. Si la rechaza, la pantalla te lo dice.',
         ],
       },
     ],
@@ -462,7 +463,7 @@ export const MANUAL_SECTIONS = [
           'En "Usuarios" ves a todos los miembros; toca el rol de un usuario para cambiarlo (no puedes cambiar el tuyo).',
           'Usa "Invitar" para agregar un correo con un rol asignado — no se envía ningún correo automático, así que comparte tú el link de inicio de sesión con esa persona.',
           'En cuanto esa persona entre con ese mismo correo (Google o registro con contraseña), la app la reconoce y la une a tu organización sola.',
-          'También puedes compartir el código de unión de la organización para que tu equipo se una sin que tengas que invitar a cada quien por correo.',
+          'También puedes compartir el código de unión de la organización: quien lo use no entra solo, aparece en "Solicitudes de unión" (arriba de Usuarios) y tú eliges su rol al aprobarla, o la rechazas.',
         ],
       },
       {
