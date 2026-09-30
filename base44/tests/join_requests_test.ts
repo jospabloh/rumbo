@@ -174,3 +174,15 @@ Deno.test('members[].role owner nunca otorga owner (grantableMemberRole sigue)',
   eq(r.body.tenant_id, 'T1', 'enlazado');
   assert(db.User.find((x) => x.id === 'new')!.role !== 'owner', 'no owner');
 });
+
+Deno.test('resolveTenant repara el rol owner del creador aunque ya tenga tenant_id', async () => {
+  reset(seed());
+  // createTenant escribio tenant_id pero su escritura de rol fallo: rol 'user'.
+  db.User.find((x) => x.id === 'boss')!.role = 'user';
+  const r = await call('resolveTenant', 'boss', {});
+  eq(r.body.role, 'owner', 'respuesta owner');
+  eq(db.User.find((x) => x.id === 'boss')!.role, 'owner', 'rol persistido');
+  // Un admin del tenant NO se sube a owner por esta via.
+  await call('resolveTenant', 'adm', {});
+  eq(db.User.find((x) => x.id === 'adm')!.role, 'admin', 'admin intacto');
+});

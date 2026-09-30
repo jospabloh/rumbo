@@ -205,7 +205,13 @@ Deno.serve(async (req) => {
     if (member?.role && !invitedRole && !isStoredOwner) {
       console.warn(`[resolveTenant] ignored members[].role "${member.role}" for ${user.id} in ${tenant.id}`);
     }
-    if (!alreadyAssigned && invitedRole && invitedRole !== selfRole) {
+    // The tenant's stored owner is repaired even when the tenant is already
+    // assigned: createTenant writes the role in its own call after tenant_id and
+    // only logs a rejection, so a failed write would otherwise leave the creator
+    // pointing at their tenant as a plain 'user' forever. The platform owner is
+    // excluded (their role is 'admin', and the platform rejects changing it).
+    const repairStoredOwner = isStoredOwner && !isAppOwner && selfRole !== 'owner';
+    if ((!alreadyAssigned || repairStoredOwner) && invitedRole && invitedRole !== selfRole) {
       try {
         await svc.entities.User.update(user.id, { role: invitedRole });
         roleApplied = invitedRole;
