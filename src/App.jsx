@@ -52,7 +52,7 @@ import { PageLoader, Spinner } from '@/components/ui/spinner';
 // Add page imports here
 
 const TenantGate = ({ children }) => {
-  const { tenantId, isAppOwner, loading, reload } = useTenant();
+  const { tenantId, isAppOwner, loading, reload, refresh, joinRequest } = useTenant();
   const { isLoadingAuth } = useAuth();
   const { data: user, isLoading: userLoading, isFetched: userFetched } = useMe();
 
@@ -67,7 +67,7 @@ const TenantGate = ({ children }) => {
   const needsOnboarding = user && !tenantId && !isAppOwner;
 
   if (needsOnboarding) {
-    return <Onboarding user={user} onComplete={() => reload()} />;
+    return <Onboarding user={user} joinRequest={joinRequest} onComplete={() => reload()} onRefresh={() => refresh()} />;
   }
 
   return children;

@@ -14,6 +14,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *     (owner_email) ni sobre el owner de la app.
  *   - 'suspend' marca suspended=true y write_access='blocked'. resolveTenant respeta el
  *     flag, así que la suspensión no se revierte sola al revalidar la licencia.
+ *   - SOLICITUDES DE UNIÓN (2026-09-30) — 'listRequests' / 'approveRequest' /
+ *     'rejectRequest'. Unirse con el código deja una JoinRequest pendiente (ver
+ *     joinTenant); aquí es donde un owner/admin la resuelve. Reglas: el tenant del
+ *     caller sale de su perfil releído (nunca del cuerpo); la solicitud se relee y
+ *     se compara SU `target_tenant_id` almacenado contra ese tenant (una ajena y una
+ *     inexistente responden igual: 404, sin oráculo); el rol elegido va contra una
+ *     lista blanca que NUNCA incluye 'owner' (transferir propiedad es
+ *     delegateOwnership); y solo aprobar escribe members[] y el perfil del usuario.
  *   - 'remove' desliga al usuario (tenant_id=null), lo saca de members[] y lo baja a 'user'.
  *     No borra la cuenta: solo revoca el acceso a este tenant.
  */
@@ -28,6 +36,159 @@ function computeWriteAccess(tenant: any): 'enabled' | 'blocked' {
   const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000);
   if (daysLeft >= 0) return 'enabled';
   return -daysLeft <= 7 ? 'enabled' : 'blocked';
+}
+
+// Roles que un admin puede asignar al aprobar. Mismo conjunto que manageRole
+// (VALID_ROLES) MENOS 'owner': la propiedad solo se mueve con delegateOwnership.
+// src/lib/joinRequests.js espeja esta lista y un test la compara.
+const ASSIGNABLE_ROLES = ['admin', 'dispatcher', 'mechanic', 'driver', 'investor', 'user'];
+const REQUEST_ACTIONS = ['listRequests', 'approveRequest', 'rejectRequest'];
+
+
+/**
+ * Resuelve solicitudes de unión. `svc` = service role; `tenantId` ya viene del
+ * perfil releído del caller, que ya se comprobó owner/admin.
+ */
+async function handleRequests(svc: any, caller: any, tenantId: string, body: any): Promise<Response> {
+  const { action } = body;
+
+  if (action === 'listRequests') {
+    const rows = await svc.entities.JoinRequest.filter({ target_tenant_id: tenantId, status: 'pending' });
+    const requests = (Array.isArray(rows) ? rows : []).map((r: any) => ({
+      id: r.id,
+      name: r.name || '',
+      email: r.email || '',
+      requested_at: r.requested_at || null,
+    }));
+    return Response.json({ ok: true, requests });
+  }
+
+  const requestId = typeof body.requestId === 'string' ? body.requestId : '';
+  if (!requestId) return Response.json({ error: 'Solicitud inválida.' }, { status: 400 });
+
+  // Se relee y se compara el tenant ALMACENADO: una solicitud de otra
+  // organización responde exactamente igual que una que no existe.
+  const request = await svc.entities.JoinRequest.get(requestId).catch(() => null);
+  if (!request || request.target_tenant_id !== tenantId) {
+    return Response.json({ error: 'Solicitud no encontrada.' }, { status: 404 });
+  }
+  if (request.status !== 'pending') {
+    return Response.json({ error: 'Esa solicitud ya fue resuelta.' }, { status: 409 });
+  }
+
+  if (action === 'rejectRequest') {
+    await svc.entities.JoinRequest.update(request.id, {
+      status: 'rejected',
+      decided_by: (caller.email || '').toLowerCase(),
+      decided_at: new Date().toISOString(),
+    });
+    return Response.json({ ok: true, action, rejected: true });
+  }
+
+  // approveRequest
+  const role = body.role;
+  if (typeof role !== 'string' || !ASSIGNABLE_ROLES.includes(role)) {
+    return Response.json({ error: 'Elige un rol válido para la persona.' }, { status: 400 });
+  }
+
+  const tenant = await svc.entities.TenantLicense.get(tenantId).catch(() => null);
+  if (!tenant) return Response.json({ error: 'Organización no encontrada.' }, { status: 404 });
+
+  const target = await svc.entities.User.get(request.user_id).catch(() => null);
+  if (!target) {
+    await svc.entities.JoinRequest.delete(request.id).catch(() => {});
+    return Response.json({ error: 'Esa cuenta ya no existe.' }, { status: 404 });
+  }
+  const targetData = target.data || {};
+
+  // UN USUARIO, UN TENANT: si ya se enganchó a otra organización mientras
+  // esperaba, aprobar la dejaría inalcanzable. La solicitud se cierra sin
+  // efecto. Si ya está en ESTA (p. ej. lo invitaron aparte), tampoco hay nada
+  // que escribir.
+  if (targetData.tenant_id && targetData.tenant_id !== tenantId) {
+    await svc.entities.JoinRequest.delete(request.id).catch(() => {});
+    return Response.json({ error: 'Esa persona ya pertenece a otra organización.' }, { status: 409 });
+  }
+  const targetEmail = (target.email || '').toLowerCase();
+  const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
+  // Base44 rejects role changes on the app owner even as service role, so the
+  // role write is skipped for that account (the check below also refuses it).
+  const isAppOwnerTarget = !!targetEmail && targetEmail === appOwnerEmail;
+
+  // Role write, in its OWN call (atomic update: mixed with `data` a rejection
+  // would lose the tenant). Returns the error message, or null when applied /
+  // nothing to do. A failure must NOT consume the request.
+  const applyRole = async (): Promise<string | null> => {
+    if (isAppOwnerTarget || target.role === role) return null;
+    try {
+      await svc.entities.User.update(target.id, { role });
+      return null;
+    } catch (e) {
+      const msg = (e as Error).message;
+      console.error(`[manageMember] role update rejected for ${target.id}: ${msg}`);
+      return msg;
+    }
+  };
+  const roleFailed = () => Response.json(
+    { error: 'No se pudo asignar el rol. La solicitud sigue pendiente; inténtalo de nuevo.' },
+    { status: 502 },
+  );
+
+  if (targetData.tenant_id === tenantId) {
+    // Retry after a failed role write (or invited separately): reconcile the
+    // stored role with the approver's choice before consuming the request.
+    if (await applyRole()) return roleFailed();
+    await svc.entities.JoinRequest.delete(request.id).catch(() => {});
+    return Response.json({ ok: true, action, approved: true, already_member: true });
+  }
+
+  if (targetEmail && targetEmail === appOwnerEmail) {
+    return Response.json({ error: 'El owner de la plataforma no se une a organizaciones.' }, { status: 403 });
+  }
+  if (targetEmail && targetEmail === (tenant.owner_email || '').toLowerCase()) {
+    await svc.entities.JoinRequest.delete(request.id).catch(() => {});
+    return Response.json({ error: 'Esa persona ya es la propietaria de la organización.' }, { status: 409 });
+  }
+
+  // 1) members[] primero: si algo falla después, resolveTenant reconoce a la
+  //    persona por aquí con este mismo rol (aprobación ya concedida), así que el
+  //    estado no se queda a medias.
+  //    Base44 has no atomic append: re-read the tenant right before the write
+  //    and merge into that fresh list, so a concurrent approve/invite/remove
+  //    between our first read and here is not overwritten (the window is
+  //    narrowed, not closed).
+  const freshTenant = await svc.entities.TenantLicense.get(tenantId).catch(() => null) || tenant;
+  const members = Array.isArray(freshTenant.members) ? freshTenant.members : [];
+  const idx = members.findIndex((m: any) => (m.email || '').toLowerCase() === targetEmail);
+  const entry = { name: target.full_name || request.name || '', email: targetEmail, role };
+  const nextMembers = idx >= 0
+    ? members.map((m: any, i: number) => (i === idx ? { ...m, ...entry } : m))
+    : [...members, entry];
+  await svc.entities.TenantLicense.update(tenantId, { members: nextMembers });
+
+  // 2) Perfil: tenant_id / write_access / driver_profile_id bajo `data`.
+  let driverProfileId: string | null = null;
+  try {
+    const drivers = await svc.entities.Driver.filter({ profile_id: target.id });
+    const drv = Array.isArray(drivers) ? (drivers.find((d: any) => d.tenant_id === tenantId) || null) : null;
+    driverProfileId = drv?.id || null;
+  } catch (_e) { /* sin registro Driver vinculado */ }
+  await svc.entities.User.update(target.id, {
+    data: {
+      ...targetData,
+      tenant_id: tenantId,
+      driver_profile_id: driverProfileId,
+      write_access: computeWriteAccess(tenant),
+    },
+  });
+
+  // 3) Rol en su PROPIA llamada (la plataforma rechaza tocar el rol del owner de
+  //    la app y el update es atómico: mezclado con `data` perdería el tenant).
+  if (await applyRole()) return roleFailed();
+  const roleApplied = isAppOwnerTarget ? target.role : role;
+
+  await svc.entities.JoinRequest.delete(request.id).catch(() => {});
+  return Response.json({ ok: true, action, approved: true, role: roleApplied });
 }
 
 Deno.serve(async (req) => {
@@ -52,6 +213,11 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const { action, userId } = body;
+
+    if (REQUEST_ACTIONS.includes(action)) {
+      return await handleRequests(svc, caller, tenantId, body);
+    }
+
     if (!userId || !['suspend', 'reactivate', 'remove'].includes(action)) {
       return Response.json({ error: 'Acción o usuario inválido.' }, { status: 400 });
     }

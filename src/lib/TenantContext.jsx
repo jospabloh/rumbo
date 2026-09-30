@@ -11,6 +11,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { invokeFunction } from '@/lib/invokeFunction';
 import { getLicenseInfo, isReadOnly, isWriteBlocked } from '@/lib/license';
+import { normalizeJoinRequest } from '@/lib/joinRequests';
 
 // Cada cuánto se revalida el tenant/licencia mientras la app está abierta. La licencia
 // cambia de estado por día; revalidar periódicamente evita que una sesión que quedó
@@ -25,6 +26,9 @@ export function TenantProvider({ children }) {
   const [tenantId, setTenantId] = useState(null);
   const [isAppOwner, setIsAppOwner] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  // Solicitud de unión por código en espera/rechazada (la refleja resolveTenant);
+  // por eso la pantalla "esperando aprobación" sobrevive a una recarga.
+  const [joinRequest, setJoinRequest] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadTenant = async ({ showLoading = false } = {}) => {
@@ -41,6 +45,7 @@ export function TenantProvider({ children }) {
         const body = await invokeFunction('resolveTenant', {});
         resolvedTenant = body?.tenant || null;
         setIsAppOwner(!!body?.is_app_owner);
+        setJoinRequest(normalizeJoinRequest(body?.join_request));
       } catch (e) {
         console.error('resolveTenant falló, usando descubrimiento cliente:', e);
       }
@@ -110,8 +115,10 @@ export function TenantProvider({ children }) {
 
   return (
     <TenantContext.Provider value={{
-      tenant, tenantId, isAppOwner, userRole, loading,
+      tenant, tenantId, isAppOwner, userRole, loading, joinRequest,
       reload: () => loadTenant({ showLoading: true }),
+      // Revalida sin parpadeo (sin pantalla de carga): la usa la pantalla de espera.
+      refresh: () => loadTenant(),
       setTenant, licenseInfo, readOnly, writeBlocked,
     }}>
       {children}

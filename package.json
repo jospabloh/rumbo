@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.34.7",
+  "version": "1.35.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,6 +20,7 @@
     "deploy:entities": "node scripts/base44-deploy.mjs --entities",
     "functions:audit": "node scripts/base44-audit.mjs",
     "validate:functions": "node scripts/validate-functions.mjs",
+    "test:functions": "deno test --allow-env --allow-read --import-map=base44/tests/import_map.json base44/tests/",
     "test:smoke": "playwright test"
   },
   "dependencies": {

@@ -12,6 +12,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *   2. Si no, se toma el PRIMER tenant que empareja (creador, owner_email o miembro
  *      en members[]) por orden de creación descendente, y se persiste.
  *
+ * SOLICITUDES (2026-09-30): unirse por código ya no da acceso, deja una
+ * `JoinRequest` pendiente. Esta función NO la aprueba nunca; solo la refleja
+ * (`join_request`) para que el solicitante vea "esperando aprobación" tras una
+ * recarga. La única vía por la que un email entra sin aprobación aquí es
+ * members[] (invitación de un admin, pre-aprobada) o ser creador/owner_email.
+ *
  * UN USUARIO, UN TENANT. Un email pertenece a una sola organización a la vez: el
  * binding que esta función persiste es definitivo mientras exista, y no hay forma
  * de cambiarlo desde la app. Si alguien necesita moverse de organización, un
@@ -119,12 +125,33 @@ Deno.serve(async (req) => {
       if (selfData?.write_access === 'blocked') {
         await svc.entities.User.update(user.id, { data: { ...selfData, write_access: 'enabled' } });
       }
+      // Solicitud de unión por código (joinTenant) en espera o rechazada. Se lee
+      // por el id de la SESIÓN y por service role: JoinRequest no es legible desde
+      // el navegador. Esto es lo que hace que la pantalla "esperando aprobación"
+      // sobreviva a una recarga. NO da ningún dato del tenant, solo su nombre.
+      let joinRequest: Record<string, unknown> | null = null;
+      try {
+        const rows = await svc.entities.JoinRequest.filter({ user_id: user.id });
+        const mine = Array.isArray(rows) ? rows[0] : null;
+        if (mine && (mine.status === 'pending' || mine.status === 'rejected')) {
+          const target = tenants.find((t) => t.id === mine.target_tenant_id) || null;
+          joinRequest = {
+            id: mine.id,
+            status: mine.status,
+            tenant_name: target?.tenant_name || 'la organización',
+            requested_at: mine.requested_at || null,
+          };
+        }
+      } catch (e) {
+        console.error(`[resolveTenant] JoinRequest read failed for ${user.id}: ${(e as Error).message}`);
+      }
       return Response.json({
         tenant_id: null,
         role: selfRole,
         is_app_owner: isAppOwner,
         needs_onboarding: ['owner', 'admin'].includes(selfRole),
         write_access: 'enabled',
+        join_request: joinRequest,
       });
     }
 

@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Button } from "@/components/ui/button";
-import { UserPlus, Mail, Loader2 } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { UserPlus } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
-import { toast } from "@/components/ui/use-toast";
+import VerifyEmailStep from "@/components/auth/VerifyEmailStep";
+import { isNetworkError } from "@/lib/authErrors";
 import {
   SocialButtons,
   OrDivider,
@@ -22,7 +21,6 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,74 +38,18 @@ export default function Register() {
       await base44.auth.register({ email: email.trim(), password });
       setShowOtp(true);
     } catch (err) {
-      setError(err.message || "No pudimos crear la cuenta. Puede que el correo ya esté registrado.");
+      setError(isNetworkError(err)
+        ? "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo."
+        : "No pudimos crear la cuenta. Puede que el correo ya esté registrado.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVerify = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const result = await base44.auth.verifyOtp({ email: email.trim(), otpCode });
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
-      }
-      window.location.href = "/";
-    } catch (err) {
-      setError(err.message || "Código incorrecto o expirado.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setError("");
-    try {
-      await base44.auth.resendOtp(email.trim());
-      toast({ title: "Código reenviado", description: "Revisa tu correo." });
-    } catch (err) {
-      setError(err.message || "No pudimos reenviar el código.");
     }
   };
 
   const handleProvider = (provider) => base44.auth.loginWithProvider(provider, "/");
 
   if (showOtp) {
-    return (
-      <AuthLayout icon={Mail} title="Verifica tu correo" subtitle={`Te enviamos un código a ${email}`}>
-        <AuthError>{error}</AuthError>
-        <div className="mb-6 flex justify-center">
-          <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-        <Button className="h-12 w-full font-medium" onClick={handleVerify} disabled={loading || otpCode.length < 6}>
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Verificando…
-            </>
-          ) : (
-            "Verificar y entrar"
-          )}
-        </Button>
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          ¿No recibiste el código?{" "}
-          <button onClick={handleResend} className="font-medium text-primary hover:underline">
-            Reenviar
-          </button>
-        </p>
-      </AuthLayout>
-    );
+    return <VerifyEmailStep email={email.trim()} password={password} onCancel={() => { setShowOtp(false); setError(''); }} />;
   }
 
   return (

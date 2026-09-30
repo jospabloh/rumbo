@@ -127,7 +127,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | Fleet unit metrics (utilidad/ranking/pronóstico) | admin, owner | `fleetUnitMetrics` server function | 403 for dispatcher/mechanic/driver — surfaces `Expense`/revenue data, stricter than cost-per-km |
 | Rent balance carryover | admin, owner, dispatcher | `Rentas.jsx` `generatePeriodCharges` client logic + `RentCharge`/`Alert` RLS | Rolls a unit's unpaid rent into the next period's charge; raises an `Alert` (`entity_type: 'rent_balance'`) |
 | Submit support ticket | any authenticated tenant user | `submitTicket` server function | Creates SupportTicket + sends email confirmation; runs with service role so write-blocked tenants can still submit |
-| Join tenant by code | any authenticated user (enters as `driver`, minimum privilege) | `joinTenant` server function | Rate-limited v1.30.3: 10 attempts / 15 min / user (`JoinAttempt` ledger), defense-in-depth on top of the 32⁶ ≈ 1.07B code space |
+| Join tenant by code | any authenticated user — creates a PENDING `JoinRequest` only (no access, no data); an owner/admin approves (choosing the role from `ASSIGNABLE_ROLES`, never `owner`) or rejects via `manageMember` (`listRequests`/`approveRequest`/`rejectRequest`), since 2026-09-30 | `joinTenant` server function | Rate-limited v1.30.3: 10 attempts / 15 min / user (`JoinAttempt` ledger), defense-in-depth on top of the 32⁶ ≈ 1.07B code space |
 | View/manage all support tickets | app owner only | `ticketsAdmin` server function + `/tickets` page (`RequireAppOwner`) | Cross-tenant; gated on `APP_OWNER_EMAIL` |
 | View all tenants (SuperAdmin) | app owner only | `Admin.jsx` `isOwner()` check | SuperAdminPanel visible only to owner |
 | Manage license plan/status | app owner only | `licensesAdmin` server function + `SuperAdminPanel.jsx` | Gated on `APP_OWNER_EMAIL` |
@@ -184,6 +184,7 @@ Admin has full view, create, edit, delete access to every module within their te
 | DashboardUnitPref | own row (`created_by_id`, tenant-scoped) | own row only | own row only | own row only |
 | UnitDayNote | owner, admin, dispatcher (write-gated) | same tenant_id (+ mechanic read) | owner, admin (write-gated) | owner, admin (write-gated) |
 | AcaciaReplayKey | service role only | service role only | service role only | service role only | Anti-replay nonce store for `acaciaControl`; no tenant_id (not tenant data), no app user (owner/admin/etc.) can read/write it — see below |
+| JoinRequest | service role only | service role only | service role only | service role only | Pending/rejected join-by-code requests (2026-09-30). Field is `target_tenant_id`, not `tenant_id`, so it is not mistaken for a tenant-scoped operational record |
 | JoinAttempt | service role only | service role only | service role only | service role only | Rate-limit ledger for `joinTenant` — added v1.30.3 (A56), same service-role-only pattern as `AcaciaReplayKey` |
 
 ---

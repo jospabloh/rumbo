@@ -26,6 +26,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *     defensa (JoinAttempt, ledger persistente — ver ese archivo) por si el
  *     espacio de códigos cambia o un atacante controla muchas cuentas.
  *
+ * UNIRSE POR CÓDIGO ES UNA SOLICITUD, NO UN ACCESO (2026-09-30). Redimir el
+ * código ya no escribe members[] ni el tenant del perfil: crea una `JoinRequest`
+ * pendiente (entidad service-role-only) y el solicitante no ve ningún dato de la
+ * organización mientras espera. El owner/admin la aprueba eligiendo el rol, o la
+ * rechaza, desde Administración (`manageMember`: listRequests / approveRequest /
+ * rejectRequest). Único atajo: quien YA está en members[] (un admin lo invitó por
+ * correo) cuenta como pre-aprobado y se engancha en su siguiente resolveTenant.
+ * Acciones extra de esta función (sin código): `cancel` (el solicitante retira o
+ * descarta su solicitud) y `status`.
+ *
  * UN USUARIO, UN TENANT: unirse por código se rechaza con 409 si el caller ya
  * pertenece a otra organización. Durante un tiempo esa puerta estuvo abierta,
  * apoyada en un selector de organización que permitía volver a la anterior; ese
@@ -35,7 +45,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  * baja de una organización es cosa de su administrador (`manageMember`).
  */
 
-const DEFAULT_JOIN_ROLE = 'driver';
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 min
 const RATE_LIMIT_MAX_ATTEMPTS = 10; // per user, per window
 
@@ -65,17 +74,6 @@ async function pruneOldAttempts(svc: any, now: number): Promise<void> {
   } catch { /* best-effort cleanup */ }
 }
 
-// Roles que una entrada de `members[]` puede otorgar. `members[]` lo escribe
-// cualquier owner/admin del tenant por la RLS de TenantLicense (y el filtro
-// "sin owner" de InviteForm es solo de cliente), así que su `role` es un dato
-// controlado por el cliente. Misma regla que manageRole: `owner` nunca sale de
-// aquí — owner es solo el `owner_email` almacenado, y moverlo es trabajo de
-// delegateOwnership. Un valor desconocido también se descarta.
-const MEMBER_GRANTABLE_ROLES = new Set(['admin', 'dispatcher', 'mechanic', 'driver', 'investor', 'user']);
-function grantableMemberRole(role: unknown): string | null {
-  return typeof role === 'string' && MEMBER_GRANTABLE_ROLES.has(role) ? role : null;
-}
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -83,9 +81,9 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const code = normalizeCode(body?.code || '');
-    if (!code || code.length < 8) {
-      return Response.json({ error: 'Código inválido.' }, { status: 400 });
+    const action = typeof body?.action === 'string' ? body.action : 'join';
+    if (!['join', 'cancel', 'status'].includes(action)) {
+      return Response.json({ error: 'Acción inválida.' }, { status: 400 });
     }
 
     const email = (user.email || '').toLowerCase();
@@ -98,7 +96,30 @@ Deno.serve(async (req) => {
     const selfRows = await svc.entities.User.filter({ id: user.id });
     const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
     const selfData = self?.data || {};
-    const selfRole = self?.role ?? user.role;
+
+    // Solicitudes propias, siempre por el id de la sesión (nunca del cuerpo).
+    const ownRequests = async () => {
+      const rows = await svc.entities.JoinRequest.filter({ user_id: user.id });
+      return Array.isArray(rows) ? rows : [];
+    };
+
+    if (action === 'cancel') {
+      // Retira una solicitud pendiente o descarta una rechazada. No toca acceso.
+      for (const r of await ownRequests()) {
+        try { await svc.entities.JoinRequest.delete(r.id); } catch { /* best-effort */ }
+      }
+      return Response.json({ ok: true, cancelled: true });
+    }
+
+    if (action === 'status') {
+      const mine = (await ownRequests())[0] || null;
+      return Response.json({ ok: true, request: mine ? { id: mine.id, status: mine.status, target_tenant_id: mine.target_tenant_id } : null });
+    }
+
+    const code = normalizeCode(body?.code || '');
+    if (!code || code.length < 8) {
+      return Response.json({ error: 'Código inválido.' }, { status: 400 });
+    }
 
     // Rate limit: cuenta los intentos recientes de ESTE usuario antes de tocar el
     // código o escanear tenants. Se registra el intento aunque el código termine
@@ -141,69 +162,58 @@ Deno.serve(async (req) => {
       }, { status: 409 });
     }
 
-    // Alta idempotente en members[] (no duplica si ya estaba, p. ej. lo invitaron por correo).
+    // Pre-aprobado: un admin ya lo invitó por correo (members[]). No hay nada que
+    // aprobar; resolveTenant lo engancha con el rol que el admin eligió. El
+    // cliente solo necesita recargar.
     const members = Array.isArray(tenant.members) ? tenant.members : [];
     const already = members.find((m) => (m.email || '').toLowerCase() === email);
-    if (!already) {
-      const newMember = {
-        name: user.full_name || '',
-        email,
-        role: DEFAULT_JOIN_ROLE,
-      };
-      await svc.entities.TenantLicense.update(tenant.id, { members: [...members, newMember] });
+    if (already || selfData?.tenant_id === tenant.id) {
+      return Response.json({
+        ok: true,
+        status: 'approved',
+        tenant: { id: tenant.id, tenant_name: tenant.tenant_name },
+      });
     }
 
-    // Vincula el perfil con el tenant recién unido y lo activa de inmediato — mismo
-    // comportamiento que CtrlHQ's `complete-onboarding` (mode: "join"): quien acaba de
-    // redimir un código espera aterrizar en ese tenant, no invocar un switch aparte.
-    // El rol se re-deriva con la misma regla que `switchTenant`: owner_email → owner;
-    // miembro ya existente → conserva el rol que le asignó el admin; nuevo → el de
-    // menor privilegio.
-    const tenantOwnerEmail = (tenant.owner_email || '').toLowerCase();
-    const role = tenantOwnerEmail === email ? 'owner' : (grantableMemberRole(already?.role) || DEFAULT_JOIN_ROLE);
-
-    let driverProfileId: string | null = null;
-    try {
-      const drivers = await svc.entities.Driver.filter({ profile_id: user.id });
-      const drv = Array.isArray(drivers) ? (drivers.find((d: any) => d.tenant_id === tenant.id) || null) : null;
-      driverProfileId = drv?.id || null;
-    } catch (_e) { /* sin registro Driver vinculado en este tenant */ }
-
-    // tenant_id/driver_profile_id/write_access van bajo `data` — es donde auth.me()/RLS
-    // los leen ({{user.data.tenant_id}}); un objeto plano los escribe en la raíz del
-    // documento y `data.*` se queda con el valor viejo (mismo bug encontrado y corregido
-    // en switchTenant/resolveTenant). `role` sí va plano: es un campo de plataforma.
-    const dataPatch: Record<string, unknown> = {};
-    if (selfData?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
-    if ((selfData?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
-    if ((selfData?.write_access || 'enabled') !== 'enabled') dataPatch.write_access = 'enabled';
-
-    // El rol va en su PROPIA llamada, nunca junto a `data`: la plataforma rechaza
-    // cambiar el rol del owner de la app aunque sea service role, y como el update
-    // es atómico, mezclarlos haría que la unión al tenant se pierda entera.
-    if (Object.keys(dataPatch).length) {
-      await svc.entities.User.update(user.id, { data: { ...selfData, ...dataPatch } });
+    // Una sola solicitud viva por persona. Otra pendiente hacia OTRA organización
+    // se cancela primero (no hay forma de tener dos); hacia la misma es idempotente.
+    const existing = await ownRequests();
+    const pendingSame = existing.find((r: any) => r.status === 'pending' && r.target_tenant_id === tenant.id);
+    if (pendingSame) {
+      return Response.json({
+        ok: true,
+        status: 'pending',
+        request_id: pendingSame.id,
+        tenant: { id: tenant.id, tenant_name: tenant.tenant_name },
+      });
     }
-    let roleApplied = selfRole;
-    if (selfRole !== role) {
-      try {
-        await svc.entities.User.update(user.id, { role });
-        roleApplied = role;
-      } catch (e) {
-        console.error(`[joinTenant] role update rejected for ${user.id}: ${(e as Error).message}`);
-      }
+    const pendingOther = existing.find((r: any) => r.status === 'pending');
+    if (pendingOther) {
+      return Response.json({
+        error: 'Ya tienes una solicitud pendiente en otra organización. Cancélala antes de pedir unirte a esta.',
+      }, { status: 409 });
     }
+    // Solicitudes rechazadas anteriores: se limpian para no acumular filas.
+    for (const r of existing) {
+      try { await svc.entities.JoinRequest.delete(r.id); } catch { /* best-effort */ }
+    }
+
+    // Nombre y correo salen de la sesión, no del cuerpo. target_tenant_id sale del
+    // tenant que el CÓDIGO resolvió aquí, no de un id del cliente.
+    const created = await svc.entities.JoinRequest.create({
+      user_id: user.id,
+      email,
+      name: user.full_name || '',
+      target_tenant_id: tenant.id,
+      status: 'pending',
+      requested_at: new Date().toISOString(),
+    });
 
     return Response.json({
       ok: true,
-      tenant_id: tenant.id,
-      role: roleApplied,
-      tenant: {
-        id: tenant.id,
-        tenant_name: tenant.tenant_name,
-        slogan: tenant.slogan,
-        logo_url: tenant.logo_url,
-      },
+      status: 'pending',
+      request_id: created?.id || null,
+      tenant: { id: tenant.id, tenant_name: tenant.tenant_name },
     });
   } catch (error) {
     return Response.json({ error: (error as Error).message }, { status: 500 });

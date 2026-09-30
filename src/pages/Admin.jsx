@@ -13,6 +13,7 @@ import UserRow from '@/components/admin/UserRow';
 import InviteForm from '@/components/admin/InviteForm';
 import TenantEditor from '@/components/admin/TenantEditor';
 import JoinCodeCard from '@/components/admin/JoinCodeCard';
+import JoinRequestsPanel from '@/components/admin/JoinRequestsPanel';
 import DangerZone from '@/components/admin/DangerZone';
 import { useMe } from '@/hooks/useEntities';
 
@@ -117,6 +118,9 @@ export default function Admin() {
 
       {/* Código de unión */}
       {tenant && <JoinCodeCard tenant={tenant} onChanged={() => { reloadTenant(); }} />}
+
+      {/* Solicitudes de unión por código: aprobar (eligiendo rol) o rechazar */}
+      {allowed && <JoinRequestsPanel tenantId={tenantId} onApproved={refresh} />}
 
       {/* Users */}
       <section className="bg-card border border-border rounded-xl overflow-hidden">

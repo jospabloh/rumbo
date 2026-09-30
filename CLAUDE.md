@@ -2265,3 +2265,104 @@ scripts de validación locales. Concretamente, no se pudo:
   segundo inquilino, el flujo de invitar, la Zona de Peligro, el manual en
   `/help`) — ninguna alcanzable desde este entorno, igual que en todas las
   pasadas anteriores de este archivo.
+
+## Unirse por código es una solicitud, y el login pide el código de correo (2026-09-30, v1.35.0)
+
+Dos objetivos en una pasada: verificación de correo por código (OTP) en Registro y
+Login, y el contrato "crear = owner de su tenant; unirse = solicitud que un admin
+aprueba".
+
+### Qué cambió
+
+**A. Código de verificación (OTP).** El login mostraba "Correo o contraseña
+incorrectos" ante CUALQUIER error (el `catch` ni leía el error), incluida una
+cuenta sin verificar: la misma trampa que le pasó a un cliente de stockflow (PR
+#412). Ahora `src/lib/authErrors.js` clasifica (`needsEmailVerification`,
+`isNetworkError`, mensajes en español) y `src/components/auth/VerifyEmailStep.jsx`
+es el paso de código que comparten `Register.jsx` y `Login.jsx`: `verifyOtp`,
+reenviar (`resendOtp`), errores en español, sesión automática al verificar y
+`/login` si esa sesión falla. Login lo abre (y pide un código nuevo) solo cuando el
+error es de correo sin verificar; red y credenciales tienen su propio texto. La
+detección es por regex sobre el mensaje, igual que en stockflow.
+
+**B. Solicitud de unión.**
+- `joinTenant` ya NO escribe `members[]` ni el perfil: crea una `JoinRequest`
+  pendiente y responde `status: 'pending'`. Nuevas acciones sin código: `cancel`
+  (retira o descarta) y `status`. Conserva rate limit, 409 de un segundo tenant y
+  rechazo de tenants apagados. Quien YA está en `members[]` (lo invitó un admin por
+  correo, `InviteForm`) cuenta como pre-aprobado: responde `approved` y
+  `resolveTenant` lo engancha con el rol del invitado (pasado por
+  `grantableMemberRole`, que sigue igual).
+- Entidad nueva `JoinRequest` (service-role-only en las 4 operaciones, como
+  `JoinAttempt`). El campo es `target_tenant_id`, no `tenant_id`, a propósito:
+  no es un registro operativo del tenant y `audit:tenant-scope` lo trataría como
+  tal. Se elige entidad aparte y no un `pending_members` en `TenantLicense`
+  porque el owner/admin puede escribir `TenantLicense` por RLS y podría
+  auto-aprobarse o falsear solicitudes; aquí el navegador no lee ni escribe nada.
+- `resolveTenant` devuelve `join_request` (pending/rejected, solo con el nombre de
+  la organización) cuando no hay tenant: eso hace que la pantalla "Solicitud
+  enviada, esperando aprobación" de `Onboarding` sobreviva a recargas
+  (`TenantContext` lo expone, revisa cada 30 s). Nunca aprueba nada.
+- `manageMember` gana `listRequests` / `approveRequest` / `rejectRequest` (sin
+  endpoint nuevo: **22/40**). Verifica owner/admin del caller con su perfil
+  releído, relee la solicitud y compara SU `target_tenant_id` almacenado (una ajena
+  y una inexistente dan 404), valida el rol contra `ASSIGNABLE_ROLES` (admin,
+  dispatcher, mechanic, driver, investor, user; nunca owner, mismo conjunto que
+  `manageRole` menos owner; `src/lib/joinRequests.js` lo espeja y un test lo
+  compara), y solo entonces escribe `members[]`, luego `data.tenant_id`/
+  `write_access`/`driver_profile_id` y por último el rol en su propia llamada. Si
+  la persona ya se enganchó a otro tenant, cierra la solicitud con 409 sin mover a
+  nadie.
+- `createTenant` ahora responde 409 a quien ya pertenece a un tenant (perfil
+  releído) o tiene una solicitud pendiente; el owner de la plataforma queda exento.
+  Corrige una nota vieja del propio archivo que decía lo contrario (módulo 18
+  retirado). El creador sigue quedando owner de SU tenant.
+- UI: `JoinRequestsPanel` en Administración (elige rol, aprueba o rechaza),
+  `JoinCodeCard` y el manual ya no dicen "entra como conductor".
+
+### Lo que ya cumplía
+RLS de tenant con `tenant_id` y rol siempre dentro de `$and` (`validate:tenant-roles`
+y `audit:tenant-scope` pasan; `admin` no queda suelto), `TenantLicense.create`
+solo por servicio, todas las funciones re-derivan tenant/rol con perfil releído,
+`resolveTenant` nunca otorga `owner` por `members[]`, 409 de segundo tenant en
+`joinTenant`, y quien crea una organización quedaba owner de la suya.
+
+### Pruebas
+`base44/tests/join_requests_test.ts` (10 pruebas de comportamiento contra una base
+en memoria; `npm run test:functions`, requiere deno, que se baja de la release de
+GitHub; el SDK se sustituye por `sdk_stub.ts` con un import map) y, en vitest,
+`authErrors.test.js` y `joinRequests.test.js`. `npm run lint` (22/40),
+`typecheck`, `validate:rls` (29), `audit:tenant-scope`, `validate:tenant-roles`,
+`build`, `test` (497) y `deno check` de las 4 funciones tocadas, todo verde. Las
+pruebas de deno no corren en CI (este repo no tiene paso de deno).
+
+### NO se pudo verificar
+- Nada contra Base44 en vivo: ni el esquema desplegado de `JoinRequest`, ni una
+  sesión real de owner/admin/solicitante de dos tenants.
+- Los textos reales de error de Base44 para "correo sin verificar" (la regex se
+  copió de stockflow) y si `loginViaEmailPassword` responde eso antes o después de
+  validar la contraseña. Ni un OTP real de extremo a extremo.
+- Pantallas a 390/834/1440, claro y oscuro, no se vieron en navegador.
+- Que la plataforma acepte un `filter` por `target_tenant_id`/`status` en `JoinRequest`
+  (el doble en memoria sí).
+
+### Orden de despliegue
+1. `npm run deploy:entities` (destructivo: escribir "Rumbo") **antes** que las
+   funciones: crea `JoinRequest`. Si las funciones salen primero, `joinTenant` y
+   `resolveTenant` fallan al tocar una entidad que no existe (resolveTenant lo
+   traga con un log; joinTenant responde 500).
+2. `npm run deploy` (`joinTenant`, `manageMember`, `createTenant`, `resolveTenant`);
+   con la CLI puede decir `unchanged` si solo cambió algo fuera de `entry.ts`: aquí
+   todos cambiaron en `entry.ts`. Comprobar por comportamiento: `joinTenant` con
+   `{"action":"status"}` responde `ok`, no `Acción inválida`.
+3. `npm run deploy:site`.
+Entre 2 y 3 un cliente viejo llamando a `joinTenant` recibe `pending` y lo trata
+como unión hecha (muestra "¡Te uniste!" y recarga): inocuo, pero conviene que el
+paso 3 vaya pegado. Después: `list_entity_schemas` de `JoinRequest` (4 operaciones
+`__service_role_only__`) y una prueba con dos cuentas reales.
+Solicitudes ya "unidas" antes de este cambio no se tocan: siguen en `members[]`.
+
+### Revisión de Codex sobre PR #132 (2026-09-30)
+
+`manageMember.approveRequest`: (a) si la escritura del rol (su propia llamada) falla, ya no se borra la solicitud ni se responde éxito: 502 y la solicitud sigue pendiente. El reintento cae en la rama "ya es miembro", que ahora reconcilia el rol guardado con el elegido antes de consumirla. Se omite la escritura de rol solo si el destino es el owner de la app (Base44 la rechaza; además esa cuenta ya recibe 403 más abajo). (b) `members[]` se vuelve a leer justo antes de escribir y se mezcla sobre esa lista fresca; Base44 no tiene append atómico, así que la ventana se reduce, no se cierra.
+Verificado: lint (22/40; deno lint 97 avisos preexistentes, iguales a antes), build, validate:rls (29), npm test (497), test:functions (10). No verificado: contra Base44 en vivo; no se desplegó.
