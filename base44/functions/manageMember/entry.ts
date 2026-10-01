@@ -191,6 +191,14 @@ async function handleRequests(svc: any, caller: any, tenantId: string, body: any
   return Response.json({ ok: true, action, approved: true, role: roleApplied });
 }
 
+// Los campos custom de User (tenant_id) viven bajo `data`, y la plataforma no
+// los filtra con `User.filter({tenant_id})` ni con `{'data.tenant_id'}`: devuelve
+// siempre []. Se lista y se filtra en memoria (QA en vivo 2026-10-01).
+async function usersOfTenant(svc: any, tenantId: string): Promise<any[]> {
+  const rows = await svc.entities.User.list('-created_date', 5000);
+  return (Array.isArray(rows) ? rows : []).filter((u: any) => (u?.data?.tenant_id || null) === tenantId);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -218,7 +226,7 @@ Deno.serve(async (req) => {
     // leer `User.filter` (403 "Only collaborators can view the list of users"),
     // así que el panel de Administración los pide aquí, por service role.
     if (action === 'listUsers') {
-      const rows = await svc.entities.User.filter({ 'data.tenant_id': tenantId });
+      const rows = await usersOfTenant(svc, tenantId);
       const users = (Array.isArray(rows) ? rows : []).map((u: any) => {
         const d = u.data || {};
         return {
