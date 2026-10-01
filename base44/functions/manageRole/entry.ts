@@ -51,6 +51,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 const VALID_ROLES = ['owner', 'admin', 'dispatcher', 'mechanic', 'driver', 'investor', 'user'];
 const ADMIN_ROLES = new Set(['owner', 'admin']);
 
+// Los campos custom de User (tenant_id) viven bajo `data`, y la plataforma no
+// los filtra con `User.filter({tenant_id})` ni con `{'data.tenant_id'}`: devuelve
+// siempre []. Se lista y se filtra en memoria (QA en vivo 2026-10-01).
+async function usersOfTenant(svc: any, tenantId: string): Promise<any[]> {
+  const rows = await svc.entities.User.list('-created_date', 5000);
+  return (Array.isArray(rows) ? rows : []).filter((u: any) => (u?.data?.tenant_id || null) === tenantId);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -109,7 +117,7 @@ Deno.serve(async (req) => {
     const targetCurrentRole = target.role;
     const isDemotionFromAdmin = ADMIN_ROLES.has(targetCurrentRole) && !ADMIN_ROLES.has(newRole);
     if (isDemotionFromAdmin) {
-      const members = await svc.entities.User.filter({ tenant_id: tenantId });
+      const members = await usersOfTenant(svc, tenantId);
       const remainingAdmins = members.filter(
         (m: any) => m.id !== userId && ADMIN_ROLES.has(m.role),
       ).length;

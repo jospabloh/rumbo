@@ -56,6 +56,14 @@ const CASCADE_ENTITIES = [
   'UnitDayNote', 'UsefulLink', 'Vehicle', 'VehicleDocument',
 ];
 
+// Los campos custom de User (tenant_id) viven bajo `data`, y la plataforma no
+// los filtra con `User.filter({tenant_id})` ni con `{'data.tenant_id'}`: devuelve
+// siempre []. Se lista y se filtra en memoria (QA en vivo 2026-10-01).
+async function usersOfTenant(svc: any, tenantId: string): Promise<any[]> {
+  const rows = await svc.entities.User.list('-created_date', 5000);
+  return (Array.isArray(rows) ? rows : []).filter((u: any) => (u?.data?.tenant_id || null) === tenantId);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -110,7 +118,7 @@ Deno.serve(async (req) => {
     // `manageMember/entry.ts`.
     let detachedUsers = 0;
     try {
-      const users = await svc.entities.User.filter({ tenant_id: tenantId });
+      const users = await usersOfTenant(svc, tenantId);
       for (const u of users) {
         try {
           // tenant_id/suspended/write_access/driver_profile_id van bajo `data` — es
