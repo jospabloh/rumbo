@@ -2366,3 +2366,10 @@ Solicitudes ya "unidas" antes de este cambio no se tocan: siguen en `members[]`.
 
 `manageMember.approveRequest`: (a) si la escritura del rol (su propia llamada) falla, ya no se borra la solicitud ni se responde éxito: 502 y la solicitud sigue pendiente. El reintento cae en la rama "ya es miembro", que ahora reconcilia el rol guardado con el elegido antes de consumirla. Se omite la escritura de rol solo si el destino es el owner de la app (Base44 la rechaza; además esa cuenta ya recibe 403 más abajo). (b) `members[]` se vuelve a leer justo antes de escribir y se mezcla sobre esa lista fresca; Base44 no tiene append atómico, así que la ventana se reduce, no se cierra.
 Verificado: lint (22/40; deno lint 97 avisos preexistentes, iguales a antes), build, validate:rls (29), npm test (497), test:functions (10). No verificado: contra Base44 en vivo; no se desplegó.
+
+## Correcciones tras la QA en vivo de unirse por código (2026-10-01)
+
+- La función desplegada y la copia de Base44 iban ATRASADAS respecto a GitHub main (joinTenant daba acceso inmediato como driver; manageMember no conocía `listRequests`). Arreglo: `POST /github/sync` + `POST /deploy`, y comprobar por COMPORTAMIENTO (joinTenant con código válido desde cuenta nueva debe responder `status:"pending"`).
+- `resolveTenant` ya no devuelve el tenant completo a quien no es owner/admin (fuga de `join_code`, `members[]`, notas, owner_email, facturación): `tenantForRole` recorta por rol. dispatcher/mechanic conservan plan y cupos; el resto solo branding, estado/fechas de licencia, permisos y ajustes. OJO: la RLS de lectura de `TenantLicense` (`id == user.data.tenant_id`) sigue dejando leer el registro entero por SDK a cualquier miembro; cerrarlo requiere RLS por campo en `join_code`/`members` (pendiente, ver reporte).
+- `/admin` leía `entities.User.filter` (403 a un admin de tenant → "USUARIOS (0)"). Ahora `manageMember {action:'listUsers'}` (service role, solo owner/admin, acotado a su tenant).
+- El panel "Super Admin" se mostraba a todo `role==='owner'` (cada tenant owner) y `licensesAdmin list` daba 403 en consola; ahora solo con `isAppOwner`.

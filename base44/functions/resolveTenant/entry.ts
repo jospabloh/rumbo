@@ -84,6 +84,30 @@ function grantableMemberRole(role: unknown): string | null {
   return typeof role === 'string' && MEMBER_GRANTABLE_ROLES.has(role) ? role : null;
 }
 
+// FUGA CORREGIDA (2026-10-01): antes esta función devolvía el registro COMPLETO del
+// tenant a cualquier rol, incluido un conductor: `join_code` (la llave para pedir
+// unirse), `members[]` (todos los correos y roles), notas, owner_email y facturación.
+// Ahora solo owner/admin reciben el registro entero. El resto recibe lo que la UI
+// necesita para funcionar: identidad/branding, estado y fechas de licencia (el banner
+// de solo lectura), permisos por rol y ajustes de negocio. Plan y cupos solo para los
+// roles que crean vehículos/conductores (dispatcher, mechanic).
+const BASE_TENANT_FIELDS = [
+  'id', 'tenant_name', 'slogan', 'logo_url',
+  'color_primary', 'color_secondary', 'color_accent', 'color_background',
+  'status', 'trial_ends_at', 'current_period_end',
+  'permissions_config', 'settings',
+];
+const OPS_TENANT_FIELDS = ['plan', 'max_vehicles', 'max_drivers'];
+function tenantForRole(tenant: any, role: string | null, isStoredOwner: boolean, isAppOwner: boolean): any {
+  if (isStoredOwner || isAppOwner || role === 'owner' || role === 'admin') return tenant;
+  const fields = ['dispatcher', 'mechanic'].includes(role || '')
+    ? [...BASE_TENANT_FIELDS, ...OPS_TENANT_FIELDS]
+    : BASE_TENANT_FIELDS;
+  const out: Record<string, unknown> = {};
+  for (const f of fields) if (tenant[f] !== undefined) out[f] = tenant[f];
+  return out;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -243,10 +267,9 @@ Deno.serve(async (req) => {
       // cuya frescura depende de la sesión/JWT del llamador) aplicado un nivel
       // arriba: esta función ya resuelve el tenant correcto vía
       // `asServiceRole`, así que el cliente debe usar ESTE objeto directamente
-      // en vez de volver a descubrirlo por su cuenta. No es una fuga de datos:
-      // la RLS de lectura de `TenantLicense` ya concede el registro entero a
-      // cualquier rol en cuanto esa misma comparación empareja.
-      tenant,
+      // en vez de volver a descubrirlo por su cuenta. Desde 2026-10-01 el objeto se recorta
+      // por rol (ver tenantForRole): solo owner/admin ven join_code y members[].
+      tenant: tenantForRole(tenant, roleApplied, isStoredOwner, isAppOwner),
     });
   } catch (error) {
     return Response.json({ error: (error as Error).message }, { status: 500 });
