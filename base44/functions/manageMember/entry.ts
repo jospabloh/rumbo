@@ -14,7 +14,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
  *     (owner_email) ni sobre el owner de la app.
  *   - 'suspend' marca suspended=true y write_access='blocked'. resolveTenant respeta el
  *     flag, así que la suspensión no se revierte sola al revalidar la licencia.
- *   - SOLICITUDES DE UNIÓN (2026-09-30) — 'listRequests' / 'approveRequest' /
+ *   - SOLICITUDES DE UNIÓN (2026-09-30) — 'listUsers' (miembros del tenant) / 'listRequests' / 'approveRequest' /
  *     'rejectRequest'. Unirse con el código deja una JoinRequest pendiente (ver
  *     joinTenant); aquí es donde un owner/admin la resuelve. Reglas: el tenant del
  *     caller sale de su perfil releído (nunca del cuerpo); la solicitud se relee y
@@ -213,6 +213,28 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const { action, userId } = body;
+
+    // Lista de usuarios del tenant del caller (owner/admin). La UI ya no puede
+    // leer `User.filter` (403 "Only collaborators can view the list of users"),
+    // así que el panel de Administración los pide aquí, por service role.
+    if (action === 'listUsers') {
+      const rows = await svc.entities.User.filter({ 'data.tenant_id': tenantId });
+      const users = (Array.isArray(rows) ? rows : []).map((u: any) => {
+        const d = u.data || {};
+        return {
+          id: u.id,
+          email: u.email || '',
+          full_name: u.full_name || '',
+          display_name: d.display_name ?? u.display_name ?? '',
+          role: u.role || 'user',
+          suspended: !!(d.suspended ?? u.suspended),
+          write_access: d.write_access ?? u.write_access ?? null,
+          owner_group_id: d.owner_group_id ?? u.owner_group_id ?? '',
+          created_date: u.created_date || null,
+        };
+      });
+      return Response.json({ ok: true, users });
+    }
 
     if (REQUEST_ACTIONS.includes(action)) {
       return await handleRequests(svc, caller, tenantId, body);

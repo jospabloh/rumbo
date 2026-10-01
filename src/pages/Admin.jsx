@@ -18,15 +18,16 @@ import DangerZone from '@/components/admin/DangerZone';
 import { useMe } from '@/hooks/useEntities';
 
 export default function Admin() {
-  const { tenant, tenantId, reload: reloadTenant } = useTenant();
+  const { tenant, tenantId, isAppOwner, reload: reloadTenant } = useTenant();
   const { data: user, isLoading: meLoading } = useMe();
   const allowed = isAdminOrOwner(user?.role);
 
-  // Members are scoped by `data.tenant_id` (a server-side filter path), so this read
-  // can't use the generic tenant-scoped useEntityList; it stays a dedicated query.
+  // `entities.User.filter` da 403 a un admin de tenant ("Only collaborators can view
+  // the list of users"): los miembros salen de manageMember.listUsers (service role,
+  // solo owner/admin, acotado al tenant del caller).
   const membersQ = useQuery({
     queryKey: ['admin-members', tenantId ?? null],
-    queryFn: () => base44.entities.User.filter(tenantId ? { 'data.tenant_id': tenantId } : {}),
+    queryFn: async () => (await invokeOkFunction('manageMember', { action: 'listUsers' })).users || [],
     enabled: allowed,
   });
   const members = membersQ.data ?? [];
@@ -202,8 +203,9 @@ export default function Admin() {
         />
       )}
 
-      {/* Super Admin Panel — solo owner de la app */}
-      {isOwner(user?.role) && (
+      {/* Super Admin Panel — solo owner de la PLATAFORMA (licensesAdmin responde 403 al
+          owner de un tenant; `role === 'owner'` no basta, lo cumple cualquier tenant owner). */}
+      {isAppOwner && isOwner(user?.role) && (
         <div className="pt-2">
           <div className="flex items-center gap-2 mb-3">
             <Crown className="w-4 h-4 text-warning" />
