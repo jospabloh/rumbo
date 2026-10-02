@@ -2447,8 +2447,33 @@ audit:tenant-scope`, `npm run build`, `npm run test -- --run` (497/497) — todo
 limpios. Sin cambio de función (`base44/functions/` intacto), así que no aplica
 `deno check`.
 
-**No verificado todavía:** el deploy en vivo (pendiente de mergear este PR y
-correr `github/sync` + `deploy`) ni una sesión de navegador real como
-dispatcher/mechanic/driver de un tenant confirmando que `TenantLicense.filter()`
-directo ya no devuelve filas. Es la pieza que falta antes de dar esto por
-cerrado — se actualiza esta sección en cuanto se complete esa verificación.
+**Verificado en vivo (2026-10-02), cerrado.** PR #136 mergeado a `main`
+(`7883401`), `POST /github/sync` (1 commit, 3 archivos) y `POST /deploy`
+confirmados contra la app desplegada — `GET .../app-checkpoints` (no
+`GET /api/apps/{id}`, que sale truncado en este MCP) muestra el checkpoint del
+commit con `preview_status:"ready"` y `last_deployed_at` puesto.
+
+Dos cuentas nuevas, no reales (`h.josepablo+qa0930rumboleak@gmail.com` como
+owner, creó el tenant "QA Leak Test Tenant"; `h.josepablo+qa0930rumboleak2@
+gmail.com` se unió con el código y un admin la aprobó como `driver`), contra
+la API real de la app (`https://base44.app/api`, llamadas HTTP directas desde
+el sandbox del MCP de Base44 — internet real, no el proxy de este entorno):
+
+- **Driver, SDK directo** — `GET /entities/TenantLicense?q={"id":"<tenant>"}`
+  y `GET /entities/TenantLicense` (sin filtro) devuelven **200 con `[]`**: cero
+  filas, ni el registro propio. La RLS nueva no da 403, filtra en silencio —
+  exactamente el mismo comportamiento que ya usa el resto de la entidad.
+- **Driver, vía `resolveTenant`** — sigue recibiendo su tenant recortado
+  (`tenant_name`, `slogan`, colores, `status`, fechas de licencia,
+  `permissions_config`, `settings`) — sin `join_code`, `members`, `owner_email`,
+  `notes` ni campos de facturación, y sin `plan`/`max_vehicles`/`max_drivers`
+  (no le tocan por no ser dispatcher/mechanic) — `tenantForRole` (2026-10-01)
+  sigue funcionando igual que antes de este cambio.
+- **Owner, SDK directo** — el mismo `filter({id})` devuelve el registro
+  **completo**: `join_code: "RUMBO-D9WSJX"`, `members[]` con las dos cuentas
+  (owner y driver) y sus roles, `owner_email`, billing — sin cambios.
+- **Owner, `/admin`** — `manageMember{action:'listUsers'}` (lo que usa la
+  pantalla) lista correctamente a ambas cuentas con su rol — sin cambios.
+
+Cierra el hallazgo: el driver ya no puede leer `join_code`/`members[]`/
+`owner_email`/facturación por SDK directo, y el owner no perdió nada.
