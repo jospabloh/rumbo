@@ -2470,8 +2470,10 @@ el sandbox del MCP de Base44 — internet real, no el proxy de este entorno):
   (no le tocan por no ser dispatcher/mechanic) — `tenantForRole` (2026-10-01)
   sigue funcionando igual que antes de este cambio.
 - **Owner, SDK directo** — el mismo `filter({id})` devuelve el registro
-  **completo**: `join_code: "RUMBO-D9WSJX"`, `members[]` con las dos cuentas
-  (owner y driver) y sus roles, `owner_email`, billing — sin cambios.
+  **completo**: `join_code` (valor omitido aquí a propósito: un código de unión
+  vivo no va en el repo, y el de este tenant de QA se rotó tras publicarse en
+  este PR), `members[]` con las dos cuentas (owner y driver) y sus roles,
+  `owner_email`, billing — sin cambios.
 - **Owner, `/admin`** — `manageMember{action:'listUsers'}` (lo que usa la
   pantalla) lista correctamente a ambas cuentas con su rol — sin cambios.
 
