@@ -201,7 +201,25 @@
           "data.owner_email": "{{user.email}}"
         },
         {
-          "id": "{{user.data.tenant_id}}"
+          "$and": [
+            {
+              "id": "{{user.data.tenant_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "user_condition": {
+                    "role": "owner"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     },

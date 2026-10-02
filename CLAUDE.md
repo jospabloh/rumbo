@@ -2373,3 +2373,82 @@ Verificado: lint (22/40; deno lint 97 avisos preexistentes, iguales a antes), bu
 - `resolveTenant` ya no devuelve el tenant completo a quien no es owner/admin (fuga de `join_code`, `members[]`, notas, owner_email, facturación): `tenantForRole` recorta por rol. dispatcher/mechanic conservan plan y cupos; el resto solo branding, estado/fechas de licencia, permisos y ajustes. OJO: la RLS de lectura de `TenantLicense` (`id == user.data.tenant_id`) sigue dejando leer el registro entero por SDK a cualquier miembro; cerrarlo requiere RLS por campo en `join_code`/`members` (pendiente, ver reporte).
 - `/admin` leía `entities.User.filter` (403 a un admin de tenant → "USUARIOS (0)"). Ahora `manageMember {action:'listUsers'}` (service role, solo owner/admin, acotado a su tenant).
 - El panel "Super Admin" se mostraba a todo `role==='owner'` (cada tenant owner) y `licensesAdmin list` daba 403 en consola; ahora solo con `isAppOwner`.
+
+## Cerrado: la lectura cruda de `TenantLicense` por SDK alcanzaba a cualquier miembro, no solo a owner/admin (2026-10-02)
+
+Cierra el "OJO" que dejó abierto la sección de arriba (2026-10-01): `tenantForRole`
+recorta lo que devuelve **resolveTenant**, pero la RLS de lectura de la propia
+entidad (`$or: [owner_email==email, id==tenant_id]`) no distinguía rol — un
+`driver` podía llamar `base44.entities.TenantLicense.filter({id: tenantId})`
+(o `.list()`) directo desde la consola del navegador y leer el registro
+**completo**: `join_code` (la llave para que cualquiera pida unirse), `members[]`
+(todos los correos y roles del tenant), `notes`, `owner_email` y los campos de
+facturación (`billing_cycle`, `last_payment_at`, `renews_at`) — el mismo recorte
+que `tenantForRole` ya le niega por la vía del servidor, pero sin ningún candado
+en la vía directa.
+
+**Investigado primero: ¿soporta Base44 RLS de lectura por campo
+(`properties.<campo>.rls.read`)?** Sí, sintácticamente — confirmado en vivo
+contra esta misma app (`6a15eceffe8dbf6602fa6c35`): una entidad de prueba
+(`ZZZRlsFieldProbe`, service-role-only en las 4 operaciones de entidad, así que
+sin tráfico ni riesgo) con un campo `rls.read: {user_condition:{role:"owner"}}`
+y otro con `rls.read: {$or:[{user_condition:{role:"owner"}},{user_condition:
+{role:"admin"}}]}` se guardó tal cual — releída de forma independiente con
+`list_entity_schemas`, no solo el eco de la propia escritura. Esto confirma y
+extiende lo que `jospabloh/stockflow`'s CLAUDE.md ya documentaba (Base44 sí
+soporta lectura por campo contra el `role` **incorporado**, no contra un
+`PermissionProfile` de negocio): aquí también funciona el `$or` entre varios
+roles incorporados, no solo uno.
+
+**Se descartó usarlo, a propósito, aunque funciona.** Rumbo no tiene el
+problema que sí tiene stockflow (un `PermissionProfile` de negocio que el `role`
+incorporado no puede expresar) — los roles de este tenant SON el `role`
+incorporado (`owner`/`admin`/`dispatcher`/`mechanic`/`driver`/`investor`/
+`user`), así que un candado de entidad completa cierra exactamente lo mismo que
+cerraría un candado por campo, sin tener que replicar campo por campo el mismo
+mapa de visibilidad que `tenantForRole` ya mantiene del lado del servidor (y sin
+arriesgar que los dos mapas diverjan con el tiempo). `grep` confirmó que no hay
+ninguna pantalla de dispatcher/mechanic que lea `TenantLicense` directo por SDK
+para plan/cupos — ese dato ya sale de `resolveTenant` (service role, que no pasa
+por ninguna RLS) desde el fix del 2026-10-01; la única llamada de lectura cruda
+en todo `src/` es el respaldo de `TenantContext.jsx` para cuando `resolveTenant`
+falla por completo (red), usado por cualquier rol. Los seis call sites que
+escriben (`BusinessSettingsPanel`, `PermissionsPanel`, `TenantEditor`,
+`InviteForm`, `JoinCodeCard`, y el editor de licencia en `SuperAdminPanel` via
+`licensesAdmin`) son todos `.update()`, no lectura, y viven detrás de pantallas
+gateadas a `isAdminOrOwner()` en `Admin.jsx` — el candado de `read` no los toca.
+
+**Arreglo — RLS de entidad, no de campo:** `base44/entities/TenantLicense.jsonc`,
+`rls.read` ganó el mismo `$and[id==tenant_id, $or[role:owner, role:admin]]` que
+`rls.update` ya tenía. Mismo patrón, ahora en las dos operaciones. Quien no es
+owner/admin de su tenant (ni el `owner_email` almacenado) ya no puede leer el
+registro por SDK directo — ni completo ni parcial; para esos roles el único dato
+de tenant disponible es el ya recortado que devuelve `resolveTenant`.
+
+**Efecto secundario conocido y aceptado, no una pantalla real rota:** el
+respaldo de `TenantContext.jsx` (línea ~71, `TenantLicense.list()` cuando
+`resolveTenant` falló por completo) deja de poder redescubrir el tenant para
+dispatcher/mechanic/driver/investor/user — `all` les sale vacío ahora, así que
+ese bloque nunca encuentra nada para esos roles. Solo importa en el borde ya
+raro de un fallo de red del propio `invoke('resolveTenant')`; owner/admin
+conservan el respaldo intacto (su rama del `if` sigue cumpliendo la RLS nueva).
+Comentado en el propio archivo para el siguiente que lo lea.
+
+**Residual, documentado como `DebugProbe` ya lo estaba:** `ZZZRlsFieldProbe`
+(la entidad de prueba de arriba) no se puede borrar por API — `list_api_catalog`
+del área `entities` solo expone verbos de **registros**, ninguno de esquema,
+igual que ya documentó la nota de `DebugProbe` del 2026-09-10. Queda en el
+esquema desplegado, service-role-only en las 4 operaciones (sin tráfico, sin
+RLS abierta) hasta que alguien la borre a mano desde el panel de Base44.
+
+**Verificado:** `npm run lint` (22 endpoints), `npm run typecheck`, `npm run
+validate:rls` (29 entidades OK), `npm run validate:tenant-roles`, `npm run
+audit:tenant-scope`, `npm run build`, `npm run test -- --run` (497/497) — todos
+limpios. Sin cambio de función (`base44/functions/` intacto), así que no aplica
+`deno check`.
+
+**No verificado todavía:** el deploy en vivo (pendiente de mergear este PR y
+correr `github/sync` + `deploy`) ni una sesión de navegador real como
+dispatcher/mechanic/driver de un tenant confirmando que `TenantLicense.filter()`
+directo ya no devuelve filas. Es la pieza que falta antes de dar esto por
+cerrado — se actualiza esta sección en cuanto se complete esa verificación.
