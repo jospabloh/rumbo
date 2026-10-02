@@ -68,6 +68,14 @@ export function TenantProvider({ children }) {
       let found = resolvedTenant;
 
       if (!found) {
+        // CORRECCIÓN 2026-10-02: la RLS de lectura de TenantLicense ya solo deja
+        // leer el registro entero por SDK directo a owner/admin del propio tenant
+        // (o al owner_email almacenado) — ver CLAUDE.md, "la RLS de lectura de
+        // TenantLicense dejaba leer el registro completo a cualquier miembro".
+        // Para dispatcher/mechanic/driver/investor/user, `all` sale vacío y este
+        // bloque de respaldo no encuentra nada — solo importa cuando resolveTenant
+        // falló por completo (red), y para esos roles el servidor ya es la única
+        // fuente de verdad del tenant de todos modos.
         const all = await base44.entities.TenantLicense.list('-created_date', 1000).catch(() => []);
         const email = (user.email || '').toLowerCase();
         if (user.role === 'owner' || user.role === 'admin') {
