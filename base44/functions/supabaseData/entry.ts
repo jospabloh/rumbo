@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       // Get service role key
       const keysRes = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/api-keys`, { headers: authHeader });
       const keys = await keysRes.json();
-      const serviceKey = keys.find(k => k.name === 'service_role')?.api_key;
+      const serviceKey = keys.find((k: { name: string }) => k.name === 'service_role')?.api_key;
       if (!serviceKey) return Response.json({ error: 'Service role key not found' }, { status: 500 });
 
       const restHeaders = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
@@ -140,6 +140,6 @@ Deno.serve(async (req) => {
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: (error as Error).message }, { status: 500 });
   }
 });
