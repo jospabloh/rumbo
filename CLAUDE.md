@@ -2477,3 +2477,133 @@ el sandbox del MCP de Base44 — internet real, no el proxy de este entorno):
 
 Cierra el hallazgo: el driver ya no puede leer `join_code`/`members[]`/
 `owner_email`/facturación por SDK directo, y el owner no perdió nada.
+
+## Auditoría full-review (2026-10-05) — dependencias con 12 avisos nuevos; 4 funciones nunca type-checadas; el manual mentía sobre el tema y las invitaciones
+
+Pasada de auditoría completa automatizada. Inventario primero: cero PRs
+abiertos en `jospabloh/rumbo`; `main` en `90482cf` (v1.35.0, "Redact QA tenant
+join code from CLAUDE.md"), ocho commits desde la última pasada full-review
+(2026-09-28) — el feature de solicitudes de unión (#132) y cuatro hotfixes en
+vivo sobre él (#133–#138, ya documentados arriba por fecha). Se auditó ese
+código nuevo (`JoinRequest`, `joinTenant`, `manageMember`, `resolveTenant`,
+`createTenant`) línea por línea contra el modelo de aislamiento del módulo 14:
+`JoinRequest` es `__service_role_only__` en las cuatro operaciones y usa
+`target_tenant_id` (no `tenant_id`) a propósito, para no pasar por un registro
+operativo ante `audit:tenant-scope`; `joinTenant`/`manageMember` derivan
+`tenant_id` y rol siempre de una relectura fresca por `asServiceRole` (nunca
+`user.data` de `auth.me()`, el patrón ya fijado el 2026-09-03/09-07);
+`resolveTenant`'s `tenantForRole` sigue recortando el registro a
+branding+licencia para roles no-admin. Sin regresión — confirmado leyendo el
+código, no repitiendo lo que esta misma sección de abajo ya afirmaba.
+
+**Hallazgo 1 — `npm audit` pasó de 2 a 12 avisos (8 altos) desde la pasada del
+2026-09-28, y tres eran de producción, no solo de build/lint.** `npm install`
+limpio los reprodujo. `axios` (transitivo de `@base44/sdk`, usado en CADA
+llamada HTTP de la app) venía en `1.18.1`, dentro del rango vulnerable de doce
+avisos publicados después de esa fecha —prototype pollution, ReDoS, bypass de
+`NO_PROXY`, SSRF vía `maxRedirects:0`, entre otros—; `dompurify` (vía `jspdf`,
+la exportación a PDF) tenía un XSS de DOM; `moment` (dependencia directa) un
+path traversal. Las tres se corrigieron sin tocar ningún major: `axios`
+→`^1.20.0` y `dompurify`→`^3.4.16` vía `overrides`, `moment` (dependencia
+directa) bump a `^2.31.0`. `brace-expansion` (transitivo de dev,
+`eslint-plugin-react`→`minimatch`) también se subió a `^1.1.21` por la misma
+vía. Confirmado con `npm ls` que las cuatro quedaron en la versión objetivo
+exacta, no solo "dentro del rango", y con `npm audit` que las doce salieron
+del reporte.
+
+**Residual, igual que la pasada anterior documentó para `vitest`/
+`@vitest/mocker` — y por la misma razón, no solo repetida:** `braces@3.0.3`
+(vía `tailwindcss`→`chokidar`, sólo dev/build) tiene un aviso de DoS por
+stack-exhaustion **sin fix disponible** — confirmado con `npm view braces
+version`: `3.0.3` es ya la última versión publicada, el aviso es contra el
+paquete completo, no contra un rango por debajo de la última. La única salida
+sería un major de `tailwindcss` (4.x), descartado por la misma razón que el
+major de `vitest` sigue descartado: no se cambia un major como efecto
+colateral de un hallazgo de severidad alta pero sólo-dev. `vitest`/
+`@vitest/mocker` (moderada, sólo-dev) sigue igual — se repitió la prueba de la
+pasada anterior (subir `vitest` a `^4.1.11` y reproducir el mismo
+`Cannot read properties of null (reading 'edgesOut')` de `arborist`) para no
+asumir que el bug se arregló solo; sigue bloqueado.
+
+**Hallazgo 2 — cuatro funciones nunca habían pasado por `deno check`, y dos
+tenían errores de tipo reales.** Este repo no corre `deno check` en CI (ya
+documentado varias veces arriba), así que su primer type-check real es el
+build de Base44 al desplegar. Un barrido con `deno check` sobre las 22
+funciones (no solo las tocadas por un cambio, como en pasadas anteriores)
+encontró que `githubRepos`, `licensesAdmin`, `supabaseData` y `ticketsAdmin`
+—ninguna tocada desde que se introdujo el patrón `(error as Error).message`
+en el resto del repo— seguían con `error.message` sin cast (`TS18046`), y
+`supabaseData` además tenía un parámetro `k` implícitamente `any` en un
+`.find()` (`TS7006`). Corregido con el mismo patrón ya usado en el resto del
+repo (cast explícito; tipo explícito en el callback). Las 22 funciones
+compilan limpio ahora — confirmado repitiendo el barrido completo después del
+fix, no solo las cuatro tocadas.
+
+**Hallazgo 3 — `USER_MANUAL.md` (no `src/lib/manual.js`, que sí estaba al
+día) tenía tres desincronías, una de ellas con una fecha propia que la
+desmiente.** La pasada del 2026-09-21 ya corrigió `src/lib/manual.js` (el
+manual que se ve dentro de la app) para el flujo de invitación sin correo —
+pero nunca tocó el `.md` de la raíz del repo, y éste llevaba un sello
+"Actualizado 2026-09-21" puesto encima de contenido que ya estaba desincronizado
+desde antes de esa misma fecha:
+- **"Light and dark themes" describía un toggle en el pie de la barra
+  lateral** — ese control se quitó en el módulo 12 (2026-08-21, más de un mes
+  antes del sello "Actualizado") y se reemplazó por el círculo de esquina de
+  tres posiciones (claro/oscuro/sistema). Confirmado contra el código vivo:
+  `Layout.jsx` no tiene ningún toggle de tema, `App.jsx` monta
+  `<ThemeSwitcher/>` a nivel de aplicación. Corregido para describir el
+  control real.
+- **La sección "Admin" no mencionaba "Solicitudes de unión"** — el panel
+  nuevo del v1.35.0 (2026-09-30) donde un owner/admin aprueba o rechaza a
+  quien usó el código de la organización, eligiendo su rol. Como el único
+  dato que cambia es prosa, no hay nada que verificar contra RLS; se agregó
+  la misma frase que ya tenía `manual.js`.
+- **"Tenant Setup (Onboarding)" nunca describió unirse por código, ni antes
+  ni después de que ese flujo pasara de acceso instantáneo a solicitud
+  pendiente** — un hueco preexistente, no introducido por el v1.35.0, pero
+  que ese cambio de comportamiento hizo más grave: alguien que lee el manual
+  para entender cómo unirse a una organización ya existente no encontraba
+  nada. Se añadió la mitad que faltaba (crear vs. unirse, con el resultado
+  "Solicitud enviada" y quién la resuelve).
+
+Mismo patrón que la pasada del 2026-09-21 ya nombró para `src/lib/manual.js`:
+un manual con fecha de actualización no es un manual verificado — hay que
+releer cada afirmación contra el código que describe, no contra el sello de
+fecha.
+
+**Verificado:** `npm run lint` (22 endpoints, techo 40), `npm run typecheck`,
+`npm run validate:rls` (29 entidades OK, sin cambio de esquema), `npm run
+audit:tenant-scope`, `npm run validate:tenant-roles`, `npm run build`, `npm
+run test -- --run` (497/497) — todos limpios, antes y después de cada cambio.
+`npm audit`: 12 → 2 (la misma cadena residual `vitest`/`@vitest/mocker`,
+dev-only) + `braces` (dev-only, sin fix upstream, nombrado arriba). `deno
+check --node-modules-dir=none` corrió sobre las **22** funciones (binario de
+GitHub releases, método ya documentado en este archivo): las 22 compilan
+limpio tras el fix. `npm run test:functions` (deno, 11/11) sobre
+`join_requests_test.ts` — sin cambios de comportamiento en las funciones que
+cubre, así que sigue en verde sin tocar el archivo.
+
+**Sin bump de versión** — mismo criterio que los precedentes de este archivo
+(`494aa29`, `06084e9`/`d07247a`, `57d4dd2`, `f2aceaf`, las pasadas del
+2026-09-14 y 2026-09-28): dependencias (sin cambio de comportamiento en
+runtime, solo versiones más seguras de las mismas APIs), type-checks internos
+(cero cambio de comportamiento — el valor devuelto en el error ya era el
+mismo `.message`, solo con un tipo explícito ahora) y contenido de
+documentación. Ninguna de las tres toca RLS, esquema, ni una ruta de código
+que un usuario pueda observar.
+
+**No verificado:** una sesión de navegador real (ni para confirmar que el
+manual corregido se ve así en `/help` tras el próximo `deploy:site` —
+`src/lib/manual.js` no cambió esta vez, así que no depende de eso; `/help`
+sirve desde el bundle ya desplegado — ni para ningún flujo de permisos o
+unión por código) — no alcanzable desde este entorno, igual que en todas las
+pasadas anteriores de este archivo. Tampoco se pudo releer el esquema
+**desplegado** vía el MCP de Base44 (no disponible en esta sesión) para
+confirmar que `TenantLicense`/`Driver`/`JoinRequest` corren en producción tal
+como está en el repo — mismo hueco ya señalado por la pasada del 2026-09-28.
+Ninguno de los cambios de esta pasada toca `base44/entities/` ni cambia
+comportamiento de función (solo tipos), así que no aplica `deploy:entities`
+ni `npm run deploy`; `USER_MANUAL.md` tampoco requiere `deploy:site` para que
+su propio repo quede corregido, aunque `/help`'s copy seguirá siendo la de
+`src/lib/manual.js` (sin cambios) hasta el próximo deploy de ese bundle de
+cualquier forma.

@@ -1,6 +1,6 @@
 # Rumbo — User Manual
 
-**Updated 2026-09-21**
+**Updated 2026-10-05**
 
 Rumbo is a fleet management platform for transport operations. It provides vehicle tracking, driver management, maintenance scheduling, financial records, alert generation, and real-time messaging.
 
@@ -68,12 +68,12 @@ Each non-admin role ships with sensible defaults, which the **admin can grant or
 
 ## Interface & Appearance
 
-### Light and dark themes
+### Light, dark, and system themes
 
-Rumbo supports both a **dark** and a **light** theme. The app opens in dark mode by default.
+Rumbo supports a **dark** theme, a **light** theme, and a **system** mode that follows your device's own setting live. The app opens in dark mode by default.
 
-- Use the **theme toggle** at the bottom of the left sidebar (above **Salir**) to switch between light and dark.
-- Your choice is remembered on the same browser for next time.
+- Use the small circular control anchored in the corner of the screen — it shows the mode currently in force. Tap it to expand a three-slot track (Claro · Oscuro · Sistema) and pick one.
+- Your choice (the preference, not just the resolved color) is remembered on the same browser for next time.
 - **White-label branding always wins:** if your tenant has configured brand colors (Admin → Tenant information), those colors are applied on top of whichever theme is active.
 
 ### Data entry and validation
@@ -358,6 +358,8 @@ Platform administration panel.
 
 **Invite users:** Enter an email address and assign a role. **No invitation email is sent** — the app adds that address to your tenant's member list, and share the login link (shown after adding them) with the person yourself, by whatever channel you prefer (WhatsApp, etc.). As soon as they sign in with that same email — Google or email/password registration — the app recognizes them and links their account to your tenant automatically.
 
+**Solicitudes de unión (join requests):** Sharing your organization's join code (shown on the Tenant information panel) no longer gives instant access. Anyone who redeems it lands in a "Solicitudes de unión" list, shown above Users, where you pick their role and approve — or reject — before they see anything about your organization. Someone you've already invited by email (above) is treated as pre-approved and doesn't appear here.
+
 **Permissions by role:** Configure what Dispatcher, Mechanic, and Driver roles can do across all modules. Changes are saved to your tenant and take effect immediately.
 
 **Danger Zone:**
@@ -442,10 +444,20 @@ An investor has no create/edit/delete access anywhere in the app.
 
 ## Tenant Setup (Onboarding)
 
-When an admin or owner logs in for the first time without a tenant:
-1. An onboarding screen appears.
-2. Enter your organization name, slogan, logo URL, and brand colors.
-3. Complete setup to create your tenant and access the platform.
+When you log in for the first time without a tenant, you're offered two paths:
+
+**Create your own organization:**
+1. Enter your organization name, slogan, logo URL, and brand colors.
+2. Complete setup to create your tenant — you become its Owner — and access the platform.
+3. The final screen shows your join code; copy it to invite your team (also always available in Admin).
+
+**Join an existing organization by code:**
+1. Enter the organization's join code (format `RUMBO-XXXXXX`) and tap "Pedir unirme".
+2. This only files a **request** — it does not grant access. You'll see "Solicitud enviada" and can come back later; the screen survives a reload while you wait.
+3. An owner or admin of that organization reviews the request in Admin → Solicitudes de unión, picks your role, and approves — or rejects — it. You gain access on your next login/reload after approval.
+4. Changed your mind? Use "Cancelar solicitud" to withdraw it.
+
+You can only belong to one organization at a time: creating or requesting to join a second one while you already belong to (or have a pending request for) another is rejected — ask that organization's admin to remove you first.
 
 ---
 
