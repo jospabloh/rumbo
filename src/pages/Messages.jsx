@@ -129,9 +129,9 @@ export default function Messages() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* Channel list */}
-      <div className="w-56 lg:w-64 border-r border-border bg-sidebar flex flex-col shrink-0">
+    <div className="flex flex-col md:flex-row h-full">
+      {/* Channel list — arriba (altura acotada) en teléfono, columna lateral desde md */}
+      <div className="w-full md:w-56 lg:w-64 max-h-36 md:max-h-none border-b md:border-b-0 md:border-r border-border bg-sidebar flex flex-col shrink-0">
         <div className="p-3 border-b border-border flex items-center justify-between">
           <span className="text-sm font-semibold">Canales</span>
           {canManageChannels && (
@@ -151,7 +151,7 @@ export default function Messages() {
       </div>
 
       {/* Chat area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {selectedChannel ? (
           <>
             <div className="px-4 py-3 border-b border-border flex items-center gap-2">
@@ -192,7 +192,7 @@ export default function Messages() {
                 value={newMessage}
                 onChange={e => setNewMessage(e.target.value)}
                 placeholder="Escribe un mensaje..."
-                className="bg-background flex-1"
+                className="bg-background flex-1 min-w-0"
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }}}
               />
               <Button type="button" size="icon" variant="outline"

@@ -152,3 +152,8 @@
   --theme-switcher-bottom: 1rem;
   --theme-switcher-right: 1rem;
 }
+/* La barra inferior de conductor/socio (Layout.jsx, visible bajo 1024px) mide
+   ~3.5rem: el selector sube por encima de ella en vez de tapar su última pestaña. */
+@media (max-width: 1023px) {
+  :root[data-bottom-nav] { --theme-switcher-bottom: 4.5rem; }
+}

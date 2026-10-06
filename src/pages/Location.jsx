@@ -131,7 +131,7 @@ export default function Location() {
           <h2 className="font-semibold text-sm mb-3">Solicitar ubicación</h2>
           <div className="flex gap-3">
             <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
-              <SelectTrigger className="bg-background flex-1"><SelectValue placeholder="Seleccionar vehículo" /></SelectTrigger>
+              <SelectTrigger className="bg-background flex-1 min-w-0"><SelectValue placeholder="Seleccionar vehículo" /></SelectTrigger>
               <SelectContent>
                 {vehicles.filter(v => v.assigned_driver_id).map(v => {
                   const d = drivers.find(x => x.id === v.assigned_driver_id);

@@ -2607,3 +2607,20 @@ ni `npm run deploy`; `USER_MANUAL.md` tampoco requiere `deploy:site` para que
 su propio repo quede corregido, aunque `/help`'s copy seguirá siendo la de
 `src/lib/manual.js` (sin cambios) hasta el próximo deploy de ese bundle de
 cualquier forma.
+
+## Traslapes de botones en tablet y móvil (2026-10-06)
+
+Disparado por un reporte de botones traslapados en iPad en otra app del portafolio.
+`node scripts/layout-overlap-scan.mjs [--no-build] [--widths 320,390,768,834,1024,1440]
+[--only /ruta,menu] [--shots dir]` construye `dist/`, lo sirve y recorre login y las
+pantallas de los cuatro roles con **todo `/api/` simulado** (filas generadas desde
+`base44/entities/*.jsonc`): pares de controles que se intersecan, controles tapados,
+texto cortado, desborde horizontal y la pantalla caída al error boundary. Usa
+`PW_CHROMIUM=/ruta/a/chrome` si hace falta. Hallazgos corregidos: la barra inferior de
+conductor/socio quedaba tapada por el selector de tema (`data-bottom-nav` en `<html>` +
+`--theme-switcher-bottom` en `index.css`); `main` ahora lleva `pb-14` para que el último
+control no quede bajo el selector; botones de cabecera de Rentas y Configuración, el
+chat de Mensajes (lista arriba en teléfono) y el selector de Ubicación desbordaban a
+320 px; las pestañas de filtro de Rentas/Financiero/Tickets se cortaban dentro de un
+scroll horizontal sin pista (ahora envuelven). **No verificado:** Safari/WebKit real, ni
+pantallas con datos reales; el simulador usa datos genéricos.
