@@ -74,7 +74,7 @@ export default function BusinessSettingsPanel() {
       {msg && <p className="text-sm text-success">{msg}</p>}
 
       {!readOnly && (
-        <div className="flex gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1">
           <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar configuración'}</Button>
           <Button
             size="sm" variant="outline"

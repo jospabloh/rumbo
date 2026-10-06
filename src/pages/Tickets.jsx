@@ -100,7 +100,7 @@ export default function Tickets() {
       {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
       {/* Filtros por estatus */}
-      <div className="flex gap-1 bg-muted rounded-lg p-1 mb-4 overflow-x-auto">
+      <div className="flex flex-wrap gap-1 bg-muted rounded-lg p-1 mb-4">
         {[{ value: 'all', label: 'Todos' }, ...TICKET_STATUSES].map(({ value, label }) => (
           <button key={value} onClick={() => setFilter(value)}
             className={`flex-1 whitespace-nowrap py-1.5 px-2 text-xs font-medium rounded-md transition-all ${filter === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>

@@ -220,7 +220,7 @@ export default function Rentas() {
           <p className="text-sm text-muted-foreground">Cobros por unidad · quién pagó y quién debe</p>
         </div>
         {view === 'cobros' && !readOnly && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowCharge(true)} className="gap-2"><Plus className="w-4 h-4" />Cobro manual</Button>
             <Button size="sm" onClick={generatePeriodCharges} disabled={generating} className="gap-2">
               <CalendarPlus className="w-4 h-4" />{generating ? 'Generando...' : 'Generar cobros del periodo'}
@@ -283,7 +283,7 @@ export default function Rentas() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input placeholder="Buscar por unidad o conductor..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-card border-border" />
       </div>
-      <div className="flex gap-1 bg-muted rounded-lg p-1 mb-4 overflow-x-auto">
+      <div className="flex flex-wrap gap-1 bg-muted rounded-lg p-1 mb-4">
         {filterTabs.map(t => (
           <button key={t.id} onClick={() => setStatusFilter(t.id)}
             className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-all ${statusFilter === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>

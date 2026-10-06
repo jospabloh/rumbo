@@ -58,7 +58,7 @@ export default function Financial() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-muted rounded-lg p-1 mb-4 overflow-x-auto">
+      <div className="flex flex-wrap gap-1 bg-muted rounded-lg p-1 mb-4">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-all ${tab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>

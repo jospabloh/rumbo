@@ -133,6 +133,15 @@ export default function Layout() {
   const simplifiedNav = isDriverRole ? DRIVER_NAV : INVESTOR_NAV;
   const handleLogout = () => base44.auth.logout();
 
+  // Conductor y socio llevan una barra de navegación inferior (<1024px): le avisa
+  // al CSS para subir el selector de tema por encima de ella (src/index.css).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isSimplifiedRole) root.setAttribute('data-bottom-nav', '');
+    else root.removeAttribute('data-bottom-nav');
+    return () => root.removeAttribute('data-bottom-nav');
+  }, [isSimplifiedRole]);
+
   // Build grouped nav filtered by permissions
   const filteredGroups = NAV_GROUPS.map(group => ({
     ...group,
@@ -282,7 +291,8 @@ export default function Layout() {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        {/* pb-14: deja libre la esquina del selector de tema para que el último control de la página no quede debajo. */}
+        <main className="flex-1 overflow-y-auto pb-14">
           <LicenseBanner info={licenseInfo} />
           {licenseInfo?.state === 'disabled' ? <LicenseDisabled info={licenseInfo} /> : <Outlet />}
         </main>
