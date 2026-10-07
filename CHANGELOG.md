@@ -22,6 +22,21 @@ organización no cambian.
   editar, en abonos parciales ni con "reducir movimiento" activado.
 - Facturación muestra el cupo de vehículos y conductores como barra de bloques:
   verde, ámbar al 80 %, rojo lleno.
+- **El texto sobre el color de marca se elige por contraste.** `applyTenantColors()`
+  fija también `--primary-foreground` y `--sidebar-primary-foreground` con
+  `foregroundFor()` (`src/lib/palettes.js`): blanco o negro, el de mayor
+  contraste, medido sobre el color que de verdad se pinta (el HSL redondeado,
+  `renderedHex()`). Con negro puro ningún color queda por debajo de ~4.58:1, así
+  que siempre se cumple AA (4.5:1). **Cambio visible:** Esmeralda, Ámbar, Cian,
+  Azul ejecutivo, Violeta real, Carmesí y Rosa neón pasan de texto blanco a negro
+  en botones rellenos y en el ítem activo del menú; Grafito y los colores oscuros
+  siguen en blanco.
+- Sin paleta de tenant, el azul por defecto en oscuro (`217 91% 60%`) usa tinta
+  oscura (5.2:1; con blanco daba 3.6:1). Las fichas verde y ámbar de `StatCard`
+  usan `--success-foreground` (nuevo) y `--warning-foreground` oscuros en los dos
+  temas.
+- El hover de los botones con relieve sube 1 px sin cambiar el color, así que no
+  baja el contraste del texto.
 
 ## [1.35.0] — 2026-09-30 — unirse con código ahora es una solicitud; verificación de correo en el login
 
