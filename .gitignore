@@ -43,3 +43,4 @@ deno.lock
 # Claude Code agent worktree scratch dirs (isolation:"worktree" background agents) —
 # never real project content, never meant to be committed.
 .claude/worktrees/
+.qa-role-escalation.json

@@ -1,5 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
+// Los campos propios de User (tenant_id, write_access, driver_profile_id,
+// suspended) son campos de la RAÍZ del registro: es lo que la RLS lee como
+// `{{user.data.X}}`. De 2026-08-31 a 2026-10-07 las funciones los escribían
+// dentro de un objeto `data`, que el esquema no tiene, y la plataforma lo guardó
+// como un campo suelto llamado `data` que la RLS nunca ve. Se lee solo como
+// respaldo para perfiles de esa época; se escribe siempre en la raíz.
+const USER_FIELDS = ['tenant_id', 'write_access', 'driver_profile_id', 'suspended'];
+function userData(u: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of USER_FIELDS) out[k] = u?.[k] !== undefined ? u[k] : u?.data?.[k];
+  return out;
+}
+
 /**
  * createTenant — crea la organización (TenantLicense) de un usuario y lo convierte en su owner.
  *
@@ -68,7 +81,7 @@ Deno.serve(async (req) => {
     const appOwnerEmail = (Deno.env.get('APP_OWNER_EMAIL') || '').toLowerCase();
     const isAppOwner = !!appOwnerEmail && email === appOwnerEmail;
     if (!isAppOwner) {
-      if (self?.data?.tenant_id) {
+      if (userData(self).tenant_id) {
         return Response.json({
           error: 'Ya perteneces a una organización. Pide a un administrador que te dé de baja antes de crear otra.',
         }, { status: 409 });
@@ -125,10 +138,8 @@ Deno.serve(async (req) => {
     // `tenant_id` del creador nunca se fijaría y el tenant recién creado quedaría
     // huérfano de su propio dueño.
     await svc.entities.User.update(user.id, {
-      data: {
-        tenant_id: tenant.id,
-        write_access: 'enabled',
-      },
+      tenant_id: tenant.id,
+      write_access: 'enabled',
     });
     try {
       if (user.role !== 'owner') await svc.entities.User.update(user.id, { role: 'owner' });

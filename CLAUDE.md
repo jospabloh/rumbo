@@ -2625,6 +2625,48 @@ chat de Mensajes (lista arriba en teléfono) y el selector de Ubicación desbord
 scroll horizontal sin pista (ahora envuelven). **No verificado:** Safari/WebKit real, ni
 pantallas con datos reales; el simulador usa datos genéricos.
 
+## Los campos de `User` van en la RAÍZ, no en `data` — corrige el 2026-08-31 (2026-10-07)
+
+Salió de la QA en vivo de PR #130 (`scripts/qa/role-escalation.mjs`). Los dos
+arreglos de seguridad pasaron en producción, pero el owner de una organización
+recién creada **no podía leer su propio expediente de conductor**: 404 por SDK,
+lista vacía, y hasta la regla más simple (`DashboardUnitPref`, solo
+`data.tenant_id == {{user.data.tenant_id}}`) le negaba crear. Ni el rol ni el
+retraso de sesión (se repitió con sesión nueva durante 3 minutos).
+
+**Causa, medida y no deducida.** `User.jsonc` declara `tenant_id`,
+`write_access`, `driver_profile_id` y `suspended` como campos del esquema; no
+tiene ningún campo `data`. La RLS lee esos campos como `{{user.data.X}}`. Desde
+el 2026-08-31 las funciones escribían `User.update(id, { data: {...} })`, y la
+plataforma guarda eso como un campo suelto llamado `data` que la RLS nunca ve.
+La prueba con `display_name` lo dejó claro: escrito plano cae en el campo del
+esquema; escrito dentro de `data` **reemplaza entero** ese campo suelto. Por eso
+las funciones (que leían el mismo `data` anidado) funcionaban y la app en el
+navegador no. Los únicos usuarios a los que les funcionaba eran los tres reales
+(h.josepablo, Christian, jose.herrera), que traían el valor plano de antes del
+2026-08-31; los nueve que solo lo tenían anidado eran todos de QA. **Ningún
+cliente estaba afectado todavía, pero el siguiente que se registrara habría
+visto la app vacía.**
+
+Esto corrige dos diagnósticos de este mismo archivo: la sección del 2026-08-31
+("los campos custom van bajo `data`") lo tenía al revés, y la del 2026-09-03
+("`auth.me()` reconstruye `.data` contaminado por la raíz") describía el
+comportamiento correcto como si fuera el bug: `auth.me()` mostraba el campo del
+esquema, que es el que la RLS usa.
+
+**Arreglo:** las 14 funciones que leen o escriben esos campos usan un helper
+`userData()` (copiado por carpeta, como `_acaciaSign.ts`): lee el campo de la
+raíz y solo cae al `data` suelto como respaldo para perfiles de esa época;
+escribe siempre plano. `join_requests_test.ts` ahora afirma que la aprobación
+deja `tenant_id` en la raíz y no en `data`, y falla contra el código anterior.
+
+**QA en vivo:** `node scripts/qa/role-escalation.mjs signup|verify|run|cleanup`
+crea tres cuentas `+qa` y un tenant de prueba, comprueba que `members[].role:'owner'`
+no da owner, que el conductor solo puede escribir su teléfono y no re-atribuir
+su expediente, y que el owner sí lee el expediente que creó. Los códigos de
+verificación llegan al Gmail de las cuentas `+qa`; el estado (contraseñas y
+tokens) vive en `QA_STATE`, nunca en el repo.
+
 ## Estilo: `mario_style` (adoptado 2026-10-07, v1.36.0)
 
 Rumbo usa `mario_style`, la opción de estilo de `jospabloh/acacia-app-standard`.

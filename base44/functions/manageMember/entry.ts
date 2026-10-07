@@ -1,5 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
+// Los campos propios de User (tenant_id, write_access, driver_profile_id,
+// suspended) son campos de la RAÍZ del registro: es lo que la RLS lee como
+// `{{user.data.X}}`. De 2026-08-31 a 2026-10-07 las funciones los escribían
+// dentro de un objeto `data`, que el esquema no tiene, y la plataforma lo guardó
+// como un campo suelto llamado `data` que la RLS nunca ve. Se lee solo como
+// respaldo para perfiles de esa época; se escribe siempre en la raíz.
+const USER_FIELDS = ['tenant_id', 'write_access', 'driver_profile_id', 'suspended'];
+function userData(u: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of USER_FIELDS) out[k] = u?.[k] !== undefined ? u[k] : u?.data?.[k];
+  return out;
+}
+
 /**
  * manageMember — el admin/owner de un tenant suspende, reactiva o quita a un usuario.
  *
@@ -43,7 +56,6 @@ function computeWriteAccess(tenant: any): 'enabled' | 'blocked' {
 // src/lib/joinRequests.js espeja esta lista y un test la compara.
 const ASSIGNABLE_ROLES = ['admin', 'dispatcher', 'mechanic', 'driver', 'investor', 'user'];
 const REQUEST_ACTIONS = ['listRequests', 'approveRequest', 'rejectRequest'];
-
 
 /**
  * Resuelve solicitudes de unión. `svc` = service role; `tenantId` ya viene del
@@ -99,7 +111,7 @@ async function handleRequests(svc: any, caller: any, tenantId: string, body: any
     await svc.entities.JoinRequest.delete(request.id).catch(() => {});
     return Response.json({ error: 'Esa cuenta ya no existe.' }, { status: 404 });
   }
-  const targetData = target.data || {};
+  const targetData = userData(target);
 
   // UN USUARIO, UN TENANT: si ya se enganchó a otra organización mientras
   // esperaba, aprobar la dejaría inalcanzable. La solicitud se cierra sin
@@ -174,12 +186,9 @@ async function handleRequests(svc: any, caller: any, tenantId: string, body: any
     driverProfileId = drv?.id || null;
   } catch (_e) { /* sin registro Driver vinculado */ }
   await svc.entities.User.update(target.id, {
-    data: {
-      ...targetData,
-      tenant_id: tenantId,
-      driver_profile_id: driverProfileId,
-      write_access: computeWriteAccess(tenant),
-    },
+    tenant_id: tenantId,
+    driver_profile_id: driverProfileId,
+    write_access: computeWriteAccess(tenant),
   });
 
   // 3) Rol en su PROPIA llamada (la plataforma rechaza tocar el rol del owner de
@@ -196,7 +205,7 @@ async function handleRequests(svc: any, caller: any, tenantId: string, body: any
 // siempre []. Se lista y se filtra en memoria (QA en vivo 2026-10-01).
 async function usersOfTenant(svc: any, tenantId: string): Promise<any[]> {
   const rows = await svc.entities.User.list('-created_date', 5000);
-  return (Array.isArray(rows) ? rows : []).filter((u: any) => (u?.data?.tenant_id || null) === tenantId);
+  return (Array.isArray(rows) ? rows : []).filter((u: any) => (userData(u).tenant_id || null) === tenantId);
 }
 
 Deno.serve(async (req) => {
@@ -216,7 +225,7 @@ Deno.serve(async (req) => {
     // joinTenant, 2026-09-03).
     const callerSelfRows = await svc.entities.User.filter({ id: caller.id });
     const callerSelf = Array.isArray(callerSelfRows) ? callerSelfRows[0] : callerSelfRows;
-    const tenantId = callerSelf?.data?.tenant_id || null;
+    const tenantId = userData(callerSelf).tenant_id || null;
     if (!tenantId) return Response.json({ error: 'No perteneces a ninguna organización.' }, { status: 400 });
 
     const body = await req.json().catch(() => ({}));
@@ -228,14 +237,14 @@ Deno.serve(async (req) => {
     if (action === 'listUsers') {
       const rows = await usersOfTenant(svc, tenantId);
       const users = (Array.isArray(rows) ? rows : []).map((u: any) => {
-        const d = u.data || {};
+        const d = userData(u);
         return {
           id: u.id,
           email: u.email || '',
           full_name: u.full_name || '',
-          display_name: d.display_name ?? u.display_name ?? '',
+          display_name: u.display_name ?? u.data?.display_name ?? '',
           role: u.role || 'user',
-          suspended: !!(d.suspended ?? u.suspended),
+          suspended: !!d.suspended,
           write_access: d.write_access ?? u.write_access ?? null,
           owner_group_id: d.owner_group_id ?? u.owner_group_id ?? '',
           created_date: u.created_date || null,
@@ -259,7 +268,7 @@ Deno.serve(async (req) => {
     if (!target) return Response.json({ error: 'Usuario no encontrado.' }, { status: 404 });
 
     // El objetivo debe pertenecer al mismo tenant que el administrador.
-    if ((target.data?.tenant_id || null) !== tenantId) {
+    if ((userData(target).tenant_id || null) !== tenantId) {
       return Response.json({ error: 'Ese usuario no pertenece a tu organización.' }, { status: 403 });
     }
 
@@ -283,13 +292,13 @@ Deno.serve(async (req) => {
     // tenant_id/driver_profile_id del objetivo si la plataforma reemplaza el
     // subdocumento entero en vez de mezclarlo.
     if (action === 'suspend') {
-      await svc.entities.User.update(userId, { data: { ...target.data, suspended: true, write_access: 'blocked' } });
+      await svc.entities.User.update(userId, { suspended: true, write_access: 'blocked' });
       return Response.json({ ok: true, action, suspended: true });
     }
 
     if (action === 'reactivate') {
       const writeAccess = computeWriteAccess(tenant);
-      await svc.entities.User.update(userId, { data: { ...target.data, suspended: false, write_access: writeAccess } });
+      await svc.entities.User.update(userId, { suspended: false, write_access: writeAccess });
       return Response.json({ ok: true, action, suspended: false, write_access: writeAccess });
     }
 
@@ -304,12 +313,10 @@ Deno.serve(async (req) => {
     // cambiar el rol del owner de la app aunque sea service role, y el update es
     // atómico — mezclados, quitar del tenant al owner de la app no desligaría nada.
     await svc.entities.User.update(userId, {
-      data: {
-        tenant_id: null,
-        suspended: false,
-        write_access: 'enabled',
-        driver_profile_id: null,
-      },
+      tenant_id: null,
+      suspended: false,
+      write_access: 'enabled',
+      driver_profile_id: null,
     });
     try {
       await svc.entities.User.update(userId, { role: 'user' });
