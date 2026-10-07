@@ -2625,47 +2625,31 @@ chat de Mensajes (lista arriba en teléfono) y el selector de Ubicación desbord
 scroll horizontal sin pista (ahora envuelven). **No verificado:** Safari/WebKit real, ni
 pantallas con datos reales; el simulador usa datos genéricos.
 
-## Módulo 27 — "juego bonito": el look redondo y con relieve (2026-10-07, v1.36.0)
+## Estilo: `mario_style` (adoptado 2026-10-07, v1.36.0)
 
-Rumbo es la implementación de referencia del módulo 27 de
-`jospabloh/acacia-app-standard`. Se decidió con una maqueta Antes/Después.
+Rumbo usa `mario_style`, la opción de estilo de `jospabloh/acacia-app-standard`.
+**La guía completa vive allá** (STANDARD.md §27 y `shared/mario_style/README.md`):
+qué lo compone, cuándo se celebra y cómo se verifica. Aquí va solo lo propio de
+Rumbo.
 
-**Todo sale de variables, no de pantallas.** `--radius` (1rem) en
-`src/index.css` deriva todos los `rounded-*` desde `tailwind.config.js`. La
-paleta (fondo cielo / azul noche, bordes con matiz azul) vive en los mismos
-tokens HSL de siempre. `--primary` no cambió, y `applyTenantColors()` sigue
-mandando encima. Un color hexadecimal nuevo en un componente es un color que no
-sigue ni al tema ni al tenant.
+- **Copias canónicas, no se editan aquí:** `src/styles/mario_style.css`,
+  `src/lib/celebrate.js` y `src/lib/__tests__/celebrate.test.js`.
+- **Mapeo propio:** el bloque `--play-*` de `src/index.css`. La paleta y
+  `--radius` están en los tokens de siempre (`index.css` / `tailwind.config.js`),
+  y `applyTenantColors()` sigue mandando encima.
+- **Dónde se celebra** (después del `await` exitoso, con `document.activeElement`
+  capturado antes): `Alerts.handleResolve`, `Rentas.submitPayment` (solo si el
+  cargo queda `paid`), `QuickIncomeModal`, `DriverTrips.submit` y el alta (no la
+  edición) de `MaintenancePage`.
+- **Piezas propias:** `QuotaBar` (`src/components/ui/quota-bar.jsx`, tono de
+  `quotaTone()` en `plans.js`) en Facturación, usa `--card` para los bloques
+  vacíos porque vive sobre una ficha `bg-secondary`. También `StatCard` y el
+  ítem activo de `Layout.jsx`.
 
-**`src/styles/playful.css` y `src/lib/celebrate.js` (+ su test) son copias
-byte a byte** de `shared/playful/` en el estándar: se cambian allá y se copian.
-Lo propio de Rumbo es el bloque `--play-*` de `src/index.css` (de qué token sale
-cada color) y dónde se llama a `celebrate()`.
-
-- Botones: `default`/`destructive` llevan `play-press` con relieve de su propio
-  color; `outline`/`secondary` el relieve del borde; `ghost`/`link` planos.
-  Tarjetas `play-card`, `CardTitle` en Baloo 2, badges `rounded-full`.
-- Ítem activo del menú: píldora rellena del color de marca (antes, barra de
-  acento). Barra inferior del conductor: ícono en píldora suave.
-- `StatCard`: ficha de ícono sólida con relieve y cifra en Baloo 2.
-- `QuotaBar` (`src/components/ui/quota-bar.jsx`) en Facturación: un bloque por
-  unidad si el límite es ≤ 30; el color sale de `quotaTone()` en `plans.js`.
-
-**Confeti sólo al terminar algo**, después del `await` exitoso y capturando
-`document.activeElement` antes de él: `Alerts.handleResolve`,
-`Rentas.submitPayment` (sólo si el cargo queda `paid`), `QuickIncomeModal`,
-`DriverTrips.submit` y el alta (no la edición) de `MaintenancePage`. No se
-llama en `catch`, ni en ediciones, ni en abonos parciales.
-
-**Verificado:** `npm run lint` (22 endpoints), `npm run typecheck` y `vitest`
-(507/507) limpios. `scripts/layout-overlap-scan.mjs` antes del cambio: sin
-hallazgos; después, en oscuro (las 6 anchuras, todos los roles) y en claro
-(390/834/1440, con una copia temporal del escáner que fija `rumbo-theme=light`):
-sin hallazgos. Las capturas encontraron un fallo que el escáner no ve: en
-Facturación, los bloques vacíos del cupo tenían el mismo color que la ficha y
-"2 de 15" se leía como dos bloques. `QuotaBar` ahora usa `--card` para los
-vacíos.
-
-**No verificado:** la tipografía real (el sandbox bloquea Google Fonts y las
-capturas salen con la fuente de respaldo), Safari/iOS real, y pantallas con
-datos reales. Mergear no despliega: hace falta `npm run deploy:site`.
+**Verificado:** `lint`, `typecheck` y `vitest` (507/507). Escáner de traslapes
+sin hallazgos antes y después, en oscuro (6 anchuras, todos los roles) y en
+claro (390/834/1440). Las capturas sacaron el fallo de los bloques vacíos del
+cupo, que el escáner no ve.
+**No verificado:** la tipografía real (el sandbox bloquea Google Fonts),
+Safari/iOS y pantallas con datos reales. Mergear no despliega: hace falta
+`npm run deploy:site`.

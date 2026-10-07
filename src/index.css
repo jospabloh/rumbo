@@ -1,4 +1,4 @@
-/* Módulo 27 ("juego bonito"): Baloo 2 para títulos, Nunito para texto. IBM Plex
+/* mario_style (acacia-app-standard §27): Baloo 2 para títulos, Nunito para texto. IBM Plex
    Mono se queda para cifras alineadas en tablas. */
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -11,7 +11,7 @@
      data rendered in mono. Tenant brand colors override these at runtime via
      applyTenantColors(), regardless of light/dark. */
   :root {
-    /* Módulo 27: fondo "cielo" en vez de gris, tinta azul marino, bordes con
+    /* mario_style: fondo "cielo" en vez de gris, tinta azul marino, bordes con
        matiz azul (son también el relieve de tarjetas y botones neutros). El
        azul de marca (--primary) NO cambia. */
     --background: 214 75% 96%;
@@ -62,7 +62,7 @@
     --sidebar-ring: 217 91% 50%;
   }
 
-  /* Dark theme — módulo 27: azul noche en vez de gris carbón, mismo azul de marca. */
+  /* Dark theme — mario_style: azul noche en vez de gris carbón, mismo azul de marca. */
   .dark {
     --background: 226 48% 11%;
     --foreground: 226 60% 96%;
@@ -117,7 +117,7 @@
     @apply bg-background text-foreground font-body antialiased;
   }
 
-  /* Títulos con la tipografía redonda del módulo 27. */
+  /* Títulos con la tipografía redonda de mario_style. */
   h1, h2, h3 {
     @apply font-display;
   }
@@ -159,8 +159,8 @@
   }
 }
 
-/* Módulo 27 — "juego bonito". src/styles/playful.css es la copia canónica de
-   jospabloh/acacia-app-standard → shared/playful/ (no se edita aquí); esto es lo
+/* mario_style. src/styles/mario_style.css es la copia canónica de
+   jospabloh/acacia-app-standard → shared/mario_style/ (no se edita aquí); esto es lo
    único propio de Rumbo: de dónde sale cada color. Las referencias son en vivo,
    así que el color de tenant de applyTenantColors() llega solo al relieve. */
 :root {

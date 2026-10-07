@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-// Módulo 27: el ícono va en una ficha sólida con relieve (el color dice qué
+// mario_style: el ícono va en una ficha sólida con relieve (el color dice qué
 // tipo de cifra es) y la cifra en la tipografía de títulos. La tarjeta en sí
 // se queda neutra: con ocho fichas de color lleno el tablero gritaría.
 const colorMap = {

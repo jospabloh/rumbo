@@ -77,7 +77,7 @@ export const countsTowardQuota = (row) => (row?.status ?? 'active') === 'active'
 export const quotaCount = (rows) => (rows || []).filter(countsTowardQuota).length;
 
 /**
- * Qué tan lleno va el cupo, para pintar la barra de cupo (QuotaBar, módulo 27):
+ * Qué tan lleno va el cupo, para pintar la barra de cupo (QuotaBar, mario_style):
  * 'ok' por debajo del 80 %, 'near' del 80 % al lleno, 'full' en el límite o
  * por encima. Un plan ilimitado nunca se llena.
  */

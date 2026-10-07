@@ -5,7 +5,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        // Módulo 27: Nunito para texto, Baloo 2 para títulos y cifras grandes.
+        // mario_style: Nunito para texto, Baloo 2 para títulos y cifras grandes.
         sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
         body: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
         display: ['"Baloo 2"', 'Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],

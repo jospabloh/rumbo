@@ -1,4 +1,4 @@
-// Módulo 27 — el cupo del plan como "barra de vida": un bloque por unidad
+// mario_style — el cupo del plan como "barra de vida": un bloque por unidad
 // cuando el límite es lo bastante chico para contarse de un vistazo (≤ 30), una
 // barra continua si es más grande, y nada si el plan es ilimitado. El color
 // avisa antes de que el cupo se acabe: verde, ámbar al 80 %, rojo lleno.
