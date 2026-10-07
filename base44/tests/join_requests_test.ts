@@ -42,12 +42,14 @@ const OTHER = { id: 'T2', tenant_name: 'Otra', join_code: 'RUMBO-ZZZ999', owner_
 const seed = () => ({
   TenantLicense: [TENANT, OTHER],
   User: [
-    { id: 'boss', email: 'boss@x.com', role: 'owner', data: { tenant_id: 'T1' } },
+    { id: 'boss', email: 'boss@x.com', role: 'owner', tenant_id: 'T1' },
+    // Perfil de la época 2026-08-31..10-07: tenant_id solo en el campo suelto `data`.
+    // Las funciones lo siguen reconociendo como respaldo (lo aprueba abajo).
     { id: 'adm', email: 'adm@x.com', role: 'admin', data: { tenant_id: 'T1' } },
-    { id: 'drv', email: 'drv@x.com', role: 'driver', data: { tenant_id: 'T1' } },
-    { id: 'new', email: 'new@x.com', role: 'user', full_name: 'Nueva', data: {} },
-    { id: 'new2', email: 'new2@x.com', role: 'user', data: {} },
-    { id: 'foreign', email: 'f@x.com', role: 'admin', data: { tenant_id: 'T2' } },
+    { id: 'drv', email: 'drv@x.com', role: 'driver', tenant_id: 'T1' },
+    { id: 'new', email: 'new@x.com', role: 'user', full_name: 'Nueva' },
+    { id: 'new2', email: 'new2@x.com', role: 'user' },
+    { id: 'foreign', email: 'f@x.com', role: 'admin', tenant_id: 'T2' },
   ],
 });
 
@@ -57,7 +59,7 @@ Deno.test('unirse con el código deja una solicitud y NO da acceso', async () =>
   eq(r.status, 200, 'status');
   eq(r.body.status, 'pending', 'pending');
   const u = db.User.find((x) => x.id === 'new')!;
-  assert(!u.data.tenant_id, 'sin tenant_id');
+  assert(!u.tenant_id, 'sin tenant_id');
   eq(u.role, 'user', 'rol intacto');
   eq(db.TenantLicense.find((t) => t.id === 'T1')!.members.length, 1, 'members[] intacto');
   eq(db.JoinRequest.length, 1, 'una solicitud');
@@ -99,7 +101,7 @@ Deno.test('crear organización: el creador queda owner de SU tenant', async () =
   const r = await call('createTenant', 'new2', { tenant_name: 'Nueva Flota' });
   eq(r.status, 200, 'status');
   const u = db.User.find((x) => x.id === 'new2')!;
-  eq(u.data.tenant_id, r.body.tenant_id, 'tenant_id');
+  eq(u.tenant_id, r.body.tenant_id, 'tenant_id');
   eq(u.role, 'owner', 'owner');
 });
 
@@ -130,12 +132,15 @@ Deno.test('aprobar: solo owner/admin del tenant destino, el rol lo elige el admi
   eq((await call('manageMember', 'adm', { action: 'approveRequest', requestId: id, role: 'owner' })).status, 400, 'owner no');
   eq((await call('manageMember', 'adm', { action: 'approveRequest', requestId: id, role: 'root' })).status, 400, 'inventado no');
   eq((await call('manageMember', 'adm', { action: 'approveRequest', requestId: id })).status, 400, 'sin rol no');
-  assert(!db.User.find((x) => x.id === 'new')!.data.tenant_id, 'nada se escribió con rechazos');
+  assert(!db.User.find((x) => x.id === 'new')!.tenant_id, 'nada se escribió con rechazos');
 
   const ok = await call('manageMember', 'adm', { action: 'approveRequest', requestId: id, role: 'mechanic' });
   eq(ok.status, 200, 'aprobada');
   const u = db.User.find((x) => x.id === 'new')!;
-  eq(u.data.tenant_id, 'T1', 'tenant_id');
+  eq(u.tenant_id, 'T1', 'tenant_id');
+  // La RLS lee {{user.data.tenant_id}} del campo de la RAÍZ. Un tenant_id escrito
+  // dentro de un objeto `data` (2026-08-31..10-07) deja la app vacía para esa persona.
+  assert(!(u as { data?: { tenant_id?: string } }).data?.tenant_id, 'no se escribe anidado en data');
   eq(u.role, 'mechanic', 'rol elegido');
   const m = db.TenantLicense.find((t) => t.id === 'T1')!.members.find((x: { email: string }) => x.email === 'new@x.com');
   eq(m.role, 'mechanic', 'members[]');
@@ -148,7 +153,7 @@ Deno.test('rechazar: sin acceso, el solicitante ve el rechazo y puede descartarl
   await call('joinTenant', 'new', { code: 'RUMBO-ABC234' });
   const id = db.JoinRequest[0].id;
   eq((await call('manageMember', 'boss', { action: 'rejectRequest', requestId: id })).status, 200, 'rechazada');
-  assert(!db.User.find((x) => x.id === 'new')!.data.tenant_id, 'sin tenant');
+  assert(!db.User.find((x) => x.id === 'new')!.tenant_id, 'sin tenant');
   eq((await call('resolveTenant', 'new', {})).body.join_request.status, 'rejected', 've el rechazo');
   // Una rechazada no se puede aprobar después
   eq((await call('manageMember', 'boss', { action: 'approveRequest', requestId: id, role: 'driver' })).status, 409, 'ya resuelta');
@@ -160,10 +165,10 @@ Deno.test('aprobar no mueve a quien ya se enganchó a otro tenant', async () => 
   reset(seed());
   await call('joinTenant', 'new', { code: 'RUMBO-ABC234' });
   const id = db.JoinRequest[0].id;
-  db.User.find((x) => x.id === 'new')!.data.tenant_id = 'T2';
+  db.User.find((x) => x.id === 'new')!.tenant_id = 'T2';
   const r = await call('manageMember', 'adm', { action: 'approveRequest', requestId: id, role: 'driver' });
   eq(r.status, 409, '409');
-  eq(db.User.find((x) => x.id === 'new')!.data.tenant_id, 'T2', 'sigue en T2');
+  eq(db.User.find((x) => x.id === 'new')!.tenant_id, 'T2', 'sigue en T2');
   eq(db.TenantLicense.find((t) => t.id === 'T1')!.members.length, 1, 'members[] intacto');
 });
 
@@ -185,4 +190,18 @@ Deno.test('resolveTenant repara el rol owner del creador aunque ya tenga tenant_
   // Un admin del tenant NO se sube a owner por esta via.
   await call('resolveTenant', 'adm', {});
   eq(db.User.find((x) => x.id === 'adm')!.role, 'admin', 'admin intacto');
+});
+
+Deno.test('perfil de la época del data suelto: resolveTenant copia los campos a la raíz', async () => {
+  // 'adm' solo trae tenant_id dentro de `data`. Las funciones lo reconocen por el
+  // respaldo, pero la RLS lee la raíz: si resolveTenant no la escribe, la app le
+  // sale vacía para siempre aunque el diff contra la vista combinada diga "igual".
+  reset(seed());
+  const r = await call('resolveTenant', 'adm', {});
+  eq(r.body.tenant_id, 'T1', 'resuelve por el respaldo');
+  const u = db.User.find((x) => x.id === 'adm')!;
+  eq(u.tenant_id, 'T1', 'tenant_id escrito en la raíz');
+  eq(u.write_access, 'enabled', 'write_access escrito en la raíz');
+  const again = await call('resolveTenant', 'adm', {});
+  eq(again.body.tenant_id, 'T1', 'idempotente');
 });

@@ -20,6 +20,19 @@
 // resolution, kept in sync by hand.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
+// Los campos propios de User (tenant_id, write_access, driver_profile_id,
+// suspended) son campos de la RAÍZ del registro: es lo que la RLS lee como
+// `{{user.data.X}}`. De 2026-08-31 a 2026-10-07 las funciones los escribían
+// dentro de un objeto `data`, que el esquema no tiene, y la plataforma lo guardó
+// como un campo suelto llamado `data` que la RLS nunca ve. Se lee solo como
+// respaldo para perfiles de esa época; se escribe siempre en la raíz.
+const USER_FIELDS = ['tenant_id', 'write_access', 'driver_profile_id', 'suspended'];
+function userData(u: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of USER_FIELDS) out[k] = u?.[k] !== undefined ? u[k] : u?.data?.[k];
+  return out;
+}
+
 // Entity -> module key (docs/permissions_matrix.md's 14-module granular
 // matrix). Only entities gated by that matrix are handled here — TenantLicense,
 // User, AppSession, DashboardUnitPref, Catalog, UsefulLink are page/role-gated
@@ -234,7 +247,7 @@ Deno.serve(async (req) => {
     const role = String(user.role || '');
     const selfRows = await svc.entities.User.filter({ id: user.id });
     const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
-    const selfData = self?.data || {};
+    const selfData = userData(self);
     const tenantId = selfData?.tenant_id;
     if (!tenantId) return bad(400, 'NO_TENANT', 'No tenant assigned');
     if (selfData?.write_access !== 'enabled') {
