@@ -2687,8 +2687,21 @@ Rumbo.
   `quotaTone()` en `plans.js`) en Facturación, usa `--card` para los bloques
   vacíos porque vive sobre una ficha `bg-secondary`. También `StatCard` y el
   ítem activo de `Layout.jsx`.
+- **El texto sobre el color de marca no es fijo.** `foregroundFor()`
+  (`src/lib/palettes.js`) elige blanco o negro, el de más contraste, medido sobre
+  `renderedHex()` (el HSL redondeado que de verdad lleva `--primary`, no el hex
+  original: cerca del cruce cambia la elección, p. ej. `#007db5`).
+  `applyTenantColors()` lo escribe en `--primary-foreground` y
+  `--sidebar-primary-foreground`. Una prueba recorre el cubo RGB y exige ≥ 4.5:1;
+  por eso la tinta oscura es `#000000` (con `#05060c`, `#cc22cc` daba 4.4985).
+  Siete paletas integradas quedan con texto negro. Sin paleta, el `.dark` fija la
+  tinta oscura a mano (`228 40% 8%`), igual que `--success-foreground` y
+  `--warning-foreground` en los dos temas.
+- **No pongas hover de color sobre algo relleno con `--primary`.** El relieve
+  sube 1 px y no toca el color; un `hover:bg-primary/80` (el default de `Badge`)
+  sobre el ítem activo hacía desaparecer el contador de no leídos.
 
-**Verificado:** `lint`, `typecheck` y `vitest` (507/507). Escáner de traslapes
+**Verificado:** `lint`, `typecheck` y `vitest` (516/516). Escáner de traslapes
 sin hallazgos antes y después, en oscuro (6 anchuras, todos los roles) y en
 claro (390/834/1440). Las capturas sacaron el fallo de los bloques vacíos del
 cupo, que el escáner no ve.

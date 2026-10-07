@@ -26,6 +26,7 @@ const CHANGES = [
     items: [
       'Toda la app es más redonda y amigable: botones con relieve que se hunden al pulsarlos, tipografía nueva y colores más alegres. Tu color de marca se mantiene.',
       'Cuando terminas algo (resolver una alerta, saldar un cargo, registrar un viaje o un mantenimiento) aparece un poco de confeti. Si tu dispositivo tiene activado "reducir movimiento", no se muestra.',
+      'El texto sobre tu color de marca (botones y la sección activa del menú) ahora se elige para que siempre se lea bien: blanco o negro, según lo que dé más contraste. Con Esmeralda, Ámbar, Cian, Azul ejecutivo, Violeta real, Carmesí o Rosa neón el texto pasa a negro.',
       'En Facturación, el cupo de vehículos y conductores de tu plan se ve como una barra de bloques que cambia de color al acercarse al límite.',
     ],
   },
