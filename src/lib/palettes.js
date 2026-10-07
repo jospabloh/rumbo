@@ -69,9 +69,28 @@ export function contrastRatio(a, b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/** Color de texto (tripleta HSL) para poner encima del color de marca `hex`. */
+/** Tripleta "H S% L%" (la que produce hexToHsl) de vuelta a hex #RRGGBB. */
+function hslTripletToHex(triplet) {
+  const [h, s, l] = triplet.split(' ').map((v) => parseFloat(v));
+  const sat = s / 100, lig = l / 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = sat * Math.min(lig, 1 - lig);
+  const f = (n) => lig - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return '#' + [f(0), f(8), f(4)].map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+}
+
+/** El color que de verdad se pinta: --primary lleva el HSL redondeado, no el hex. */
+export function renderedHex(hex) {
+  return hslTripletToHex(hexToHsl(hex));
+}
+
+/** Color de texto (tripleta HSL) para poner encima del color de marca `hex`.
+ * Se mide contra el color redondeado que se pinta: cerca del cruce entre
+ * blanco y negro, el hex original y el redondeado pueden elegir distinto
+ * (#007db5: negro con el hex, pero 4.43:1 sobre lo que se pinta). */
 export function foregroundFor(hex) {
-  return contrastRatio(hex, '#ffffff') >= contrastRatio(hex, DARK_INK_HEX)
+  const shown = renderedHex(hex);
+  return contrastRatio(shown, '#ffffff') >= contrastRatio(shown, DARK_INK_HEX)
     ? WHITE_HSL
     : hexToHsl(DARK_INK_HEX);
 }
