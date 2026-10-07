@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PREMIUM_PALETTES, isValidHex, hexToHsl, applyTenantColors } from '@/lib/palettes';
+import { PREMIUM_PALETTES, isValidHex, hexToHsl, applyTenantColors, contrastRatio, foregroundFor } from '@/lib/palettes';
 
 describe('PREMIUM_PALETTES', () => {
   it('offers several curated palettes', () => {
@@ -103,5 +103,34 @@ describe('applyTenantColors', () => {
     document.documentElement.style.cssText = '';
     applyTenantColors({ primary: '#3b82f6' });
     expect(document.documentElement.style.getPropertyValue('--background')).toBe('');
+  });
+});
+
+describe('foregroundFor() — el texto sobre el color de marca siempre se lee', () => {
+  // Con Esmeralda, Ámbar o Cian el blanco quedaba en 2.1–2.5:1 sobre botones y
+  // sobre el ítem activo del menú (mario_style lo rellena con --primary).
+  it('cambia a tinta oscura en las paletas claras', () => {
+    for (const name of ['Esmeralda', 'Ámbar industrial', 'Cian profundo']) {
+      const p = PREMIUM_PALETTES.find((x) => x.name === name);
+      expect(contrastRatio(p.primary, '#ffffff')).toBeLessThan(3);
+      expect(foregroundFor(p.primary)).not.toBe('0 0% 100%');
+    }
+  });
+
+  // El resto conserva el blanco de siempre: no se cambia el look de quien ya se leía.
+  it('deja el blanco donde ya llega a 3:1', () => {
+    for (const name of ['Azul ejecutivo', 'Violeta real', 'Carmesí', 'Grafito', 'Rosa neón']) {
+      const p = PREMIUM_PALETTES.find((x) => x.name === name);
+      expect(foregroundFor(p.primary)).toBe('0 0% 100%');
+    }
+  });
+
+  it('applyTenantColors fija el texto del botón y del menú junto con el primario', () => {
+    document.documentElement.style.cssText = '';
+    applyTenantColors({ primary: '#f59e0b' });
+    const root = document.documentElement.style;
+    expect(root.getPropertyValue('--primary-foreground').trim()).toBe(foregroundFor('#f59e0b'));
+    expect(root.getPropertyValue('--sidebar-primary-foreground').trim()).toBe(foregroundFor('#f59e0b'));
+    expect(root.getPropertyValue('--primary-foreground').trim()).not.toBe('0 0% 100%');
   });
 });

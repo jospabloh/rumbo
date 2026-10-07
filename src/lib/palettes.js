@@ -49,6 +49,32 @@ export function hexToHsl(hex) {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+// Tinta oscura para texto sobre un color de marca claro: la misma del tema claro
+// (--foreground), un poco más oscura para que sobre ámbar o cian lea de sobra.
+const DARK_INK_HSL = '228 40% 12%';
+const WHITE_HSL = '0 0% 100%';
+// Blanco mientras llegue a 3:1 (mínimo WCAG para controles y texto grande). Es
+// el mismo texto blanco que la app siempre usó sobre su azul; solo cambia en los
+// colores de marca tan claros que el blanco ya no se lee (esmeralda, ámbar, cian).
+const MIN_WHITE_CONTRAST = 3;
+
+function relativeLuminance(hex) {
+  const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+
+/** Razón de contraste WCAG entre dos colores hex (#RRGGBB). */
+export function contrastRatio(a, b) {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** Color de texto (tripleta HSL) para poner encima del color de marca `hex`. */
+export function foregroundFor(hex) {
+  return contrastRatio(hex, '#ffffff') >= MIN_WHITE_CONTRAST ? WHITE_HSL : DARK_INK_HSL;
+}
+
 /** Aplica la paleta del tenant (primary/background/secondary, hex) como custom
  * properties CSS en :root. Vive aquí (no en la página de onboarding) porque
  * Layout.jsx la necesita en cada carga de la app, no solo durante el onboarding. */
@@ -62,6 +88,11 @@ export function applyTenantColors(colors) {
       root.style.setProperty('--ring', hsl);
       root.style.setProperty('--sidebar-primary', hsl);
       root.style.setProperty('--sidebar-ring', hsl);
+      // El texto sobre el color de marca (botones rellenos, ítem activo del menú)
+      // tiene que seguir siendo legible con cualquier color que elija el tenant.
+      const fg = foregroundFor(colors.primary.trim());
+      root.style.setProperty('--primary-foreground', fg);
+      root.style.setProperty('--sidebar-primary-foreground', fg);
     } catch (e) {}
   }
   if (colors.background) {

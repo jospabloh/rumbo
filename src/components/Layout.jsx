@@ -69,7 +69,7 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
         <Badge className="ml-auto bg-critical text-white text-xs px-1.5 py-0 h-5">{alertCount}</Badge>
       )}
       {label === 'Mensajes' && unreadCount > 0 && (
-        <Badge className={`ml-auto text-xs px-1.5 py-0 h-5 ${active ? 'bg-primary-foreground text-primary' : 'bg-primary text-white'}`}>{unreadCount}</Badge>
+        <Badge className={`ml-auto text-xs px-1.5 py-0 h-5 ${active ? 'bg-primary-foreground text-primary' : 'bg-primary text-primary-foreground'}`}>{unreadCount}</Badge>
       )}
     </Link>
   );
