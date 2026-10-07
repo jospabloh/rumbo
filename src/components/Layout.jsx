@@ -83,6 +83,14 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const restoredRef = useRef(false);
+  const drawerRef = useRef(null);
+
+  // El cajón móvil se desmonta al elegir una sección; al reabrirlo, lleva el
+  // ítem activo a la vista en vez de dejarlo bajo el pliegue.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    drawerRef.current?.querySelector('nav [aria-current="page"]')?.scrollIntoView({ block: 'nearest' });
+  }, [sidebarOpen]);
 
   // Permanencia: recuerda la última sección y, al recargar (aterrizando en la
   // raíz), restaura esa sección en vez de resetear al inicio.
@@ -152,7 +160,11 @@ export default function Layout() {
     ? [...filteredGroups, { label: 'Plataforma', items: PLATFORM_NAV }]
     : filteredGroups;
 
-  const SidebarContent = ({ onLinkClick }) => (
+  // Se llama como función, NO como <SidebarContent/>: un componente declarado
+  // dentro de Layout es un tipo nuevo en cada render, y React desmontaba y
+  // volvía a montar el <nav> en cada navegación — el scroll del menú volvía
+  // arriba y el ítem recién elegido quedaba fuera de vista.
+  const renderSidebarContent = (onLinkClick) => (
     <>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border shrink-0">
@@ -243,14 +255,14 @@ export default function Layout() {
     <div className="flex h-screen bg-background font-body overflow-hidden">
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex flex-col w-60 bg-sidebar border-r border-sidebar-border shrink-0">
-        <SidebarContent onLinkClick={null} />
+        {renderSidebarContent(null)}
       </aside>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative z-50 flex flex-col w-64 h-full bg-sidebar border-r border-sidebar-border">
+          <aside ref={drawerRef} className="relative z-50 flex flex-col w-64 h-full bg-sidebar border-r border-sidebar-border">
             <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
               <div className="flex items-center gap-3">
                 <LogoMark logoUrl={tenant?.logo_url} />
@@ -261,7 +273,7 @@ export default function Layout() {
               </button>
             </div>
             <div className="flex flex-col flex-1 overflow-hidden">
-              <SidebarContent onLinkClick={() => setSidebarOpen(false)} />
+              {renderSidebarContent(() => setSidebarOpen(false))}
             </div>
           </aside>
         </div>
