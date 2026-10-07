@@ -16,7 +16,10 @@ export default function QuotaBar({ used, limit, label }) {
   if (!Number.isFinite(limit) || limit <= 0) return null;
   const tone = quotaTone(used, limit);
   // Variables CSS en línea: React las acepta, el tipo de `style` no las conoce.
-  const style = /** @type {React.CSSProperties} */ ({ '--play-hp-fill': FILL[tone] });
+  // Los bloques vacíos van en el color de tarjeta: la barra vive sobre una ficha
+  // teñida (bg-secondary), y en el color de --play-track (= muted = secondary)
+  // los vacíos desaparecían y "2 de 15" se leía como dos bloques nada más.
+  const style = /** @type {React.CSSProperties} */ ({ '--play-hp-fill': FILL[tone], '--play-track': 'hsl(var(--card))' });
   const aria = label || `${used} de ${limit}`;
 
   if (limit <= BLOCK_LIMIT) {
@@ -30,7 +33,7 @@ export default function QuotaBar({ used, limit, label }) {
   }
   const pct = Math.min(100, Math.round((used / limit) * 100));
   return (
-    <div className="mt-2 h-3 rounded-full bg-muted overflow-hidden" role="img" aria-label={aria}>
+    <div className="mt-2 h-3 rounded-full bg-card overflow-hidden" role="img" aria-label={aria}>
       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: FILL[tone] }} />
     </div>
   );

@@ -2656,3 +2656,16 @@ cada color) y dónde se llama a `celebrate()`.
 `Rentas.submitPayment` (sólo si el cargo queda `paid`), `QuickIncomeModal`,
 `DriverTrips.submit` y el alta (no la edición) de `MaintenancePage`. No se
 llama en `catch`, ni en ediciones, ni en abonos parciales.
+
+**Verificado:** `npm run lint` (22 endpoints), `npm run typecheck` y `vitest`
+(507/507) limpios. `scripts/layout-overlap-scan.mjs` antes del cambio: sin
+hallazgos; después, en oscuro (las 6 anchuras, todos los roles) y en claro
+(390/834/1440, con una copia temporal del escáner que fija `rumbo-theme=light`):
+sin hallazgos. Las capturas encontraron un fallo que el escáner no ve: en
+Facturación, los bloques vacíos del cupo tenían el mismo color que la ficha y
+"2 de 15" se leía como dos bloques. `QuotaBar` ahora usa `--card` para los
+vacíos.
+
+**No verificado:** la tipografía real (el sandbox bloquea Google Fonts y las
+capturas salen con la fuente de respaldo), Safari/iOS real, y pantallas con
+datos reales. Mergear no despliega: hace falta `npm run deploy:site`.
