@@ -60,7 +60,10 @@ module.exports = {
           foreground: 'hsl(var(--warning-foreground))'
         },
         critical: 'hsl(var(--critical))',
-        success: 'hsl(var(--success))',
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))'
+        },
         chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',

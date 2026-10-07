@@ -38,9 +38,11 @@
     --radius: 1rem;
 
     --warning: 36 92% 44%;
-    --warning-foreground: 0 0% 100%;
+    /* Tinta oscura sobre ámbar y verde: con blanco daban 2.9 y 3.4:1. */
+    --warning-foreground: 228 40% 8%;
     --critical: 0 75% 52%;
     --success: 145 63% 38%;
+    --success-foreground: 228 40% 8%;
 
     /* Rampa secuencial (magnitud) para la matriz día×unidad de /reports: un solo
        matiz (el de --primary, 217°) claro→oscuro. Nunca se usa como paleta
@@ -64,6 +66,9 @@
 
   /* Dark theme — mario_style: azul noche en vez de gris carbón, mismo azul de marca. */
   .dark {
+    /* El azul de marca en oscuro (217 91% 60%) es claro: el texto encima va en
+       tinta oscura (5.2:1); con blanco daba 3.6:1. Misma regla que
+       foregroundFor() en src/lib/palettes.js para los colores de tenant. */
     --background: 226 48% 11%;
     --foreground: 226 60% 96%;
     --card: 226 44% 17%;
@@ -71,7 +76,7 @@
     --popover: 226 44% 17%;
     --popover-foreground: 226 60% 96%;
     --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 228 40% 8%;
     --secondary: 226 38% 22%;
     --secondary-foreground: 226 60% 96%;
     --muted: 226 38% 22%;
@@ -85,9 +90,10 @@
     --ring: 217 91% 60%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 228 40% 8%;
     --critical: 0 72% 51%;
     --success: 142 71% 45%;
+    --success-foreground: 228 40% 8%;
 
     /* Misma rampa secuencial que en light, con pasos ajustados para contraste
        sobre el fondo oscuro (222 20% 7%). */
@@ -100,7 +106,7 @@
     --sidebar-background: 226 50% 8%;
     --sidebar-foreground: 226 60% 96%;
     --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary-foreground: 228 40% 8%;
     --sidebar-accent: 226 38% 17%;
     --sidebar-accent-foreground: 226 60% 96%;
     --sidebar-border: 226 40% 18%;

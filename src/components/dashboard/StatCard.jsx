@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 // se queda neutra: con ocho fichas de color lleno el tablero gritaría.
 const colorMap = {
   blue: 'bg-primary text-primary-foreground play-press--primary',
-  green: 'bg-success text-white [--play-fill:hsl(var(--success))]',
+  green: 'bg-success text-success-foreground [--play-fill:hsl(var(--success))]',
   red: 'bg-destructive text-destructive-foreground play-press--danger',
   purple: 'bg-violet-500 text-white [--play-fill:theme(colors.violet.500)]',
   yellow: 'bg-warning text-warning-foreground [--play-fill:hsl(var(--warning))]',
