@@ -1,5 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
+// Los campos propios de User (tenant_id, write_access, driver_profile_id,
+// suspended) son campos de la RAÍZ del registro: es lo que la RLS lee como
+// `{{user.data.X}}`. De 2026-08-31 a 2026-10-07 las funciones los escribían
+// dentro de un objeto `data`, que el esquema no tiene, y la plataforma lo guardó
+// como un campo suelto llamado `data` que la RLS nunca ve. Se lee solo como
+// respaldo para perfiles de esa época; se escribe siempre en la raíz.
+const USER_FIELDS = ['tenant_id', 'write_access', 'driver_profile_id', 'suspended'];
+function userData(u: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of USER_FIELDS) out[k] = u?.[k] !== undefined ? u[k] : u?.data?.[k];
+  return out;
+}
+
 /**
  * manageRole — el admin/owner de un tenant cambia el rol de otro miembro.
  *
@@ -56,7 +69,7 @@ const ADMIN_ROLES = new Set(['owner', 'admin']);
 // siempre []. Se lista y se filtra en memoria (QA en vivo 2026-10-01).
 async function usersOfTenant(svc: any, tenantId: string): Promise<any[]> {
   const rows = await svc.entities.User.list('-created_date', 5000);
-  return (Array.isArray(rows) ? rows : []).filter((u: any) => (u?.data?.tenant_id || null) === tenantId);
+  return (Array.isArray(rows) ? rows : []).filter((u: any) => (userData(u).tenant_id || null) === tenantId);
 }
 
 Deno.serve(async (req) => {
@@ -77,7 +90,7 @@ Deno.serve(async (req) => {
     // esa pasada aunque comparte exactamente el mismo patrón).
     const callerSelfRows = await svc.entities.User.filter({ id: caller.id });
     const callerSelf = Array.isArray(callerSelfRows) ? callerSelfRows[0] : callerSelfRows;
-    const tenantId = callerSelf?.data?.tenant_id || null;
+    const tenantId = userData(callerSelf).tenant_id || null;
     if (!tenantId) return Response.json({ error: 'No perteneces a ninguna organización.' }, { status: 400 });
 
     const body = await req.json().catch(() => ({}));
@@ -102,7 +115,7 @@ Deno.serve(async (req) => {
     const target = await svc.entities.User.get(userId).catch(() => null);
     if (!target) return Response.json({ error: 'Usuario no encontrado.' }, { status: 404 });
 
-    if ((target.data?.tenant_id || null) !== tenantId) {
+    if ((userData(target).tenant_id || null) !== tenantId) {
       return Response.json({ error: 'Ese usuario no pertenece a tu organización.' }, { status: 403 });
     }
 

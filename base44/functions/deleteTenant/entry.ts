@@ -1,6 +1,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 import { nextTicketNumber, pushToMissionControl, stripHtml, DEFAULT_SUPPORT_EMAIL } from './_ticketHelpers.ts';
 
+// Los campos propios de User (tenant_id, write_access, driver_profile_id,
+// suspended) son campos de la RAÍZ del registro: es lo que la RLS lee como
+// `{{user.data.X}}`. De 2026-08-31 a 2026-10-07 las funciones los escribían
+// dentro de un objeto `data`, que el esquema no tiene, y la plataforma lo guardó
+// como un campo suelto llamado `data` que la RLS nunca ve. Se lee solo como
+// respaldo para perfiles de esa época; se escribe siempre en la raíz.
+const USER_FIELDS = ['tenant_id', 'write_access', 'driver_profile_id', 'suspended'];
+function userData(u: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of USER_FIELDS) out[k] = u?.[k] !== undefined ? u[k] : u?.data?.[k];
+  return out;
+}
+
 /**
  * deleteTenant — "Eliminar tenant" en la zona de peligro (módulo 7 del
  * estándar de portafolio). Antes esto era un
@@ -61,7 +74,7 @@ const CASCADE_ENTITIES = [
 // siempre []. Se lista y se filtra en memoria (QA en vivo 2026-10-01).
 async function usersOfTenant(svc: any, tenantId: string): Promise<any[]> {
   const rows = await svc.entities.User.list('-created_date', 5000);
-  return (Array.isArray(rows) ? rows : []).filter((u: any) => (u?.data?.tenant_id || null) === tenantId);
+  return (Array.isArray(rows) ? rows : []).filter((u: any) => (userData(u).tenant_id || null) === tenantId);
 }
 
 Deno.serve(async (req) => {
@@ -77,7 +90,7 @@ Deno.serve(async (req) => {
     // joinTenant/manageMember, 2026-09-03).
     const selfRows = await svc.entities.User.filter({ id: user.id });
     const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
-    const tenantId = self?.data?.tenant_id;
+    const tenantId = userData(self).tenant_id;
     if (!tenantId) return Response.json({ error: 'Sin tenant asignado' }, { status: 400 });
 
     const tenant = await svc.entities.TenantLicense.get(tenantId).catch(() => null);
@@ -130,12 +143,10 @@ Deno.serve(async (req) => {
           // update es atómico — mezclados, el owner de la app se quedaría atado a un
           // tenant que ya no existe.
           await svc.entities.User.update(u.id, {
-            data: {
-              tenant_id: null,
-              suspended: false,
-              write_access: 'enabled',
-              driver_profile_id: null,
-            },
+            tenant_id: null,
+            suspended: false,
+            write_access: 'enabled',
+            driver_profile_id: null,
           });
           try {
             await svc.entities.User.update(u.id, { role: 'user' });

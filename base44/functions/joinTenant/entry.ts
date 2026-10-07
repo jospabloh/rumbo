@@ -1,5 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
+// Los campos propios de User (tenant_id, write_access, driver_profile_id,
+// suspended) son campos de la RAÍZ del registro: es lo que la RLS lee como
+// `{{user.data.X}}`. De 2026-08-31 a 2026-10-07 las funciones los escribían
+// dentro de un objeto `data`, que el esquema no tiene, y la plataforma lo guardó
+// como un campo suelto llamado `data` que la RLS nunca ve. Se lee solo como
+// respaldo para perfiles de esa época; se escribe siempre en la raíz.
+const USER_FIELDS = ['tenant_id', 'write_access', 'driver_profile_id', 'suspended'];
+function userData(u: any): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of USER_FIELDS) out[k] = u?.[k] !== undefined ? u[k] : u?.data?.[k];
+  return out;
+}
+
 /**
  * joinTenant — un usuario autenticado se une a un tenant existente con su código de unión.
  *
@@ -95,7 +108,7 @@ Deno.serve(async (req) => {
     // 2026-09-03: ver el comentario de esas dos funciones).
     const selfRows = await svc.entities.User.filter({ id: user.id });
     const self = Array.isArray(selfRows) ? selfRows[0] : selfRows;
-    const selfData = self?.data || {};
+    const selfData = userData(self);
 
     // Solicitudes propias, siempre por el id de la sesión (nunca del cuerpo).
     const ownRequests = async () => {
