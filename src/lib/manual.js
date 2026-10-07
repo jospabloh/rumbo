@@ -53,7 +53,7 @@ export const MANUAL_SECTIONS = [
       {
         title: 'Tema claro u oscuro',
         steps: [
-          'Usa el selector de tema en el pie de la barra lateral (arriba de "Salir").',
+          'Usa el círculo de la esquina inferior derecha: al pulsarlo se abre con tres opciones, Claro, Oscuro y Sistema (sigue a tu dispositivo).',
           'Tu preferencia se recuerda en ese navegador. La app abre en modo oscuro por defecto.',
         ],
         notes: ['Los colores de tu marca (Admin) se aplican por encima de cualquier tema.'],
@@ -69,7 +69,7 @@ export const MANUAL_SECTIONS = [
       {
         title: 'La app recuerda dónde estabas',
         steps: ['Al recargar o volver a entrar, Rumbo te regresa a la última sección que visitaste, no al inicio.'],
-        notes: ['El menú izquierdo resalta la sección actual con una barra de acento.'],
+        notes: ['El menú izquierdo marca la sección actual con un botón relleno del color de tu marca.'],
       },
     ],
   },

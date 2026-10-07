@@ -6,7 +6,7 @@ const Card = /** @type {React.ForwardRefExoticComponent<React.ComponentPropsWith
   React.forwardRef(({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}
+      className={cn("rounded-2xl border-2 bg-card text-card-foreground play-card", className)}
       {...props} />
   ))
 )
@@ -26,7 +26,7 @@ const CardTitle = /** @type {React.ForwardRefExoticComponent<React.ComponentProp
   React.forwardRef(({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("font-semibold leading-none tracking-tight", className)}
+      className={cn("font-display text-lg font-bold leading-none", className)}
       {...props} />
   ))
 )

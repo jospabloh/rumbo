@@ -17,6 +17,7 @@ import ManualChargeModal from '@/components/rentas/ManualChargeModal';
 import IngresosView from '@/components/rentas/IngresosView';
 import ReferralsView from '@/components/rentas/ReferralsView';
 import { guardedCreate, guardedUpdate } from '@/lib/guardedWrite';
+import { celebrate } from '@/lib/celebrate';
 
 export default function Rentas() {
   const { tenant, tenantId, readOnly } = useTenant();
@@ -187,6 +188,7 @@ export default function Rentas() {
   const submitPayment = async () => {
     const amount = parseFloat(payForm.amount);
     if (!amount || amount <= 0) { setPayError('Ingresa un monto válido.'); return; }
+    const origin = document.activeElement;
     setPaySaving(true);
     setPayError('');
     try {
@@ -195,6 +197,8 @@ export default function Rentas() {
       const amount_paid = Math.round(payments.reduce((a, p) => a + (p.amount || 0), 0) * 100) / 100;
       const status = statusOf({ amount_due: c.amount_due, amount_paid });
       await guardedUpdate('RentCharge', c.id, { payments, amount_paid, status });
+      // Sólo cuando el cargo queda saldado: un abono parcial no es "terminado".
+      if (status === 'paid') celebrate(origin);
       setPayCharge(null);
       refresh();
     } catch (e) {

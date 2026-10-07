@@ -5,13 +5,21 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
+        // Módulo 27: Nunito para texto, Baloo 2 para títulos y cifras grandes.
+        sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+        body: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+        display: ['"Baloo 2"', 'Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       borderRadius: {
+        // Todo sale de --radius (src/index.css), igual que los colores: cambiar
+        // esa variable redondea las ~440 clases rounded-* sin tocar un JSX.
+        sm: 'calc(var(--radius) - 10px)',
+        md: 'calc(var(--radius) - 4px)',
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)'
+        xl: 'calc(var(--radius) + 4px)',
+        '2xl': 'calc(var(--radius) + 8px)',
+        '3xl': 'calc(var(--radius) + 12px)'
       },
       colors: {
         background: 'hsl(var(--background))',

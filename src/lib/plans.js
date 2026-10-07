@@ -75,3 +75,16 @@ export const atDriverLimit = (license, count) => count >= driverLimit(license);
  */
 export const countsTowardQuota = (row) => (row?.status ?? 'active') === 'active';
 export const quotaCount = (rows) => (rows || []).filter(countsTowardQuota).length;
+
+/**
+ * Qué tan lleno va el cupo, para pintar la barra de cupo (QuotaBar, módulo 27):
+ * 'ok' por debajo del 80 %, 'near' del 80 % al lleno, 'full' en el límite o
+ * por encima. Un plan ilimitado nunca se llena.
+ */
+export function quotaTone(used, limit) {
+  if (!Number.isFinite(limit) || limit <= 0) return 'ok';
+  const ratio = used / limit;
+  if (ratio >= 1) return 'full';
+  if (ratio >= 0.8) return 'near';
+  return 'ok';
+}

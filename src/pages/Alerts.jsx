@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ListSkeleton } from '@/components/ui/list-skeleton';
 import { useAlerts, useInvalidateEntity } from '@/hooks/useEntities';
 import { guardedUpdate } from '@/lib/guardedWrite';
+import { celebrate } from '@/lib/celebrate';
 
 const severityConfig = {
   critical: { icon: AlertTriangle, cls: 'text-destructive bg-destructive/10 border-destructive/20', label: 'Crítica' },
@@ -29,9 +30,11 @@ export default function Alerts() {
   );
 
   const handleResolve = async (id) => {
+    const origin = document.activeElement; // el botón pulsado, antes de que la fila desaparezca
     setError('');
     try {
       await guardedUpdate('Alert', id, { resolved: true });
+      celebrate(origin);
       invalidate('Alert');
     } catch (err) {
       setError('No se pudo marcar la alerta como resuelta. Inténtalo de nuevo.');

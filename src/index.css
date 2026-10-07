@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* Módulo 27 ("juego bonito"): Baloo 2 para títulos, Nunito para texto. IBM Plex
+   Mono se queda para cifras alineadas en tablas. */
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,31 +11,36 @@
      data rendered in mono. Tenant brand colors override these at runtime via
      applyTenantColors(), regardless of light/dark. */
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    /* Módulo 27: fondo "cielo" en vez de gris, tinta azul marino, bordes con
+       matiz azul (son también el relieve de tarjetas y botones neutros). El
+       azul de marca (--primary) NO cambia. */
+    --background: 214 75% 96%;
+    --foreground: 228 40% 18%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 228 40% 18%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 228 40% 18%;
     --primary: 217 91% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 94%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 94%;
-    --muted-foreground: 215 16% 40%;
-    --accent: 210 40% 92%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 72% 48%;
+    --secondary: 214 60% 92%;
+    --secondary-foreground: 228 40% 18%;
+    --muted: 214 60% 92%;
+    --muted-foreground: 226 18% 40%;
+    --accent: 214 60% 90%;
+    --accent-foreground: 228 40% 18%;
+    --destructive: 0 75% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 88%;
-    --input: 214 32% 88%;
+    --border: 216 55% 86%;
+    --input: 216 55% 86%;
     --ring: 217 91% 50%;
-    --radius: 0.375rem;
+    /* Una sola perilla para todas las esquinas: tailwind.config.js deriva
+       sm/md/lg/xl/2xl/3xl de aquí. Antes era 0.375rem. */
+    --radius: 1rem;
 
-    --warning: 32 95% 44%;
+    --warning: 36 92% 44%;
     --warning-foreground: 0 0% 100%;
-    --critical: 0 72% 48%;
-    --success: 142 71% 38%;
+    --critical: 0 75% 52%;
+    --success: 145 63% 38%;
 
     /* Rampa secuencial (magnitud) para la matriz día×unidad de /reports: un solo
        matiz (el de --primary, 217°) claro→oscuro. Nunca se usa como paleta
@@ -55,26 +62,26 @@
     --sidebar-ring: 217 91% 50%;
   }
 
-  /* Dark theme (unchanged from the original design). */
+  /* Dark theme — módulo 27: azul noche en vez de gris carbón, mismo azul de marca. */
   .dark {
-    --background: 222 20% 7%;
-    --foreground: 210 40% 96%;
-    --card: 222 18% 11%;
-    --card-foreground: 210 40% 96%;
-    --popover: 222 18% 11%;
-    --popover-foreground: 210 40% 96%;
+    --background: 226 48% 11%;
+    --foreground: 226 60% 96%;
+    --card: 226 44% 17%;
+    --card-foreground: 226 60% 96%;
+    --popover: 226 44% 17%;
+    --popover-foreground: 226 60% 96%;
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 222 16% 16%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 222 16% 16%;
-    --muted-foreground: 215 20% 55%;
-    --accent: 222 16% 18%;
-    --accent-foreground: 210 40% 96%;
+    --secondary: 226 38% 22%;
+    --secondary-foreground: 226 60% 96%;
+    --muted: 226 38% 22%;
+    --muted-foreground: 226 28% 72%;
+    --accent: 226 36% 25%;
+    --accent-foreground: 226 60% 96%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 222 16% 18%;
-    --input: 222 16% 18%;
+    --border: 227 40% 29%;
+    --input: 227 40% 29%;
     --ring: 217 91% 60%;
 
     --warning: 38 92% 50%;
@@ -90,13 +97,13 @@
     --seq-4: 217 85% 55%;
     --seq-5: 217 95% 70%;
 
-    --sidebar-background: 222 20% 5%;
-    --sidebar-foreground: 210 40% 96%;
+    --sidebar-background: 226 50% 8%;
+    --sidebar-foreground: 226 60% 96%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 16% 14%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 222 16% 12%;
+    --sidebar-accent: 226 38% 17%;
+    --sidebar-accent-foreground: 226 60% 96%;
+    --sidebar-border: 226 40% 18%;
     --sidebar-ring: 217 91% 60%;
   }
 }
@@ -107,7 +114,12 @@
   }
 
   body {
-    @apply bg-background text-foreground font-inter antialiased;
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  /* Títulos con la tipografía redonda del módulo 27. */
+  h1, h2, h3 {
+    @apply font-display;
   }
 
   /* Tabular figures everywhere numbers matter, so data columns line up. */
@@ -145,6 +157,18 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-muted rounded-full;
   }
+}
+
+/* Módulo 27 — "juego bonito". src/styles/playful.css es la copia canónica de
+   jospabloh/acacia-app-standard → shared/playful/ (no se edita aquí); esto es lo
+   único propio de Rumbo: de dónde sale cada color. Las referencias son en vivo,
+   así que el color de tenant de applyTenantColors() llega solo al relieve. */
+:root {
+  --play-primary: hsl(var(--primary));
+  --play-danger: hsl(var(--destructive));
+  --play-edge: hsl(var(--border));
+  --play-track: hsl(var(--muted));
+  --play-confetti: hsl(var(--primary)), #ffc53d, #2fbf63, #ff5d5d;
 }
 
 /* Corner theme switcher (src/components/ThemeSwitcher.jsx) — placement only. */
