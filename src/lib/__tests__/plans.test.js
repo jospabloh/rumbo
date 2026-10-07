@@ -120,6 +120,9 @@ describe('quotaTone() — la barra avisa antes de que el cupo se acabe', () => {
     expect(quotaTone(15, 15)).toBe('full');
     expect(quotaTone(16, 15)).toBe('full');
   });
+  it('un límite de 0 se pinta lleno, no verde', () => {
+    expect(quotaTone(0, 0)).toBe('full');
+  });
   it('un plan ilimitado nunca se pinta lleno', () => {
     expect(quotaTone(500, Infinity)).toBe('ok');
   });

@@ -79,10 +79,11 @@ export const quotaCount = (rows) => (rows || []).filter(countsTowardQuota).lengt
 /**
  * Qué tan lleno va el cupo, para pintar la barra de cupo (QuotaBar, mario_style):
  * 'ok' por debajo del 80 %, 'near' del 80 % al lleno, 'full' en el límite o
- * por encima. Un plan ilimitado nunca se llena.
+ * por encima (un límite de 0 ya está lleno). Un plan ilimitado nunca se llena.
  */
 export function quotaTone(used, limit) {
-  if (!Number.isFinite(limit) || limit <= 0) return 'ok';
+  if (!Number.isFinite(limit)) return 'ok';
+  if (limit <= 0) return 'full'; // un cupo de 0 es "no se permite ninguno", no "va bien"
   const ratio = used / limit;
   if (ratio >= 1) return 'full';
   if (ratio >= 0.8) return 'near';
