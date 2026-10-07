@@ -224,13 +224,16 @@ Deno.serve(async (req) => {
     // update es atómico — mezclados, se pierde también el tenant_id. Esta función corre en
     // cada carga de página, así que un fallo aquí deja al usuario sin binding de tenant sin
     // ningún error visible.
+    // Se compara contra la RAÍZ (`self`), no contra `selfData`: para un perfil que
+    // solo trae el `data` suelto, `selfData` ya muestra los valores correctos y el
+    // patch saldría vacío, así que la copia plana que la RLS lee nunca se escribiría.
     const dataPatch: Record<string, unknown> = {};
-    if (selfData?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
-    if ((selfData?.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
+    if (self?.tenant_id !== tenant.id) dataPatch.tenant_id = tenant.id;
+    if (!(self && 'driver_profile_id' in self) || (self.driver_profile_id || null) !== driverProfileId) dataPatch.driver_profile_id = driverProfileId;
     // Sin `|| 'enabled'`: si el campo nunca se persistió (undefined), debe escribirse
     // explícitamente en cuanto writeAccess computa 'enabled' — de lo contrario el campo
     // se queda ausente para siempre.
-    if (selfData?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
+    if (self?.write_access !== writeAccess) dataPatch.write_access = writeAccess;
     if (Object.keys(dataPatch).length) {
       await svc.entities.User.update(user.id, { ...dataPatch });
     }

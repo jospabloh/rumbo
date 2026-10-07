@@ -191,3 +191,17 @@ Deno.test('resolveTenant repara el rol owner del creador aunque ya tenga tenant_
   await call('resolveTenant', 'adm', {});
   eq(db.User.find((x) => x.id === 'adm')!.role, 'admin', 'admin intacto');
 });
+
+Deno.test('perfil de la época del data suelto: resolveTenant copia los campos a la raíz', async () => {
+  // 'adm' solo trae tenant_id dentro de `data`. Las funciones lo reconocen por el
+  // respaldo, pero la RLS lee la raíz: si resolveTenant no la escribe, la app le
+  // sale vacía para siempre aunque el diff contra la vista combinada diga "igual".
+  reset(seed());
+  const r = await call('resolveTenant', 'adm', {});
+  eq(r.body.tenant_id, 'T1', 'resuelve por el respaldo');
+  const u = db.User.find((x) => x.id === 'adm')!;
+  eq(u.tenant_id, 'T1', 'tenant_id escrito en la raíz');
+  eq(u.write_access, 'enabled', 'write_access escrito en la raíz');
+  const again = await call('resolveTenant', 'adm', {});
+  eq(again.body.tenant_id, 'T1', 'idempotente');
+});
