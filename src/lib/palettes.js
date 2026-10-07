@@ -49,14 +49,13 @@ export function hexToHsl(hex) {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-// Tinta oscura para texto sobre un color de marca claro: la misma del tema claro
-// (--foreground), un poco más oscura para que sobre ámbar o cian lea de sobra.
-const DARK_INK_HSL = '228 40% 12%';
+// Texto sobre el color de marca (botones rellenos, ítem activo del menú): el que
+// más contraste dé entre blanco y negro. Con esta tinta, ningún
+// color de marca queda por debajo de 4.5:1 (WCAG AA para texto normal): el peor
+// caso, un color justo a medio camino, da ~4.58:1 con cualquiera de los dos
+// (con una tinta apenas más clara, #05060c, ya bajaba de 4.5 en #cc22cc).
+const DARK_INK_HEX = '#000000';
 const WHITE_HSL = '0 0% 100%';
-// Blanco mientras llegue a 3:1 (mínimo WCAG para controles y texto grande). Es
-// el mismo texto blanco que la app siempre usó sobre su azul; solo cambia en los
-// colores de marca tan claros que el blanco ya no se lee (esmeralda, ámbar, cian).
-const MIN_WHITE_CONTRAST = 3;
 
 function relativeLuminance(hex) {
   const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
@@ -72,7 +71,14 @@ export function contrastRatio(a, b) {
 
 /** Color de texto (tripleta HSL) para poner encima del color de marca `hex`. */
 export function foregroundFor(hex) {
-  return contrastRatio(hex, '#ffffff') >= MIN_WHITE_CONTRAST ? WHITE_HSL : DARK_INK_HSL;
+  return contrastRatio(hex, '#ffffff') >= contrastRatio(hex, DARK_INK_HEX)
+    ? WHITE_HSL
+    : hexToHsl(DARK_INK_HEX);
+}
+
+/** Hex del color que `foregroundFor` elegiría (para medir su contraste). */
+export function foregroundHexFor(hex) {
+  return foregroundFor(hex) === WHITE_HSL ? '#ffffff' : DARK_INK_HEX;
 }
 
 /** Aplica la paleta del tenant (primary/background/secondary, hex) como custom

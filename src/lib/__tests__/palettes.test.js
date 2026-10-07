@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PREMIUM_PALETTES, isValidHex, hexToHsl, applyTenantColors, contrastRatio, foregroundFor } from '@/lib/palettes';
+import { PREMIUM_PALETTES, isValidHex, hexToHsl, applyTenantColors, contrastRatio, foregroundFor, foregroundHexFor } from '@/lib/palettes';
 
 describe('PREMIUM_PALETTES', () => {
   it('offers several curated palettes', () => {
@@ -107,22 +107,27 @@ describe('applyTenantColors', () => {
 });
 
 describe('foregroundFor() — el texto sobre el color de marca siempre se lee', () => {
-  // Con Esmeralda, Ámbar o Cian el blanco quedaba en 2.1–2.5:1 sobre botones y
-  // sobre el ítem activo del menú (mario_style lo rellena con --primary).
-  it('cambia a tinta oscura en las paletas claras', () => {
-    for (const name of ['Esmeralda', 'Ámbar industrial', 'Cian profundo']) {
-      const p = PREMIUM_PALETTES.find((x) => x.name === name);
-      expect(contrastRatio(p.primary, '#ffffff')).toBeLessThan(3);
-      expect(foregroundFor(p.primary)).not.toBe('0 0% 100%');
+  // El color de marca rellena botones (text-xs/text-sm) y el ítem activo del
+  // menú (text-sm): texto normal, así que la regla es WCAG AA, 4.5:1.
+  it('toda paleta incluida llega a 4.5:1 con el texto elegido', () => {
+    for (const p of PREMIUM_PALETTES) {
+      expect(contrastRatio(p.primary, foregroundHexFor(p.primary)), p.name).toBeGreaterThanOrEqual(4.5);
     }
   });
 
-  // El resto conserva el blanco de siempre: no se cambia el look de quien ya se leía.
-  it('deja el blanco donde ya llega a 3:1', () => {
-    for (const name of ['Azul ejecutivo', 'Violeta real', 'Carmesí', 'Grafito', 'Rosa neón']) {
-      const p = PREMIUM_PALETTES.find((x) => x.name === name);
-      expect(foregroundFor(p.primary)).toBe('0 0% 100%');
+  // Un tenant puede poner cualquier color a mano: barrido de matices y luces,
+  // incluido el peor caso (un color a medio camino entre blanco y la tinta).
+  it('cualquier color de marca llega a 4.5:1, no solo las paletas', () => {
+    const hex = (n) => n.toString(16).padStart(2, '0');
+    for (let r = 0; r < 256; r += 17) for (let g = 0; g < 256; g += 17) for (let b = 0; b < 256; b += 17) {
+      const c = `#${hex(r)}${hex(g)}${hex(b)}`;
+      expect(contrastRatio(c, foregroundHexFor(c)), c).toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  it('los colores oscuros conservan el texto blanco', () => {
+    expect(foregroundFor('#1d4ed8')).toBe('0 0% 100%');
+    expect(foregroundFor('#64748b')).toBe('0 0% 100%'); // Grafito
   });
 
   it('applyTenantColors fija el texto del botón y del menú junto con el primario', () => {
