@@ -64,7 +64,7 @@ export default function Landing() {
             <button
               type="button"
               onClick={startTrial}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 hover:opacity-95"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm play-press play-press--primary"
             >
               Comienza gratis
               <ArrowRight className="w-4 h-4" />

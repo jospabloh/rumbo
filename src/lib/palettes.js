@@ -49,6 +49,57 @@ export function hexToHsl(hex) {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+// Texto sobre el color de marca (botones rellenos, ítem activo del menú): el que
+// más contraste dé entre blanco y negro. Con esta tinta, ningún
+// color de marca queda por debajo de 4.5:1 (WCAG AA para texto normal): el peor
+// caso, un color justo a medio camino, da ~4.58:1 con cualquiera de los dos
+// (con una tinta apenas más clara, #05060c, ya bajaba de 4.5 en #cc22cc).
+const DARK_INK_HEX = '#000000';
+const WHITE_HSL = '0 0% 100%';
+
+function relativeLuminance(hex) {
+  const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+
+/** Razón de contraste WCAG entre dos colores hex (#RRGGBB). */
+export function contrastRatio(a, b) {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** Tripleta "H S% L%" (la que produce hexToHsl) de vuelta a hex #RRGGBB. */
+function hslTripletToHex(triplet) {
+  const [h, s, l] = triplet.split(' ').map((v) => parseFloat(v));
+  const sat = s / 100, lig = l / 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = sat * Math.min(lig, 1 - lig);
+  const f = (n) => lig - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return '#' + [f(0), f(8), f(4)].map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+}
+
+/** El color que de verdad se pinta: --primary lleva el HSL redondeado, no el hex. */
+export function renderedHex(hex) {
+  return hslTripletToHex(hexToHsl(hex));
+}
+
+/** Color de texto (tripleta HSL) para poner encima del color de marca `hex`.
+ * Se mide contra el color redondeado que se pinta: cerca del cruce entre
+ * blanco y negro, el hex original y el redondeado pueden elegir distinto
+ * (#007db5: negro con el hex, pero 4.43:1 sobre lo que se pinta). */
+export function foregroundFor(hex) {
+  const shown = renderedHex(hex);
+  return contrastRatio(shown, '#ffffff') >= contrastRatio(shown, DARK_INK_HEX)
+    ? WHITE_HSL
+    : hexToHsl(DARK_INK_HEX);
+}
+
+/** Hex del color que `foregroundFor` elegiría (para medir su contraste). */
+export function foregroundHexFor(hex) {
+  return foregroundFor(hex) === WHITE_HSL ? '#ffffff' : DARK_INK_HEX;
+}
+
 /** Aplica la paleta del tenant (primary/background/secondary, hex) como custom
  * properties CSS en :root. Vive aquí (no en la página de onboarding) porque
  * Layout.jsx la necesita en cada carga de la app, no solo durante el onboarding. */
@@ -62,6 +113,11 @@ export function applyTenantColors(colors) {
       root.style.setProperty('--ring', hsl);
       root.style.setProperty('--sidebar-primary', hsl);
       root.style.setProperty('--sidebar-ring', hsl);
+      // El texto sobre el color de marca (botones rellenos, ítem activo del menú)
+      // tiene que seguir siendo legible con cualquier color que elija el tenant.
+      const fg = foregroundFor(colors.primary.trim());
+      root.style.setProperty('--primary-foreground', fg);
+      root.style.setProperty('--sidebar-primary-foreground', fg);
     } catch (e) {}
   }
   if (colors.background) {

@@ -9,6 +9,7 @@ import {
   atVehicleLimit,
   atDriverLimit,
   quotaCount,
+  quotaTone,
 } from '../plans.js';
 
 describe('PLAN_LIMITS / PLAN_LABELS', () => {
@@ -102,5 +103,27 @@ describe('atVehicleLimit() / atDriverLimit()', () => {
     const lic = { plan: 'enterprise', max_vehicles: 0, max_drivers: 0 };
     expect(atVehicleLimit(lic, 9999)).toBe(false);
     expect(atDriverLimit(lic, 9999)).toBe(false);
+  });
+});
+
+describe('quotaTone() — la barra avisa antes de que el cupo se acabe', () => {
+  // Car-Go Rent: Starter (15) con 10 en operación no debe verse en alerta;
+  // 12 de 15 ya sí, para que el dueño vea venir el límite antes del bloqueo.
+  it('verde por debajo del 80 %', () => {
+    expect(quotaTone(10, 15)).toBe('ok');
+  });
+  it('ámbar desde el 80 % hasta antes de llenarse', () => {
+    expect(quotaTone(12, 15)).toBe('near');
+    expect(quotaTone(14, 15)).toBe('near');
+  });
+  it('rojo al llegar o pasar el límite (el alta ya se bloquea ahí)', () => {
+    expect(quotaTone(15, 15)).toBe('full');
+    expect(quotaTone(16, 15)).toBe('full');
+  });
+  it('un límite de 0 se pinta lleno, no verde', () => {
+    expect(quotaTone(0, 0)).toBe('full');
+  });
+  it('un plan ilimitado nunca se pinta lleno', () => {
+    expect(quotaTone(500, Infinity)).toBe('ok');
   });
 });

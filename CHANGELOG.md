@@ -4,6 +4,25 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.36.0] — 2026-10-07 — Rumbo se ve y se siente como un juego bien hecho
+
+Nuevo look en toda la app: `mario_style`, la opción de estilo de
+`jospabloh/acacia-app-standard` (§27): esquinas redondas, botones
+con relieve que se hunden al pulsar, títulos en Baloo 2 y texto en Nunito, fondo
+"cielo" en claro y azul noche en oscuro. El azul de marca y el color de cada
+organización no cambian.
+
+- El estilo sale de las variables de `src/index.css` y de `tailwind.config.js`
+  (`--radius` ahora es 1rem y deriva todos los `rounded-*`), así que las
+  pantallas existentes lo heredan sin tocar cada una.
+- `src/styles/mario_style.css` y `src/lib/celebrate.js` son copias canónicas de
+  `jospabloh/acacia-app-standard` → `shared/mario_style/`.
+- Confeti al terminar algo: alerta resuelta, cargo pagado completo, ingreso
+  rápido registrado, viaje registrado y mantenimiento nuevo. No aparece al
+  editar, en abonos parciales ni con "reducir movimiento" activado.
+- Facturación muestra el cupo de vehículos y conductores como barra de bloques:
+  verde, ámbar al 80 %, rojo lleno.
+
 ## [1.35.0] — 2026-09-30 — unirse con código ahora es una solicitud; verificación de correo en el login
 
 **Unirse por código ya no da acceso.** Antes, quien tenía el código entraba al

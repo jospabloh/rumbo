@@ -7,6 +7,7 @@ import ResponsiveModal from '@/components/ui/responsive-modal';
 import { FormError } from '@/components/ui/form-error';
 import { useCatalog } from '@/lib/catalogs';
 import { guardedCreate } from '@/lib/guardedWrite';
+import { celebrate } from '@/lib/celebrate';
 
 /**
  * Registrar un ingreso puntual para una unidad en un día específico, desde el
@@ -29,6 +30,7 @@ export default function QuickIncomeModal({ tenantId, vehicleId, driverId, date, 
     const value = parseFloat(amount);
     if (!value || value <= 0) { setError('Ingresa un monto válido.'); return; }
     if (!tenantId) { setError('Tu organización aún se está configurando.'); return; }
+    const origin = document.activeElement;
     setSaving(true);
     setError('');
     try {
@@ -43,6 +45,7 @@ export default function QuickIncomeModal({ tenantId, vehicleId, driverId, date, 
         status: 'paid',
         payments: [{ amount: value, paid_at: date, method, note: note.trim() }],
       });
+      celebrate(origin);
       onSaved();
     } catch (e) {
       setError('No se pudo registrar el ingreso. Inténtalo de nuevo.');

@@ -5,13 +5,21 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
+        // mario_style: Nunito para texto, Baloo 2 para títulos y cifras grandes.
+        sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+        body: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+        display: ['"Baloo 2"', 'Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       borderRadius: {
+        // Todo sale de --radius (src/index.css), igual que los colores: cambiar
+        // esa variable redondea las ~440 clases rounded-* sin tocar un JSX.
+        sm: 'calc(var(--radius) - 10px)',
+        md: 'calc(var(--radius) - 4px)',
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)'
+        xl: 'calc(var(--radius) + 4px)',
+        '2xl': 'calc(var(--radius) + 8px)',
+        '3xl': 'calc(var(--radius) + 12px)'
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -52,7 +60,10 @@ module.exports = {
           foreground: 'hsl(var(--warning-foreground))'
         },
         critical: 'hsl(var(--critical))',
-        success: 'hsl(var(--success))',
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))'
+        },
         chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',

@@ -2666,3 +2666,32 @@ no da owner, que el conductor solo puede escribir su teléfono y no re-atribuir
 su expediente, y que el owner sí lee el expediente que creó. Los códigos de
 verificación llegan al Gmail de las cuentas `+qa`; el estado (contraseñas y
 tokens) vive en `QA_STATE`, nunca en el repo.
+
+## Estilo: `mario_style` (adoptado 2026-10-07, v1.36.0)
+
+Rumbo usa `mario_style`, la opción de estilo de `jospabloh/acacia-app-standard`.
+**La guía completa vive allá** (STANDARD.md §27 y `shared/mario_style/README.md`):
+qué lo compone, cuándo se celebra y cómo se verifica. Aquí va solo lo propio de
+Rumbo.
+
+- **Copias canónicas, no se editan aquí:** `src/styles/mario_style.css`,
+  `src/lib/celebrate.js` y `src/lib/__tests__/celebrate.test.js`.
+- **Mapeo propio:** el bloque `--play-*` de `src/index.css`. La paleta y
+  `--radius` están en los tokens de siempre (`index.css` / `tailwind.config.js`),
+  y `applyTenantColors()` sigue mandando encima.
+- **Dónde se celebra** (después del `await` exitoso, con `document.activeElement`
+  capturado antes): `Alerts.handleResolve`, `Rentas.submitPayment` (solo si el
+  cargo queda `paid`), `QuickIncomeModal`, `DriverTrips.submit` y el alta (no la
+  edición) de `MaintenancePage`.
+- **Piezas propias:** `QuotaBar` (`src/components/ui/quota-bar.jsx`, tono de
+  `quotaTone()` en `plans.js`) en Facturación, usa `--card` para los bloques
+  vacíos porque vive sobre una ficha `bg-secondary`. También `StatCard` y el
+  ítem activo de `Layout.jsx`.
+
+**Verificado:** `lint`, `typecheck` y `vitest` (507/507). Escáner de traslapes
+sin hallazgos antes y después, en oscuro (6 anchuras, todos los roles) y en
+claro (390/834/1440). Las capturas sacaron el fallo de los bloques vacíos del
+cupo, que el escáner no ve.
+**No verificado:** la tipografía real (el sandbox bloquea Google Fonts),
+Safari/iOS y pantallas con datos reales. Mergear no despliega: hace falta
+`npm run deploy:site`.

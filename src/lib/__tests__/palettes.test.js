@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PREMIUM_PALETTES, isValidHex, hexToHsl, applyTenantColors } from '@/lib/palettes';
+import { PREMIUM_PALETTES, isValidHex, hexToHsl, applyTenantColors, contrastRatio, foregroundFor, foregroundHexFor, renderedHex } from '@/lib/palettes';
 
 describe('PREMIUM_PALETTES', () => {
   it('offers several curated palettes', () => {
@@ -103,5 +103,46 @@ describe('applyTenantColors', () => {
     document.documentElement.style.cssText = '';
     applyTenantColors({ primary: '#3b82f6' });
     expect(document.documentElement.style.getPropertyValue('--background')).toBe('');
+  });
+});
+
+describe('foregroundFor() — el texto sobre el color de marca siempre se lee', () => {
+  // El color de marca rellena botones (text-xs/text-sm) y el ítem activo del
+  // menú (text-sm): texto normal, así que la regla es WCAG AA, 4.5:1.
+  it('toda paleta incluida llega a 4.5:1 con el texto elegido', () => {
+    for (const p of PREMIUM_PALETTES) {
+      expect(contrastRatio(renderedHex(p.primary), foregroundHexFor(p.primary)), p.name).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // Un tenant puede poner cualquier color a mano: barrido de matices y luces,
+  // incluido el peor caso (un color a medio camino entre blanco y la tinta).
+  it('cualquier color de marca llega a 4.5:1, no solo las paletas', () => {
+    const hex = (n) => n.toString(16).padStart(2, '0');
+    for (let r = 0; r < 256; r += 17) for (let g = 0; g < 256; g += 17) for (let b = 0; b < 256; b += 17) {
+      const c = `#${hex(r)}${hex(g)}${hex(b)}`;
+      expect(contrastRatio(renderedHex(c), foregroundHexFor(c)), c).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // Lo que se mide es el color pintado (HSL redondeado), no el hex que eligió el
+  // tenant: #007db5 elegía negro con su hex y daba 4.43:1 sobre lo pintado.
+  it('elige contra el color redondeado que se pinta', () => {
+    expect(foregroundFor('#007db5')).toBe('0 0% 100%');
+    expect(contrastRatio(renderedHex('#007db5'), foregroundHexFor('#007db5'))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('los colores oscuros conservan el texto blanco', () => {
+    expect(foregroundFor('#1d4ed8')).toBe('0 0% 100%');
+    expect(foregroundFor('#64748b')).toBe('0 0% 100%'); // Grafito
+  });
+
+  it('applyTenantColors fija el texto del botón y del menú junto con el primario', () => {
+    document.documentElement.style.cssText = '';
+    applyTenantColors({ primary: '#f59e0b' });
+    const root = document.documentElement.style;
+    expect(root.getPropertyValue('--primary-foreground').trim()).toBe(foregroundFor('#f59e0b'));
+    expect(root.getPropertyValue('--sidebar-primary-foreground').trim()).toBe(foregroundFor('#f59e0b'));
+    expect(root.getPropertyValue('--primary-foreground').trim()).not.toBe('0 0% 100%');
   });
 });

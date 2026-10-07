@@ -6,6 +6,7 @@ import { CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Truck, Use
 import { useMe, useRawList } from '@/hooks/useEntities';
 import { useTenant } from '@/lib/TenantContext';
 import { parseLocalDate } from '@/lib/license';
+import QuotaBar from '@/components/ui/quota-bar';
 
 const ROLE_CONFIG = {
   owner:      { label: 'Owner',       icon: Crown,      color: 'text-warning bg-warning/10' },
@@ -146,11 +147,13 @@ export default function Billing() {
             <Truck className="w-4 h-4 text-muted-foreground mb-1" />
             <p className="text-2xl font-bold text-foreground font-mono tracking-tight">{quotaCount(vehicles)}</p>
             <p className="text-xs text-muted-foreground">de {Number.isFinite(vehicleLimit(license)) ? vehicleLimit(license) : '∞'} vehículos</p>
+            <QuotaBar used={quotaCount(vehicles)} limit={vehicleLimit(license)} label={`${quotaCount(vehicles)} de ${vehicleLimit(license)} vehículos en operación`} />
           </div>
           <div className="bg-secondary rounded-lg p-4">
             <Users className="w-4 h-4 text-muted-foreground mb-1" />
             <p className="text-2xl font-bold text-foreground font-mono tracking-tight">{quotaCount(drivers)}</p>
             <p className="text-xs text-muted-foreground">de {Number.isFinite(driverLimit(license)) ? driverLimit(license) : '∞'} conductores</p>
+            <QuotaBar used={quotaCount(drivers)} limit={driverLimit(license)} label={`${quotaCount(drivers)} de ${driverLimit(license)} conductores en operación`} />
           </div>
           {daysUntilTrial !== null && (
             <div className={`rounded-lg p-4 ${daysUntilTrial <= 7 ? 'bg-critical/10' : 'bg-secondary'}`}>

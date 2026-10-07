@@ -11,6 +11,7 @@ import { PageLoader } from '@/components/ui/spinner';
 import ResponsiveModal from '@/components/ui/responsive-modal';
 import { useMe, useCurrentDriver, useEntityList, useInvalidateEntity } from '@/hooks/useEntities';
 import { guardedCreate } from '@/lib/guardedWrite';
+import { celebrate } from '@/lib/celebrate';
 
 const PLATFORMS = [{ value: 'uber', label: 'Uber' }, { value: 'didi', label: 'DiDi' }, { value: 'particular', label: 'Particular' }];
 const platformLabel = { uber: 'Uber', didi: 'DiDi', particular: 'Particular' };
@@ -36,6 +37,7 @@ export default function DriverTrips() {
 
   const submit = async () => {
     if (!driver || !vehicle) { setError('Necesitas un vehículo asignado para registrar viajes.'); return; }
+    const origin = document.activeElement;
     setSaving(true);
     setError('');
     try {
@@ -47,6 +49,7 @@ export default function DriverTrips() {
         earnings: form.earnings ? parseFloat(form.earnings) : null,
         distance_km: form.distance_km ? parseFloat(form.distance_km) : null,
       });
+      celebrate(origin);
       invalidate('Trip');
       setShowForm(false);
       setForm({ platform: 'uber', date: format(new Date(), 'yyyy-MM-dd'), earnings: '', distance_km: '' });

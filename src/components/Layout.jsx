@@ -57,20 +57,19 @@ function NavItem({ path, icon: Icon, label, active, alertCount, unreadCount, onC
       to={path}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
         active
-          ? 'bg-sidebar-accent text-primary font-semibold'
-          : 'text-muted-foreground font-medium hover:text-sidebar-foreground hover:bg-sidebar-accent'
+          ? 'bg-primary text-primary-foreground font-bold play-press play-press--primary'
+          : 'text-muted-foreground font-semibold hover:text-sidebar-foreground hover:bg-sidebar-accent'
       }`}
     >
-      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" aria-hidden="true" />}
-      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-primary' : ''}`} />
+      <Icon className="w-4 h-4 shrink-0" />
       <span>{label}</span>
       {label === 'Alertas' && alertCount > 0 && (
         <Badge className="ml-auto bg-critical text-white text-xs px-1.5 py-0 h-5">{alertCount}</Badge>
       )}
       {label === 'Mensajes' && unreadCount > 0 && (
-        <Badge className="ml-auto bg-primary text-white text-xs px-1.5 py-0 h-5">{unreadCount}</Badge>
+        <Badge className={`ml-auto text-xs px-1.5 py-0 h-5 ${active ? 'bg-primary-foreground text-primary hover:bg-primary-foreground' : 'bg-primary text-primary-foreground hover:bg-primary'}`}>{unreadCount}</Badge>
       )}
     </Link>
   );
@@ -241,7 +240,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen bg-background font-inter overflow-hidden">
+    <div className="flex h-screen bg-background font-body overflow-hidden">
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex flex-col w-60 bg-sidebar border-r border-sidebar-border shrink-0">
         <SidebarContent onLinkClick={null} />
@@ -304,8 +303,10 @@ export default function Layout() {
               const active = isNavItemActive(path, location.pathname);
               return (
                 <Link key={path} to={path}
-                  className={`flex-1 flex flex-col items-center py-2 gap-0.5 text-xs transition-colors ${active ? 'text-primary' : 'text-muted-foreground'}`}>
-                  <Icon className="w-5 h-5" />
+                  className={`flex-1 flex flex-col items-center py-2 gap-0.5 text-xs transition-colors ${active ? 'text-primary font-bold' : 'text-muted-foreground font-semibold'}`}>
+                  <span className={`px-3 rounded-full transition-colors ${active ? 'bg-primary/15' : ''}`}>
+                    <Icon className="w-5 h-5" />
+                  </span>
                   {label}
                 </Link>
               );

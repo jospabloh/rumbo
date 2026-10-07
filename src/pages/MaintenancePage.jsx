@@ -12,6 +12,7 @@ import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { useEntityList, useVehicles, useInvalidateEntity } from '@/hooks/useEntities';
 import { guardedCreate, guardedUpdate, guardedDelete } from '@/lib/guardedWrite';
+import { celebrate } from '@/lib/celebrate';
 
 export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const { tenantId, readOnly } = useTenant();
@@ -50,6 +51,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
   const handleSave = async (data) => {
     if (!tenantId) { setError('Tu organización aún se está configurando. Espera unos segundos e inténtalo de nuevo.'); return; }
     if (readOnly) { setError('Tu licencia está en modo solo lectura: renueva tu pago para registrar mantenimientos.'); return; }
+    const origin = document.activeElement;
     setError('');
     try {
       // Copiamos el `owner_group_id` del vehículo (denormalizado, igual que en RentCharge)
@@ -59,6 +61,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
         await guardedUpdate('Maintenance', editRecord.id, { ...data, owner_group_id: ownerGroupId });
       } else {
         await guardedCreate('Maintenance', { ...data, owner_group_id: ownerGroupId });
+        celebrate(origin); // sólo el alta: corregir un registro no es terminar nada
       }
       setShowForm(false);
       setEditRecord(null);

@@ -1,28 +1,31 @@
 import { Link } from 'react-router-dom';
 
+// mario_style: el ícono va en una ficha sólida con relieve (el color dice qué
+// tipo de cifra es) y la cifra en la tipografía de títulos. La tarjeta en sí
+// se queda neutra: con ocho fichas de color lleno el tablero gritaría.
 const colorMap = {
-  blue: 'text-primary bg-primary/10',
-  green: 'text-success bg-success/10',
-  red: 'text-destructive bg-destructive/10',
-  purple: 'text-violet-400 bg-violet-400/10',
-  yellow: 'text-warning bg-warning/10',
-  gray: 'text-muted-foreground bg-muted',
+  blue: 'bg-primary text-primary-foreground play-press--primary',
+  green: 'bg-success text-success-foreground [--play-fill:hsl(var(--success))]',
+  red: 'bg-destructive text-destructive-foreground play-press--danger',
+  purple: 'bg-violet-500 text-white [--play-fill:theme(colors.violet.500)]',
+  yellow: 'bg-warning text-warning-foreground [--play-fill:hsl(var(--warning))]',
+  gray: 'bg-muted text-muted-foreground play-press--neutral',
 };
 
 export default function StatCard({ icon: Icon, label, value, sub, color = 'blue', link = null }) {
   const card = (
-    <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3">
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
-        <Icon className="w-4 h-4" />
+    <div className="bg-card border-2 border-border rounded-2xl p-4 flex flex-col gap-3 play-card h-full">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center play-press ${colorMap[color] || colorMap.blue}`}>
+        <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-2xl font-bold font-mono tracking-tight">{value}</p>
-        <p className="text-xs font-medium text-foreground">{label}</p>
+        <p className="text-2xl font-display font-extrabold tracking-tight tabular-nums">{value}</p>
+        <p className="text-xs font-bold text-foreground">{label}</p>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
     </div>
   );
 
-  if (link) return <Link to={link} className="block hover:opacity-90 transition-opacity">{card}</Link>;
+  if (link) return <Link to={link} className="block play-lift-hover rounded-2xl">{card}</Link>;
   return card;
 }

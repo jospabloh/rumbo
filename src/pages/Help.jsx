@@ -21,6 +21,15 @@ const SUPPORT_EMAIL = 'soporte@acaciaco.com.mx';
 // changelog surfaces.
 const CHANGES = [
   {
+    date: '2026-10-07',
+    title: 'Rumbo estrena look',
+    items: [
+      'Toda la app es más redonda y amigable: botones con relieve que se hunden al pulsarlos, tipografía nueva y colores más alegres. Tu color de marca se mantiene.',
+      'Cuando terminas algo (resolver una alerta, saldar un cargo, registrar un viaje o un mantenimiento) aparece un poco de confeti. Si tu dispositivo tiene activado "reducir movimiento", no se muestra.',
+      'En Facturación, el cupo de vehículos y conductores de tu plan se ve como una barra de bloques que cambia de color al acercarse al límite.',
+    ],
+  },
+  {
     date: '2026-09-30',
     title: 'Unirse con código ahora requiere aprobación',
     items: [
