@@ -4,6 +4,17 @@ All notable changes to Rumbo are documented here.
 
 ---
 
+## [1.36.1] — 2026-10-07 — El menú ya no regresa arriba al elegir una sección
+
+- Al bajar en el menú lateral y elegir una sección de más abajo, el scroll del
+  menú volvía al inicio y la sección elegida quedaba fuera de vista. La causa:
+  `Layout.jsx` declaraba el contenido del menú como un componente dentro de su
+  propio render, así que React lo desmontaba y montaba de nuevo en cada
+  navegación. Ahora se llama como función y el `<nav>` conserva su scroll.
+- En móvil, al reabrir el menú, la sección activa se lleva a la vista.
+
+---
+
 ## [1.36.0] — 2026-10-07 — Rumbo se ve y se siente como un juego bien hecho
 
 Nuevo look en toda la app: `mario_style`, la opción de estilo de
