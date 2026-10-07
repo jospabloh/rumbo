@@ -168,6 +168,8 @@
   --play-danger: hsl(var(--destructive));
   --play-edge: hsl(var(--border));
   --play-track: hsl(var(--muted));
+  --play-success: hsl(var(--success));
+  --play-warning: hsl(var(--warning));
   --play-confetti: hsl(var(--primary)), #ffc53d, #2fbf63, #ff5d5d;
 }
 

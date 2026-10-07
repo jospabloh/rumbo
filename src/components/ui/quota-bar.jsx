@@ -6,10 +6,12 @@ import { quotaTone } from '@/lib/plans';
 
 const BLOCK_LIMIT = 30;
 
+// Barra continua (límite > 30): mismos colores que los bloques, de las
+// mismas variables --play-* que mapea src/index.css.
 const FILL = {
-  ok: 'hsl(var(--success))',
-  near: 'hsl(var(--warning))',
-  full: 'hsl(var(--destructive))',
+  ok: 'var(--play-success)',
+  near: 'var(--play-warning)',
+  full: 'var(--play-danger)',
 };
 
 export default function QuotaBar({ used, limit, label }) {
@@ -19,12 +21,14 @@ export default function QuotaBar({ used, limit, label }) {
   // Los bloques vacíos van en el color de tarjeta: la barra vive sobre una ficha
   // teñida (bg-secondary), y en el color de --play-track (= muted = secondary)
   // los vacíos desaparecían y "2 de 15" se leía como dos bloques nada más.
-  const style = /** @type {React.CSSProperties} */ ({ '--play-hp-fill': FILL[tone], '--play-track': 'hsl(var(--card))' });
+  // El color de cada tono sale de data-tone en mario_style.css (--play-success /
+  // --play-warning / --play-danger); aquí solo se elige cuál.
+  const style = /** @type {React.CSSProperties} */ ({ '--play-track': 'hsl(var(--card))' });
   const aria = label || `${used} de ${limit}`;
 
   if (limit <= BLOCK_LIMIT) {
     return (
-      <div className="play-hp mt-2" style={/** @type {React.CSSProperties} */ ({ ...style, '--play-hp-total': limit })} role="img" aria-label={aria}>
+      <div className="play-hp mt-2" data-tone={tone} style={/** @type {React.CSSProperties} */ ({ ...style, '--play-hp-total': limit })} role="img" aria-label={aria}>
         {Array.from({ length: limit }, (_, i) => (
           <span key={i} data-on={i < used ? '' : undefined} />
         ))}
