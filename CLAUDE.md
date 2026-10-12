@@ -2708,3 +2708,74 @@ cupo, que el escáner no ve.
 **No verificado:** la tipografía real (el sandbox bloquea Google Fonts),
 Safari/iOS y pantallas con datos reales. Mergear no despliega: hace falta
 `npm run deploy:site`.
+
+## Auditoría full-review (2026-10-12) — dos vulnerabilidades nuevas en dependencias; la matriz de permisos describía un invite que ya no existe
+
+Pasada de auditoría completa programada. Inventario primero: cero PRs abiertos que
+toquen este app salvo `ci/actions-minutes` (#145, draft, presupuesto de Actions —
+tooling de CI ajeno al modelo de permisos de la app, no tocado); `audit/rumbo-full-review`
+sigue siendo la rama fósil de PR #90 cerrado ya documentada el 2026-09-21 (sin ancestro
+común con `main`), así que esta pasada no la reutilizó. `main` en `74a3213` (v1.36.1,
+PR #144 — el fix de scroll del menú lateral, ya en `CHANGELOG.md`/`version.js` aunque sin
+sección propia aquí por ser puramente visual).
+
+**Re-verificado, sin regresión:** `validate:rls` (29 entidades), `audit:tenant-scope`,
+`validate:tenant-roles`, el patrón `user.data` de `auth.me()` (sin lecturas reales
+sobrevivientes en las 22 funciones), los 11 candados de campo de `TenantLicense`, el
+`$or` de auto-lectura del conductor fuera del `$and` de tenant en `Driver.jsonc`, las
+tres funciones `APP_OWNER_EMAIL`-gated y `reapStaleSessions` (`CRON_SECRET`) fallando
+CERRADO, y `joinTenant`'s 409 de segundo tenant — todo releído contra el código actual,
+no contra lo que este archivo afirma. `lint` (22 endpoints, techo 40), `typecheck`,
+`build`, `test -- --run` (516/516), `test:functions` (12/12 vía `deno test`) y
+`deno check --node-modules-dir=none` sobre las 22 funciones (binario de GitHub
+releases) — todo limpio. Grep dirigido de secretos sobre `src/`, `base44/`, `scripts/`
+(nunca `dist/`) → cero coincidencias.
+
+**Hallazgo — `npm audit` había vuelto a acumular 2 avisos nuevos desde la pasada del
+2026-10-05:** `postcss-selector-parser` (moderado — el `override` existente lo fijaba en
+`^6.1.4`, por debajo del arreglo real en `7.1.6`; GHSA-rj75-hqrm-r3gf se publicó después
+de esa pasada) y `source-map-js` (alto, sin `override` — GHSA-68fv-2mgg-jv7q). Las dos son
+transitivas de herramientas de build (`tailwindcss`→`postcss-nested`, `postcss`), nunca
+importadas por código propio. Corregidas vía `overrides` en `package.json`
+(`postcss-selector-parser`→`^7.1.6`, `source-map-js`→`^1.2.2`) — confirmado con `npm ls`
+que ambas quedaron en la versión objetivo exacta, y con `npm audit` que las dos salieron
+del reporte. El CSS compilado tras el bump de major de `postcss-selector-parser` (6→7,
+interno a `tailwindcss`, nunca importado directamente por este repo) se inspeccionó a
+mano — bien formado, mismo tamaño esperado (~98 KB) — antes de confiar en que el build
+seguía produciendo selectores válidos. Quedan los mismos dos residuales ya documentados
+repetidas veces en este archivo: `vitest`/`@vitest/mocker` (moderado, solo-dev, bloqueado
+por el bug conocido de `arborist` al forzar `vitest@4.1.11`) y `braces` (alto, solo-dev,
+sin fix upstream — `3.0.3` ya es la última versión publicada).
+
+**Hallazgo — `docs/permissions_matrix.md` describía un mecanismo de invitación que ya no
+existe.** La fila "Invite user" seguía diciendo `base44.users.inviteUser()`, retirado el
+2026-09-10 cuando se confirmó en vivo que ningún endpoint de invite de Base44 acepta la
+sesión propia de un usuario final de tenant (`InviteForm.jsx` lleva desde entonces un
+comentario que prohíbe explícitamente esa llamada). El encabezado de versión del archivo
+(1.31.0/2026-08-19) nunca se tocó desde entonces, aunque otras filas del mismo documento sí
+se habían ido actualizando por partes (`delegateOwnership`/`deleteTenant`/`JoinRequest` ya
+reflejaban cambios de 2026-08-24 a 2026-09-30) — la fila de invitar simplemente se quedó
+atrás. Corregida para describir el flujo real (agregar a `members[]` + compartir el link de
+login a mano) y añadida una entrada de historial de auditoría propia del archivo, con
+encabezado de versión actualizado a 1.36.1/2026-10-12.
+
+**UI/UX/cross-device:** `node scripts/layout-overlap-scan.mjs --no-build` con
+`PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` (el binario que trae este
+sandbox, distinto del `chrome-headless-shell` que Playwright intenta por defecto y que no
+está instalado aquí) — sin un solo hallazgo en las combinaciones registradas (anchuras de
+tablet/escritorio × los cinco roles × todas las páginas, incluido el diálogo de Reportes y
+el cajón móvil); la salida de este comando se truncó con `tail -100` antes de guardarse, así
+que las anchuras de teléfono (320/390) del barrido no quedaron en el registro guardado de
+esta pasada aunque corrieron — el proceso terminó con código 0 (éxito), que esta
+herramienta usa para "cero traslapes", no solo "no se colgó".
+
+**Sin hallazgos nuevos de RLS, aislamiento de tenant, permisos granulares ni secretos.**
+
+**Sin bump de versión** — mismo criterio que los precedentes de este archivo (dependencias
+sin cambio de comportamiento en runtime, y una corrección de documentación): ninguno de los
+dos hallazgos cambia RLS, esquema, función ni una ruta de código observable por un usuario.
+
+**No verificado:** una sesión de navegador real (no alcanzable desde este entorno, igual que
+en todas las pasadas anteriores), y el esquema **desplegado** vía el MCP de Base44 (no
+disponible en esta sesión) — no aplica de todos modos, porque esta pasada no tocó ningún
+`.jsonc` ni `base44/functions/*.ts`.

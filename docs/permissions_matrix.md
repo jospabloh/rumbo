@@ -1,6 +1,6 @@
 # Rumbo — Granular Roles and Permissions Matrix
 
-**Version 1.31.0 | Updated 2026-08-19**
+**Version 1.36.1 | Updated 2026-10-12**
 
 ---
 
@@ -116,7 +116,7 @@ Admin has full view, create, edit, delete access to every module within their te
 
 | Action | Required Role | Enforcement Location | Notes |
 |--------|--------------|---------------------|-------|
-| Invite user | admin, owner | `Admin.jsx` client check | `base44.users.inviteUser()` |
+| Invite user | admin, owner | `Admin.jsx` → `InviteForm.jsx` | **No Base44 invite call since 2026-09-10** — `base44.auth.inviteUser`/`base44.users.inviteUser` never accept a tenant user's own session (reproduced against the live platform endpoint; see CLAUDE.md). The form just appends `{email, role}` to `TenantLicense.members[]`; the admin shares the app's login URL by hand, and `resolveTenant`/`joinTenant`'s pre-approved-member path enrolls the person on their first real login (Google or email/password) with that same address. |
 | Change user role | admin, owner | `manageRole` server function | Cannot change own role, cannot assign `owner` (use delegateOwnership), cannot demote the last admin/owner of the tenant. `User.role` is field-level `write:false` (2026-08-26 — an independent audit against acacia-app-standard's Module 2 found this had never actually been locked; the RLS only re-checked the caller's own role, so a direct SDK call let an admin self-escalate to owner or strand the tenant with zero admins) |
 | Suspend / reactivate user | admin, owner | `manageMember` server function | `write_access` + `suspended` are server-authoritative |
 | Remove user from tenant | admin, owner | `manageMember` server function | Unlinks from tenant; does not delete account |
@@ -276,6 +276,27 @@ since it is never seen or used by tenant users or admins.
 ---
 
 ## Audit History
+
+### v1.36.1 Audit (2026-10-12)
+
+Scheduled full-review pass. RLS/tenant-isolation/granular-permissions model re-verified
+against the current `base44/entities/*.jsonc` and `base44/functions/` (29 entities,
+22 functions) — no regression since the 2026-09-28 full-review pass; see CLAUDE.md for
+the complete narrative of every module fixed since v1.30.3 (this doc's prior audit-history
+entries predate most of it and are kept below for the record, not because they're current).
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| A64 | This file's "Invite user" row still described `base44.users.inviteUser()` as the invite mechanism — removed on 2026-09-10 after it was confirmed live that no Base44 invite endpoint accepts a tenant user's own session (`InviteForm.jsx` itself carries a comment forbidding the call). The version header (1.31.0/2026-08-19) hadn't been touched since, even though several rows below it clearly had been updated piecemeal (the `delegateOwnership`/`deleteTenant`/`JoinRequest` rows already reflected 2026-08-24 through 2026-09-30 changes). | LOW (doc-only, no code/RLS behavior affected) | **FIXED — row corrected to describe the actual `members[]`-append + share-the-login-link flow; version header bumped to match the app's actual version.** |
+| A65 | `npm audit` had re-accumulated 2 new advisories since the 2026-10-05 pass: `postcss-selector-parser` (moderate, the existing override pinned `^6.1.4`, below the fix in `7.1.6`) and `source-map-js` (high, no override existed). Both transitive, dev/build-only (tailwindcss, postcss), never imported by app code. | MODERATE/HIGH (dev-only) | **FIXED via `package.json` `overrides` (`postcss-selector-parser` → `^7.1.6`, `source-map-js` → `^1.2.2`, both non-breaking for this repo since neither is called directly); `npm audit` back down to the same 2 pre-existing dev-only residuals (`vitest`/`@vitest/mocker`, `braces`) this file and CLAUDE.md already document as blocked on a major bump / no upstream fix.** |
+
+No open, draft, or disconnected pull requests targeting this review existed at audit start
+(one unrelated pre-existing draft PR, `ci/actions-minutes`, was left untouched — CI/Actions
+budget tooling, not part of this app's permission model). `lint`/`typecheck`/`validate:rls`
+(29)/`audit:tenant-scope`/`validate:tenant-roles`/`build`/`test` (516/516)/`test:functions`
+(12/12 via `deno test`)/`deno check` (22/22 functions) all pass.
+
+---
 
 ### v1.30.3 Audit (2026-08-11)
 
