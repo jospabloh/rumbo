@@ -1,45 +1,41 @@
 {
   "name": "ZZZRlsFieldProbe",
-  "type": "object",
   "properties": {
-    "open_field": {
-      "type": "string",
-      "title": "Campo abierto (control)"
-    },
-    "secret_field": {
-      "type": "string",
-      "title": "Campo restringido - prueba de RLS por campo",
+    "multi_role_field": {
       "rls": {
         "read": {
           "user_condition": {
-            "role": "owner"
+            "role": "__service_role_only__"
           }
         }
-      }
-    },
-    "multi_role_field": {
-      "type": "string",
+      },
       "title": "Campo restringido a varios roles - prueba",
+      "type": "string"
+    },
+    "open_field": {
+      "title": "Campo abierto (control)",
+      "type": "string"
+    },
+    "secret_field": {
       "rls": {
         "read": {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            }
-          ]
+          "user_condition": {
+            "role": "__service_role_only__"
+          }
         }
-      }
+      },
+      "title": "Campo restringido - prueba de RLS por campo",
+      "type": "string"
     }
   },
+  "required": [],
   "rls": {
     "create": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "delete": {
       "user_condition": {
         "role": "__service_role_only__"
       }
@@ -53,12 +49,7 @@
       "user_condition": {
         "role": "__service_role_only__"
       }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "__service_role_only__"
-      }
     }
   },
-  "required": []
+  "type": "object"
 }
