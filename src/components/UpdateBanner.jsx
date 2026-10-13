@@ -10,10 +10,11 @@ import { useNewVersion } from '@/lib/useNewVersion';
  *
  * It never reloads on its own. Whoever is mid-way through a form decides when;
  * the notice says so. Top-centre, because the bottom-right corner belongs to
- * the theme control (Module 12) and the left to the shell (Module 29). An app
- * whose top bar has something in the middle lowers it from its stylesheet:
+ * the theme control (Module 12) and the left to the shell (Module 29). On a
+ * phone the card spans the width, so an app with a top bar lowers it beneath
+ * the bar from its stylesheet:
  *
- *   :root { --update-banner-top: 4rem; }
+ *   @media (max-width: 1023px) { :root { --update-banner-top: 4rem; } }
  *
  * Colours are the app's own semantic tokens, like the theme control.
  */
