@@ -1,0 +1,64 @@
+{
+  "name": "ZZZRlsFieldProbe",
+  "type": "object",
+  "properties": {
+    "open_field": {
+      "type": "string",
+      "title": "Campo abierto (control)"
+    },
+    "secret_field": {
+      "type": "string",
+      "title": "Campo restringido - prueba de RLS por campo",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "owner"
+          }
+        }
+      }
+    },
+    "multi_role_field": {
+      "type": "string",
+      "title": "Campo restringido a varios roles - prueba",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "__service_role_only__"
+      }
+    }
+  },
+  "required": []
+}

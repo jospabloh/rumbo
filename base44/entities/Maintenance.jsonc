@@ -1,31 +1,8 @@
 {
   "name": "Maintenance",
-  "type": "object",
   "properties": {
-    "tenant_id": {
-      "type": "string",
-      "title": "Tenant",
-      "rls": {
-        "write": false
-      },
-      "description": "Tenant al que pertenece este registro. Server-authoritative en la práctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, así que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garantía incluso si alguien llama a la entidad directo por SDK, saltándose guardedEntityWrite."
-    },
-    "vehicle_id": {
-      "type": "string",
-      "title": "Vehículo"
-    },
-    "kind": {
-      "type": "string",
-      "enum": [
-        "preventive",
-        "corrective",
-        "major_repair"
-      ],
-      "title": "Tipo",
-      "default": "preventive"
-    },
     "category": {
-      "type": "string",
+      "default": "general",
       "enum": [
         "general",
         "oil_change",
@@ -36,39 +13,61 @@
         "body",
         "other"
       ],
-      "title": "Categoría",
-      "default": "general"
-    },
-    "description": {
-      "type": "string",
-      "title": "Descripción"
-    },
-    "odometer": {
-      "type": "number",
-      "title": "Odómetro (km)"
+      "title": "Categor\u00eda",
+      "type": "string"
     },
     "cost": {
-      "type": "number",
-      "title": "Costo"
+      "title": "Costo",
+      "type": "number"
     },
-    "performed_at": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha de realización"
+    "description": {
+      "title": "Descripci\u00f3n",
+      "type": "string"
+    },
+    "kind": {
+      "default": "preventive",
+      "enum": [
+        "preventive",
+        "corrective",
+        "major_repair"
+      ],
+      "title": "Tipo",
+      "type": "string"
     },
     "next_due_at": {
-      "type": "string",
       "format": "date",
-      "title": "Próxima revisión"
+      "title": "Pr\u00f3xima revisi\u00f3n",
+      "type": "string"
     },
-    "photo_url": {
-      "type": "string",
-      "title": "Foto"
+    "odometer": {
+      "title": "Od\u00f3metro (km)",
+      "type": "number"
     },
     "owner_group_id": {
-      "type": "string",
+      "description": "Copia de `Vehicle.owner_group_id` en el momento de creaci\u00f3n de este registro (denormalizado, igual que `driver_id` en RentCharge), para que un usuario 'investor' pueda leer el historial de mantenimiento de sus unidades sin depender de un join cruzado que RLS no soporta.",
       "title": "Grupo de sociedad",
-      "description": "Copia de `Vehicle.owner_group_id` en el momento de creación de este registro (denormalizado, igual que `driver_id` en RentCharge), para que un usuario 'investor' pueda leer el historial de mantenimiento de sus unidades sin depender de un join cruzado que RLS no soporta."
+      "type": "string"
+    },
+    "performed_at": {
+      "format": "date",
+      "title": "Fecha de realizaci\u00f3n",
+      "type": "string"
+    },
+    "photo_url": {
+      "title": "Foto",
+      "type": "string"
+    },
+    "tenant_id": {
+      "description": "Tenant al que pertenece este registro. Server-authoritative en la pr\u00e1ctica: guardedEntityWrite lo fija tras esparcir los datos del cliente (nunca antes, as\u00ed que un valor enviado por el cliente no puede ganar), y en update lo borra del patch para que un registro existente no pueda reasignarse a otro tenant. write:false es la frontera dura que respalda esa garant\u00eda incluso si alguien llama a la entidad directo por SDK, salt\u00e1ndose guardedEntityWrite.",
+      "rls": {
+        "write": false
+      },
+      "title": "Tenant",
+      "type": "string"
+    },
+    "vehicle_id": {
+      "title": "Veh\u00edculo",
+      "type": "string"
     }
   },
   "required": [
@@ -96,6 +95,32 @@
             {
               "user_condition": {
                 "role": "mechanic"
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "data.write_access": "enabled"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "data.tenant_id": "{{user.data.tenant_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "owner"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
               }
             }
           ]
@@ -185,32 +210,7 @@
           }
         }
       ]
-    },
-    "delete": {
-      "$and": [
-        {
-          "data.tenant_id": "{{user.data.tenant_id}}"
-        },
-        {
-          "$or": [
-            {
-              "user_condition": {
-                "role": "owner"
-              }
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            }
-          ]
-        },
-        {
-          "user_condition": {
-            "data.write_access": "enabled"
-          }
-        }
-      ]
     }
-  }
+  },
+  "type": "object"
 }
