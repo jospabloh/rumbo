@@ -2,7 +2,7 @@
 // copy (e.g. src/lib/__tests__/useNewVersion.test.js) and fix the import path
 // only. Runs under vitest + jsdom.
 import { afterEach, describe, expect, it } from 'vitest';
-import { assetSignature, currentEntryScript, documentLoads, entryScriptFromHtml } from '@/lib/useNewVersion';
+import { appBase, assetSignature, currentEntryScript, documentLoads, entryScriptFromHtml } from '@/lib/useNewVersion';
 
 // What Base44 and Vercel actually serve for a Vite build (rumbo, 2026-10-13).
 const SERVED = `<!doctype html><html><head>
@@ -104,5 +104,20 @@ describe('documentLoads', () => {
   it('ignores extra stylesheets the app injected at runtime', () => {
     load('/assets/index-y3lU3rA9.js', '/assets/index-Bx1.css', '/assets/Chart-Dz9.css');
     expect(documentLoads(assetSignature(SERVED), document)).toBe(true);
+  });
+});
+
+describe('appBase', () => {
+  it('is the root for an app served at the root', () => {
+    expect(appBase('/assets/index-y3lU3rA9.js')).toBe('/');
+  });
+
+  // Codex: a sub-path app fetching "/" would read the domain root's site.
+  it('keeps the sub-path of an app served under one', () => {
+    expect(appBase('/freeware/plink-fx/assets/index-9z.js')).toBe('/freeware/plink-fx/');
+  });
+
+  it('falls back to the root when it cannot tell', () => {
+    expect(appBase(null)).toBe('/');
   });
 });

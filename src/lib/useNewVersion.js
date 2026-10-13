@@ -73,6 +73,16 @@ function toPath(src) {
 }
 
 /**
+ * The app's own base path, read off its entry script: everything before
+ * `/assets/`. An app served under a sub-path (`/freeware/plink-fx/`) must ask
+ * for its own `index.html`, never the domain root's.
+ */
+export function appBase(entryPath) {
+  const i = entryPath ? entryPath.lastIndexOf('/assets/') : -1;
+  return i >= 0 ? entryPath.slice(0, i + 1) : '/';
+}
+
+/**
  * Whether this tab loaded every file in `signature`. The tab's DOM may hold
  * more (stylesheets the app injects at runtime), never fewer: a file the
  * server lists that the tab never loaded means the tab runs an older build.
@@ -104,6 +114,7 @@ export function useNewVersion({ interval = CHECK_INTERVAL_MS } = {}) {
   useEffect(() => {
     const current = currentEntryScript();
     if (!current) return undefined;
+    const base = appBase(current);
 
     let baseline = null;
     let stopped = false;
@@ -112,7 +123,7 @@ export function useNewVersion({ interval = CHECK_INTERVAL_MS } = {}) {
       if (stopped || inFlight || document.visibilityState === 'hidden') return;
       inFlight = true;
       try {
-        const res = await fetch(`/?_v=${Date.now()}`, { cache: 'no-store', headers: { Accept: 'text/html' } });
+        const res = await fetch(`${base}?_v=${Date.now()}`, { cache: 'no-store', headers: { Accept: 'text/html' } });
         if (!res.ok) return;
         const html = await res.text();
         const signature = assetSignature(html);
