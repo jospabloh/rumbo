@@ -100,3 +100,18 @@ export function maintenanceByCategory(records) {
   }
   return [...map.values()].sort((a, b) => b.count - a.count || b.cost - a.cost);
 }
+
+/**
+ * Vehículos ordenados por número de unidad, comparado como número ("02" antes
+ * que "010"). Los que no tienen número van al final, por placa.
+ *
+ * @param {any[]} vehicles
+ */
+export function sortByUnitNumber(vehicles) {
+  return vehicles.slice().sort((a, b) => {
+    const ua = a.unit_number || '';
+    const ub = b.unit_number || '';
+    if (!ua !== !ub) return ua ? -1 : 1;
+    return ua.localeCompare(ub, 'es', { numeric: true }) || (a.plate || '').localeCompare(b.plate || '');
+  });
+}

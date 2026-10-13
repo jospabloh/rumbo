@@ -67,3 +67,17 @@ describe('categorías de mantenimiento — una sola lista', () => {
     expect([...maintenanceSchema.shape.category.unwrap().options].sort()).toEqual([...entityEnum].sort());
   });
 });
+
+describe('sortByUnitNumber', () => {
+  it('ordena por número de unidad como número y deja al final los que no tienen', async () => {
+    const { sortByUnitNumber } = await import('../maintenanceStats');
+    const sorted = sortByUnitNumber([
+      { plate: 'C', unit_number: '010' },
+      { plate: 'Z' },
+      { plate: 'A', unit_number: '02' },
+      { plate: 'B', unit_number: '01' },
+      { plate: 'Y', unit_number: '' },
+    ]);
+    expect(sorted.map((v) => v.plate)).toEqual(['B', 'A', 'C', 'Y', 'Z']);
+  });
+});

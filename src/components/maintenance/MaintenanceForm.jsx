@@ -12,6 +12,7 @@ import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/lib/imageUtils';
 import { maintenanceSchema } from '@/lib/schemas';
 import { useCatalog } from '@/lib/catalogs';
+import { sortByUnitNumber } from '@/lib/maintenanceStats';
 
 export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
   const [uploading, setUploading] = useState(false);
@@ -73,7 +74,7 @@ export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>{vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plate}{v.unit_number ? ` · #${v.unit_number}` : ''} — {v.make} {v.model}</SelectItem>)}</SelectContent>
+                    <SelectContent>{sortByUnitNumber(vehicles).map(v => <SelectItem key={v.id} value={v.id}>{v.plate}{v.unit_number ? ` · #${v.unit_number}` : ''} — {v.make} {v.model}</SelectItem>)}</SelectContent>
                   </Select>
                 )}
               />
