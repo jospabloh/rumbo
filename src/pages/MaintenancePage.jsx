@@ -44,7 +44,8 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
     const v = vehicles.find(x => x.id === r.vehicle_id);
     return (
       r.description?.toLowerCase().includes(search.toLowerCase()) ||
-      v?.plate?.toLowerCase().includes(search.toLowerCase())
+      v?.plate?.toLowerCase().includes(search.toLowerCase()) ||
+      v?.unit_number?.toLowerCase().includes(search.toLowerCase())
     );
   });
 
@@ -131,7 +132,7 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
                         </div>
                         <div>
                           <p className="text-sm font-semibold">{r.description || (r.kind === 'preventive' ? 'Mantenimiento preventivo' : r.kind === 'major_repair' ? 'Arreglo mayor' : 'Mantenimiento correctivo')}</p>
-                          <p className="text-xs text-muted-foreground">{v?.plate || 'Vehículo'} · {r.performed_at}</p>
+                          <p className="text-xs text-muted-foreground">{v?.plate || 'Vehículo'}{v?.unit_number ? ` · #${v.unit_number}` : ''} · {r.performed_at}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
