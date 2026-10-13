@@ -28,6 +28,7 @@
       "type": "string",
       "enum": [
         "general",
+        "oil_change",
         "engine",
         "brakes",
         "electrical",

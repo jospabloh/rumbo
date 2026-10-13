@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import MaintenanceFundCard from '@/components/reports/MaintenanceFundCard';
 
 const KIND_LABEL = { preventive: 'Preventivo', corrective: 'Correctivo', major_repair: 'Arreglo mayor' };
-const CATEGORY_LABEL = { general: 'General', engine: 'Motor', brakes: 'Frenos', electrical: 'Eléctrico', tires: 'Llantas', body: 'Carrocería', other: 'Otro' };
+const CATEGORY_LABEL = { general: 'General', oil_change: 'Cambio de aceite y filtros', engine: 'Motor', brakes: 'Frenos', electrical: 'Eléctrico', tires: 'Llantas', body: 'Carrocería', other: 'Otro' };
 
 const TABS = [
   { id: 'resumen', label: 'Resumen' },

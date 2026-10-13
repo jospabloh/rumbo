@@ -12,6 +12,7 @@ export const KIND_LABELS = {
 // Mismas etiquetas que el <Select> de MaintenanceForm.jsx.
 export const CATEGORY_LABELS = {
   general: 'General',
+  oil_change: 'Cambio de aceite y filtros',
   engine: 'Motor',
   brakes: 'Frenos',
   electrical: 'Eléctrico',

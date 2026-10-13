@@ -54,3 +54,16 @@ describe('maintenanceByCategory', () => {
     expect(rows.map((r) => r.key)).not.toContain('body');
   });
 });
+
+describe('categorías de mantenimiento — una sola lista', () => {
+  it('las etiquetas cubren exactamente el enum del esquema', async () => {
+    const { readFileSync } = await import('node:fs');
+    const path = await import('node:path');
+    const { CATEGORY_LABELS } = await import('../maintenanceStats');
+    const { maintenanceSchema } = await import('../schemas');
+    const jsonc = readFileSync(path.resolve(process.cwd(), 'base44/entities/Maintenance.jsonc'), 'utf8');
+    const entityEnum = JSON.parse(jsonc).properties.category.enum;
+    expect(Object.keys(CATEGORY_LABELS).sort()).toEqual([...entityEnum].sort());
+    expect([...maintenanceSchema.shape.category.unwrap().options].sort()).toEqual([...entityEnum].sort());
+  });
+});

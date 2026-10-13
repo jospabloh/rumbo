@@ -3,9 +3,10 @@ import { Wrench } from 'lucide-react';
 
 const KIND_LABEL = { preventive: 'Preventivo', corrective: 'Correctivo', major_repair: 'Arreglo mayor' };
 const KIND_COLOR = { preventive: 'hsl(var(--primary))', corrective: 'hsl(var(--warning))', major_repair: 'hsl(var(--critical))' };
-const CATEGORY_LABEL = { general: 'General', engine: 'Motor', brakes: 'Frenos', electrical: 'Eléctrico', tires: 'Llantas', body: 'Carrocería', other: 'Otro' };
+const CATEGORY_LABEL = { general: 'General', oil_change: 'Cambio de aceite y filtros', engine: 'Motor', brakes: 'Frenos', electrical: 'Eléctrico', tires: 'Llantas', body: 'Carrocería', other: 'Otro' };
 const CATEGORY_COLOR = {
   general: 'hsl(var(--seq-3))',
+  oil_change: 'hsl(var(--warning))',
   engine: 'hsl(var(--seq-5))',
   brakes: 'hsl(var(--critical))',
   electrical: 'hsl(var(--seq-4))',

@@ -117,7 +117,7 @@ export default function MaintenanceCharts({ records }) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={categories} layout="vertical" margin={{ top: 0, right: 28, left: 0, bottom: 0 }}>
               <XAxis type="number" hide allowDecimals={false} />
-              <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={76} tick={AXIS_TICK} />
+              <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={128} tick={AXIS_TICK} />
               <Tooltip content={<CategoryTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }} />
               <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false}>
                 <LabelList dataKey="count" position="right" style={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />

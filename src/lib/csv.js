@@ -167,7 +167,7 @@ const VEHICLE_STATUS = {
 
 /** Categoría de mantenimiento aceptada en el CSV (ES/EN) → valor de la entidad. */
 const CATEGORY_MAP = {
-  general: 'general', motor: 'engine', frenos: 'brakes', electrico: 'electrical',
+  general: 'general', aceite: 'oil_change', 'cambio de aceite y filtros': 'oil_change', oil_change: 'oil_change', motor: 'engine', frenos: 'brakes', electrico: 'electrical',
   llantas: 'tires', carroceria: 'body', otro: 'other',
   engine: 'engine', brakes: 'brakes', electrical: 'electrical', tires: 'tires', body: 'body', other: 'other',
 };
