@@ -21,16 +21,17 @@ import { useCallback, useEffect, useState } from 'react';
 export const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 const ASSET_SCRIPT = /\/assets\/[^"'?#]+\.js/;
+const DEFAULT_BASE = 'http://x/';
 const ASSET_FILE = /\/assets\/[^"'?#]+\.(?:js|css)/;
 
 /** Path of the hashed entry script in an HTML document's text, or null. */
-export function entryScriptFromHtml(html) {
+export function entryScriptFromHtml(html, url = DEFAULT_BASE) {
   if (typeof html !== 'string') return null;
   const tags = html.match(/<script\b[^>]*>/gi) || [];
   for (const tag of tags) {
     if (!/type\s*=\s*["']module["']/i.test(tag)) continue;
     const src = tag.match(/src\s*=\s*["']([^"']+)["']/i);
-    if (src && ASSET_SCRIPT.test(src[1])) return toPath(src[1]);
+    if (src && ASSET_SCRIPT.test(src[1])) return toPath(src[1], url);
   }
   return null;
 }
@@ -41,15 +42,15 @@ export function entryScriptFromHtml(html) {
  * deploy changes it even though the entry script keeps its name. Null when the
  * document has no hashed entry script (dev, an error page).
  */
-export function assetSignature(html) {
-  if (!entryScriptFromHtml(html)) return null;
+export function assetSignature(html, url = DEFAULT_BASE) {
+  if (!entryScriptFromHtml(html, url)) return null;
   const refs = new Set();
   for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) || []) {
     const isScript = /^<script/i.test(tag);
     if (isScript && !/type\s*=\s*["']module["']/i.test(tag)) continue;
     if (!isScript && !/rel\s*=\s*["'](?:stylesheet|modulepreload)["']/i.test(tag)) continue;
-    const url = tag.match(/(?:src|href)\s*=\s*["']([^"']+)["']/i);
-    if (url && ASSET_FILE.test(url[1])) refs.add(toPath(url[1]));
+    const ref = tag.match(/(?:src|href)\s*=\s*["']([^"']+)["']/i);
+    if (ref && ASSET_FILE.test(ref[1])) refs.add(toPath(ref[1], url));
   }
   return [...refs].sort().join('|');
 }
@@ -59,14 +60,17 @@ export function currentEntryScript(doc = typeof document !== 'undefined' ? docum
   if (!doc) return null;
   for (const el of doc.querySelectorAll('script[type="module"][src]')) {
     const src = el.getAttribute('src');
-    if (src && ASSET_SCRIPT.test(src)) return toPath(src);
+    if (src && ASSET_SCRIPT.test(src)) return toPath(src, doc.baseURI);
   }
   return null;
 }
 
-function toPath(src) {
+// Every URL is resolved against the document it came from: the tab's own
+// `baseURI` for the DOM, the requested URL for fetched HTML. A relative
+// `./assets/…` under a sub-path then keeps that sub-path.
+function toPath(src, base) {
   try {
-    return new URL(src, 'http://x').pathname;
+    return new URL(src, base || DEFAULT_BASE).pathname;
   } catch {
     return src;
   }
@@ -91,7 +95,7 @@ export function documentLoads(signature, doc = typeof document !== 'undefined' ?
   if (!signature || !doc) return true;
   const loaded = new Set();
   for (const el of doc.querySelectorAll('script[src], link[href]')) {
-    loaded.add(toPath(el.getAttribute('src') || el.getAttribute('href')));
+    loaded.add(toPath(el.getAttribute('src') || el.getAttribute('href'), doc.baseURI));
   }
   return signature.split('|').every((path) => loaded.has(path));
 }
@@ -123,10 +127,11 @@ export function useNewVersion({ interval = CHECK_INTERVAL_MS } = {}) {
       if (stopped || inFlight || document.visibilityState === 'hidden') return;
       inFlight = true;
       try {
-        const res = await fetch(`${base}?_v=${Date.now()}`, { cache: 'no-store', headers: { Accept: 'text/html' } });
+        const url = new URL(`${base}?_v=${Date.now()}`, window.location.href).href;
+        const res = await fetch(url, { cache: 'no-store', headers: { Accept: 'text/html' } });
         if (!res.ok) return;
         const html = await res.text();
-        const signature = assetSignature(html);
+        const signature = assetSignature(html, url);
         if (!signature || stopped) return;
         if (baseline === null) {
           if (documentLoads(signature)) baseline = signature;

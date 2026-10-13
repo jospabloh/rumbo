@@ -121,3 +121,27 @@ describe('appBase', () => {
     expect(appBase(null)).toBe('/');
   });
 });
+
+describe('relative asset URLs (Vite base "./")', () => {
+  // Codex: under a sub-path, "./assets/x.js" must keep the sub-path, both in
+  // the fetched HTML and in this tab's DOM, or the check polls the domain root.
+  const APP = 'https://acaciaco.com.mx/freeware/plink-fx/';
+  const RELATIVE = '<script type="module" src="./assets/index-9z.js"></script>'
+    + '<link rel="stylesheet" href="./assets/index-1a.css">';
+
+  it('resolves fetched HTML against the URL it was fetched from', () => {
+    expect(entryScriptFromHtml(RELATIVE, APP)).toBe('/freeware/plink-fx/assets/index-9z.js');
+    expect(appBase(entryScriptFromHtml(RELATIVE, APP))).toBe('/freeware/plink-fx/');
+  });
+
+  it('matches the DOM and the HTML when both use relative URLs', () => {
+    const fakeDoc = {
+      baseURI: APP,
+      querySelectorAll: () => [
+        { getAttribute: (a) => (a === 'src' ? './assets/index-9z.js' : null) },
+        { getAttribute: (a) => (a === 'href' ? './assets/index-1a.css' : null) },
+      ],
+    };
+    expect(documentLoads(assetSignature(RELATIVE, APP), fakeDoc)).toBe(true);
+  });
+});
