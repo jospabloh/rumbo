@@ -1,5 +1,6 @@
 import { ThemeProvider } from 'next-themes';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
+import UpdateBanner from '@/components/UpdateBanner';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -174,6 +175,7 @@ function App() {
           </Router>
           <Toaster />
           <ThemeSwitcher />
+          <UpdateBanner />
         </QueryClientProvider>
       </AuthProvider>
     </ThemeProvider>
