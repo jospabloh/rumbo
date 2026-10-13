@@ -72,9 +72,18 @@ function toPath(src) {
   }
 }
 
-/** True only when both are known and they differ: unknown never means "new". */
-export function isNewVersion(current, latest) {
-  return Boolean(current && latest && current !== latest);
+/**
+ * Whether this tab loaded every file in `signature`. The tab's DOM may hold
+ * more (stylesheets the app injects at runtime), never fewer: a file the
+ * server lists that the tab never loaded means the tab runs an older build.
+ */
+export function documentLoads(signature, doc = typeof document !== 'undefined' ? document : null) {
+  if (!signature || !doc) return true;
+  const loaded = new Set();
+  for (const el of doc.querySelectorAll('script[src], link[href]')) {
+    loaded.add(toPath(el.getAttribute('src') || el.getAttribute('href')));
+  }
+  return signature.split('|').every((path) => loaded.has(path));
 }
 
 /**
@@ -83,7 +92,7 @@ export function isNewVersion(current, latest) {
  * online. The baseline is the server's own
  * HTML rather than this tab's DOM, because the DOM also holds stylesheets the
  * app injects at runtime, which the HTML never lists. If the very first check
- * already shows a different entry script than the one this tab is running, a
+ * lists a file this tab never loaded (a new script or a new stylesheet), a
  * deploy landed between the page load and that check, and it says so.
  * A failed request (offline, deploy in progress) is ignored, never reported.
  * Dismissing hides that version; a later deploy shows the notice again.
@@ -109,8 +118,8 @@ export function useNewVersion({ interval = CHECK_INTERVAL_MS } = {}) {
         const signature = assetSignature(html);
         if (!signature || stopped) return;
         if (baseline === null) {
-          if (isNewVersion(current, entryScriptFromHtml(html))) setLatest(signature);
-          else baseline = signature;
+          if (documentLoads(signature)) baseline = signature;
+          else setLatest(signature);
         } else if (signature !== baseline) {
           setLatest(signature);
         }

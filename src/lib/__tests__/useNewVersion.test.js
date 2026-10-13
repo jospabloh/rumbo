@@ -2,7 +2,7 @@
 // copy (e.g. src/lib/__tests__/useNewVersion.test.js) and fix the import path
 // only. Runs under vitest + jsdom.
 import { afterEach, describe, expect, it } from 'vitest';
-import { assetSignature, currentEntryScript, entryScriptFromHtml, isNewVersion } from '@/lib/useNewVersion';
+import { assetSignature, currentEntryScript, documentLoads, entryScriptFromHtml } from '@/lib/useNewVersion';
 
 // What Base44 and Vercel actually serve for a Vite build (rumbo, 2026-10-13).
 const SERVED = `<!doctype html><html><head>
@@ -53,19 +53,6 @@ describe('currentEntryScript', () => {
   });
 });
 
-describe('isNewVersion', () => {
-  it('is true only when both builds are known and differ', () => {
-    expect(isNewVersion('/assets/index-A.js', '/assets/index-B.js')).toBe(true);
-    expect(isNewVersion('/assets/index-A.js', '/assets/index-A.js')).toBe(false);
-  });
-
-  // A failed or odd response must never nag someone to reload for nothing.
-  it('treats "could not tell" as no new version', () => {
-    expect(isNewVersion('/assets/index-A.js', null)).toBe(false);
-    expect(isNewVersion(null, '/assets/index-B.js')).toBe(false);
-  });
-});
-
 describe('assetSignature', () => {
   // The case Codex raised: a deploy that only touches global CSS (a theme
   // token, say) keeps the entry script's name. It must still count as new.
@@ -89,5 +76,33 @@ describe('assetSignature', () => {
 
   it('is null without a hashed entry script', () => {
     expect(assetSignature('<link rel="stylesheet" href="/assets/a-1.css">')).toBeNull();
+  });
+});
+
+describe('documentLoads', () => {
+  function load(...paths) {
+    for (const p of paths) {
+      const el = p.endsWith('.css') ? document.createElement('link') : document.createElement('script');
+      if (p.endsWith('.css')) { el.rel = 'stylesheet'; el.href = p; } else { el.type = 'module'; el.src = p; }
+      document.head.appendChild(el);
+    }
+  }
+
+  it('is true when the tab loaded the build the server serves', () => {
+    load('/assets/index-y3lU3rA9.js', '/assets/index-Bx1.css');
+    expect(documentLoads(assetSignature(SERVED), document)).toBe(true);
+  });
+
+  // Codex, second round: a CSS-only deploy that lands between the page load
+  // and the first check must not become the baseline.
+  it('is false when the server lists a stylesheet this tab never loaded', () => {
+    load('/assets/index-y3lU3rA9.js', '/assets/index-Bx1.css');
+    const cssOnly = SERVED.replace('index-Bx1.css', 'index-Cy2.css');
+    expect(documentLoads(assetSignature(cssOnly), document)).toBe(false);
+  });
+
+  it('ignores extra stylesheets the app injected at runtime', () => {
+    load('/assets/index-y3lU3rA9.js', '/assets/index-Bx1.css', '/assets/Chart-Dz9.css');
+    expect(documentLoads(assetSignature(SERVED), document)).toBe(true);
   });
 });
