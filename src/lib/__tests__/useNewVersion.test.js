@@ -2,7 +2,7 @@
 // copy (e.g. src/lib/__tests__/useNewVersion.test.js) and fix the import path
 // only. Runs under vitest + jsdom.
 import { afterEach, describe, expect, it } from 'vitest';
-import { currentEntryScript, entryScriptFromHtml, isNewVersion } from '@/lib/useNewVersion';
+import { assetSignature, currentEntryScript, entryScriptFromHtml, isNewVersion } from '@/lib/useNewVersion';
 
 // What Base44 and Vercel actually serve for a Vite build (rumbo, 2026-10-13).
 const SERVED = `<!doctype html><html><head>
@@ -63,5 +63,31 @@ describe('isNewVersion', () => {
   it('treats "could not tell" as no new version', () => {
     expect(isNewVersion('/assets/index-A.js', null)).toBe(false);
     expect(isNewVersion(null, '/assets/index-B.js')).toBe(false);
+  });
+});
+
+describe('assetSignature', () => {
+  // The case Codex raised: a deploy that only touches global CSS (a theme
+  // token, say) keeps the entry script's name. It must still count as new.
+  it('changes when only the stylesheet changes', () => {
+    const cssOnly = SERVED.replace('index-Bx1.css', 'index-Cy2.css');
+    expect(entryScriptFromHtml(cssOnly)).toBe(entryScriptFromHtml(SERVED));
+    expect(assetSignature(cssOnly)).not.toBe(assetSignature(SERVED));
+  });
+
+  it('is stable for the same build, whatever the attribute order', () => {
+    const reordered = '<link href="/assets/index-Bx1.css" rel="stylesheet">'
+      + '<script src="/assets/index-y3lU3rA9.js" type="module"></script>';
+    expect(assetSignature(reordered)).toBe(assetSignature(SERVED));
+  });
+
+  it('ignores files outside /assets and non-stylesheet links', () => {
+    const extra = SERVED.replace('</head>',
+      '<link rel="icon" href="/assets/favicon-1.css"><link rel="stylesheet" href="https://fonts.example.com/x.css"></head>');
+    expect(assetSignature(extra)).toBe(assetSignature(SERVED));
+  });
+
+  it('is null without a hashed entry script', () => {
+    expect(assetSignature('<link rel="stylesheet" href="/assets/a-1.css">')).toBeNull();
   });
 });
