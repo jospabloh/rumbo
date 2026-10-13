@@ -109,7 +109,8 @@ export function documentLoads(signature, doc = typeof document !== 'undefined' ?
  * lists a file this tab never loaded (a new script or a new stylesheet), a
  * deploy landed between the page load and that check, and it says so.
  * A failed request (offline, deploy in progress) is ignored, never reported.
- * Dismissing hides that version; a later deploy shows the notice again.
+ * Dismissing hides that version; a later deploy shows the notice again. A
+ * rollback to the build this tab runs clears it.
  */
 export function useNewVersion({ interval = CHECK_INTERVAL_MS } = {}) {
   const [latest, setLatest] = useState(null);
@@ -133,11 +134,16 @@ export function useNewVersion({ interval = CHECK_INTERVAL_MS } = {}) {
         const html = await res.text();
         const signature = assetSignature(html, url);
         if (!signature || stopped) return;
+        // Back on the tab's own build (a rollback) clears the notice.
         if (baseline === null) {
-          if (documentLoads(signature)) baseline = signature;
-          else setLatest(signature);
-        } else if (signature !== baseline) {
-          setLatest(signature);
+          if (documentLoads(signature)) {
+            baseline = signature;
+            setLatest(null);
+          } else {
+            setLatest(signature);
+          }
+        } else {
+          setLatest(signature === baseline ? null : signature);
         }
       } catch {
         // Offline or mid-deploy: try again on the next tick.
