@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ListSkeleton } from '@/components/ui/list-skeleton';
 import MaintenanceForm from '@/components/maintenance/MaintenanceForm';
 import PartsList from '@/components/maintenance/PartsList';
+import MaintenanceCharts from '@/components/maintenance/MaintenanceCharts';
 import { useTenant } from '@/lib/TenantContext';
 import { useModulePerms } from '@/lib/modulePerms';
 import { useEntityList, useVehicles, useInvalidateEntity } from '@/hooks/useEntities';
@@ -114,8 +115,10 @@ export default function MaintenancePage({ defaultTab = 'maintenance' }) {
         <>
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar por descripción o placa..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-card border-border" />
+            <Input placeholder="Buscar por descripción, placa o unidad..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-card border-border" />
           </div>
+
+          {!loading && <MaintenanceCharts records={filtered} />}
 
           {loading ? (
             <ListSkeleton />

@@ -117,7 +117,7 @@ export const expenseSchema = z.object({
 export const maintenanceSchema = z.object({
   vehicle_id: z.string().min(1, 'Selecciona un vehículo'),
   kind: z.enum(['preventive', 'corrective', 'major_repair']),
-  category: z.enum(['general', 'engine', 'brakes', 'electrical', 'tires', 'body', 'other']).optional(),
+  category: z.enum(['general', 'oil_change', 'engine', 'brakes', 'electrical', 'tires', 'body', 'other']).optional(),
   description: optionalString,
   odometer: optionalNumber(0),
   cost: optionalNumber(0),

@@ -106,6 +106,7 @@ export default function MaintenanceForm({ record, vehicles, onSave, onClose }) {
                     <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="oil_change">Cambio de aceite y filtros</SelectItem>
                       <SelectItem value="engine">Motor</SelectItem>
                       <SelectItem value="brakes">Frenos</SelectItem>
                       <SelectItem value="electrical">Eléctrico</SelectItem>
